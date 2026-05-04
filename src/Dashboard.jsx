@@ -10,6 +10,17 @@ const SHEET_URLS = {
   planning: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=0&single=true&output=csv",
   affaires: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=584135097&single=true&output=csv",
   soustraitants: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=1074854777&single=true&output=csv",
+  // À remplacer par la vraie URL une fois l'onglet Devis créé et publié
+  devis: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=49286593&single=true&output=csv",
+};
+
+// Étapes pour la slide Devis (différentes des affaires, plus orientées client)
+const QUOTE_STAGES = {
+  chiffrage:   { label: "À chiffrer",       short: "EN COURS",  color: "#6B7280", bg: "#F3F4F6" },
+  envoye:      { label: "Envoyé au client", short: "ENVOYÉ",    color: "#1D4ED8", bg: "#DBEAFE" },
+  attente:     { label: "En attente client",short: "ATTENTE",   color: "#B45309", bg: "#FEF3C7" },
+  valide:      { label: "Validé",           short: "VALIDÉ",    color: "#047857", bg: "#D1FAE5" },
+  travaux:     { label: "Travaux planifiés",short: "PLANIFIÉ",  color: "#5B21B6", bg: "#EDE9FE" },
 };
 
 // Ordre d'affichage : Jason, Cédric, Ghulam (Ghulam est alternant, en dernier)
@@ -170,10 +181,12 @@ const FALLBACK_PLANNING = [
 ];
 const FALLBACK_AFFAIRS = { voodoo: [], laposte: [], logistique: [], louvre: [], communes: [] };
 const FALLBACK_SUBCONTRACTORS = [];
+const FALLBACK_QUOTES = [];
 
 const SLIDES = [
   { id: "planning", type: "planning" },
   ...TENANTS.map(t => ({ id: t.id, type: "tenant", tenantId: t.id })),
+  { id: "quotes", type: "quotes" },
   { id: "subcontractors", type: "subcontractors" },
 ];
 
@@ -464,6 +477,162 @@ function PlanningSlide({ planning }) {
   );
 }
 
+// ─── SLIDE DEVIS EN COURS ────────────────────────────────────────────────────
+
+const QUOTES_ACCENT = "#0E7490";
+const QUOTES_ACCENT_LIGHT = "#CFFAFE";
+
+function QuotesSlide({ quotes }) {
+  // Tri : urgents d'abord, puis par ancienneté (date la plus ancienne en premier)
+  const sorted = [...quotes].sort((a, b) => {
+    if (a.urgent && !b.urgent) return -1;
+    if (!a.urgent && b.urgent) return 1;
+    // Trier par date d'envoi (les plus anciennes en haut)
+    return (a.dateValue || 0) - (b.dateValue || 0);
+  });
+
+  const totalUrgent = quotes.filter(q => q.urgent).length;
+
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "32px 44px" }}>
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 24 }}>
+        <div style={{
+          width: 96, height: 96, borderRadius: 18,
+          backgroundColor: QUOTES_ACCENT_LIGHT, color: QUOTES_ACCENT,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 30, fontWeight: 800, letterSpacing: "-0.5px",
+          border: `3px solid ${QUOTES_ACCENT}`,
+          flexShrink: 0,
+        }}>€</div>
+
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#9CA3AF", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
+            Suivi des devis
+          </div>
+          <div style={{ fontSize: 48, fontWeight: 800, color: "#111827", letterSpacing: "-1.5px", lineHeight: 1 }}>
+            Devis en cours
+          </div>
+          <div style={{ fontSize: 16, color: "#6B7280", marginTop: 10, fontWeight: 500 }}>
+            {quotes.length === 0
+              ? "Aucun devis en cours"
+              : `${quotes.length} devis en cours${totalUrgent > 0 ? ` — ${totalUrgent} urgent${totalUrgent > 1 ? "s" : ""}` : ""}`
+            }
+          </div>
+        </div>
+
+        {/* Compteurs à droite */}
+        <div style={{ display: "flex", gap: 12 }}>
+          {totalUrgent > 0 && (
+            <div style={{
+              backgroundColor: "#FEE2E2", color: "#991B1B",
+              padding: "16px 20px",
+              borderRadius: 12,
+              textAlign: "center",
+              minWidth: 90,
+            }}>
+              <div style={{ fontSize: 36, fontWeight: 800, lineHeight: 1 }}>{totalUrgent}</div>
+              <div style={{ fontSize: 11, fontWeight: 800, marginTop: 6, letterSpacing: "0.08em" }}>URGENTS</div>
+            </div>
+          )}
+          <div style={{
+            backgroundColor: QUOTES_ACCENT_LIGHT, color: QUOTES_ACCENT,
+            padding: "16px 20px",
+            borderRadius: 12,
+            textAlign: "center",
+            minWidth: 90,
+          }}>
+            <div style={{ fontSize: 36, fontWeight: 800, lineHeight: 1 }}>{quotes.length}</div>
+            <div style={{ fontSize: 11, fontWeight: 800, marginTop: 6, letterSpacing: "0.08em" }}>EN COURS</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Liste des devis */}
+      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", gap: 10 }}>
+        {sorted.length === 0 ? (
+          <div style={{
+            flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#9CA3AF", fontSize: 18, fontWeight: 500,
+          }}>
+            Aucun devis en cours actuellement
+          </div>
+        ) : sorted.slice(0, 8).map((quote, i) => {
+          const stage = QUOTE_STAGES[quote.stage] || QUOTE_STAGES.envoye;
+          return (
+            <div key={i} style={{
+              backgroundColor: "white",
+              border: quote.urgent ? "2px solid #DC2626" : "1px solid #E5E7EB",
+              borderRadius: 12,
+              padding: "16px 20px",
+              display: "flex",
+              alignItems: "center",
+              gap: 18,
+              boxShadow: "0 2px 6px rgba(0,0,0,.04)",
+            }}>
+              {/* Badge URGENT à gauche si urgent */}
+              {quote.urgent && (
+                <div style={{
+                  backgroundColor: "#DC2626", color: "white",
+                  padding: "6px 12px",
+                  borderRadius: 8,
+                  fontSize: 12, fontWeight: 800, letterSpacing: "0.08em",
+                  flexShrink: 0,
+                }}>URGENT</div>
+              )}
+
+              {/* Référence */}
+              <div style={{
+                fontFamily: "'DM Mono', monospace",
+                fontSize: 18, fontWeight: 700, color: "#111827",
+                minWidth: 110, flexShrink: 0,
+              }}>{quote.ref || "—"}</div>
+
+              {/* Client + Titre */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: QUOTES_ACCENT, letterSpacing: "0.02em", marginBottom: 3 }}>
+                  {quote.client}
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 600, color: "#111827", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {quote.title}
+                </div>
+              </div>
+
+              {/* Date d'envoi */}
+              {quote.dateLabel && (
+                <div style={{
+                  fontSize: 13, color: "#6B7280", fontWeight: 500,
+                  textAlign: "right", flexShrink: 0,
+                }}>
+                  <div style={{ fontSize: 11, color: "#9CA3AF", letterSpacing: "0.05em", textTransform: "uppercase" }}>Envoyé</div>
+                  <div style={{ fontSize: 15, color: "#111827", fontWeight: 600, marginTop: 2 }}>{quote.dateLabel}</div>
+                </div>
+              )}
+
+              {/* Étape */}
+              <div style={{
+                backgroundColor: stage.bg, color: stage.color,
+                padding: "8px 14px",
+                borderRadius: 8,
+                fontSize: 12, fontWeight: 800, letterSpacing: "0.05em",
+                textAlign: "center",
+                minWidth: 110, flexShrink: 0,
+              }}>{stage.short}</div>
+            </div>
+          );
+        })}
+
+        {sorted.length > 8 && (
+          <div style={{ textAlign: "center", color: "#9CA3AF", fontSize: 13, fontWeight: 500, marginTop: 4 }}>
+            +{sorted.length - 8} autres devis non affichés
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── SLIDE SOUS-TRAITANTS ────────────────────────────────────────────────────
 
 const SUBCONTRACTORS_ACCENT = "#0F766E";
@@ -590,6 +759,7 @@ export default function Dashboard() {
   const [planning, setPlanning] = useState(FALLBACK_PLANNING);
   const [affairs, setAffairs] = useState(FALLBACK_AFFAIRS);
   const [subcontractors, setSubcontractors] = useState(FALLBACK_SUBCONTRACTORS);
+  const [quotes, setQuotes] = useState(FALLBACK_QUOTES);
   const [dataStatus, setDataStatus] = useState("loading"); // "loading" | "ok" | "error"
   const [lastUpdate, setLastUpdate] = useState(null);
 
@@ -599,10 +769,15 @@ export default function Dashboard() {
 
     async function fetchAllData() {
       try {
-        const [planningRes, affairsRes, subsRes] = await Promise.all([
+        const fetchDevis = SHEET_URLS.devis && SHEET_URLS.devis !== "DEVIS_URL_TO_REPLACE"
+          ? fetch(SHEET_URLS.devis).then(r => r.text()).catch(() => "")
+          : Promise.resolve("");
+
+        const [planningRes, affairsRes, subsRes, quotesRes] = await Promise.all([
           fetch(SHEET_URLS.planning).then(r => r.text()),
           fetch(SHEET_URLS.affaires).then(r => r.text()),
           fetch(SHEET_URLS.soustraitants).then(r => r.text()),
+          fetchDevis,
         ]);
 
         if (cancelled) return;
@@ -665,9 +840,45 @@ export default function Dashboard() {
           })
           .filter(Boolean);
 
+        // Parser Devis : client, reference, titre, date_envoi, etape, urgent
+        const quotesRows = quotesRes ? parseCSV(quotesRes) : [];
+        const newQuotes = quotesRows
+          .map(row => {
+            const stage = (row.etape || "envoye").toLowerCase().trim();
+            // Parser date au format JJ/MM ou JJ/MM/AAAA
+            let dateValue = 0;
+            let dateLabel = "";
+            const rawDate = (row.date_envoi || row.date || "").trim();
+            if (rawDate) {
+              const parts = rawDate.split(/[\/\-\.]/);
+              if (parts.length >= 2) {
+                const day = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10);
+                const year = parts[2] ? parseInt(parts[2], 10) : new Date().getFullYear();
+                const fullYear = year < 100 ? 2000 + year : year;
+                const d = new Date(fullYear, month - 1, day);
+                if (!isNaN(d.getTime())) {
+                  dateValue = d.getTime();
+                  dateLabel = `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}`;
+                }
+              }
+            }
+            return {
+              client: row.client || "",
+              ref: row.reference || "",
+              title: row.titre || "",
+              dateLabel,
+              dateValue,
+              stage: QUOTE_STAGES[stage] ? stage : "envoye",
+              urgent: ["oui", "yes", "true", "1"].includes((row.urgent || "").toLowerCase()),
+            };
+          })
+          .filter(q => q.client || q.ref || q.title);
+
         setPlanning(newPlanning);
         setAffairs(newAffairs);
         setSubcontractors(newSubs);
+        setQuotes(newQuotes);
         setDataStatus("ok");
         setLastUpdate(new Date());
       } catch (err) {
@@ -707,7 +918,12 @@ export default function Dashboard() {
   const currentSlide = SLIDES[slideIdx];
   const currentTenant = currentSlide.type === "tenant" ? TENANTS.find(t => t.id === currentSlide.tenantId) : null;
   const isSubcontractors = currentSlide.type === "subcontractors";
-  const headerAccent = currentTenant ? currentTenant.accent : (isSubcontractors ? SUBCONTRACTORS_ACCENT : "#1D4ED8");
+  const isQuotes = currentSlide.type === "quotes";
+  const headerAccent = currentTenant
+    ? currentTenant.accent
+    : isSubcontractors ? SUBCONTRACTORS_ACCENT
+    : isQuotes ? QUOTES_ACCENT
+    : "#1D4ED8";
   const totalUrgent = Object.values(affairs).flat().filter(a => a.urgent).length;
 
   return (
@@ -803,6 +1019,9 @@ export default function Dashboard() {
           } else if (s.type === "subcontractors") {
             label = "SOUS-TRAITANTS";
             accentColor = SUBCONTRACTORS_ACCENT;
+          } else if (s.type === "quotes") {
+            label = "DEVIS";
+            accentColor = QUOTES_ACCENT;
           } else {
             label = tenant.name.toUpperCase();
             accentColor = tenant.accent;
@@ -828,6 +1047,7 @@ export default function Dashboard() {
       }}>
         {currentSlide.type === "planning" && <PlanningSlide planning={planning} />}
         {currentSlide.type === "tenant" && <TenantSlide tenant={currentTenant} affairs={affairs[currentTenant.id] || []} />}
+        {currentSlide.type === "quotes" && <QuotesSlide quotes={quotes} />}
         {currentSlide.type === "subcontractors" && <SubcontractorsSlide subcontractors={subcontractors} />}
       </div>
     </div>
