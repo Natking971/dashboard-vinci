@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 // ─── CONFIGURATION ──────────────────────────────────────────────────────────
 
 const SLIDE_DURATION = 30000;
+const QUOTES_SLIDE_DURATION = 60000; // Plus long pour laisser défiler tous les devis
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 // URLs Google Sheets publiées en CSV
@@ -549,83 +550,102 @@ function QuotesSlide({ quotes }) {
         </div>
       </div>
 
-      {/* Liste des devis */}
-      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* Liste des devis avec défilement automatique */}
+      <div style={{
+        flex: 1,
+        overflow: "hidden",
+        position: "relative",
+        maskImage: "linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%)",
+        WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%)",
+      }}>
         {sorted.length === 0 ? (
           <div style={{
-            flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#9CA3AF", fontSize: 18, fontWeight: 500,
+            height: "100%", display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#9CA3AF", fontSize: 22, fontWeight: 500,
           }}>
             Aucun devis en cours actuellement
           </div>
-        ) : sorted.slice(0, 8).map((quote, i) => {
-          const stage = QUOTE_STAGES[quote.stage] || QUOTE_STAGES.envoye;
-          return (
-            <div key={i} style={{
-              backgroundColor: "white",
-              border: quote.urgent ? "2px solid #DC2626" : "1px solid #E5E7EB",
-              borderRadius: 12,
-              padding: "16px 20px",
-              display: "flex",
-              alignItems: "center",
-              gap: 18,
-              boxShadow: "0 2px 6px rgba(0,0,0,.04)",
-            }}>
-              {/* Badge URGENT à gauche si urgent */}
-              {quote.urgent && (
-                <div style={{
-                  backgroundColor: "#DC2626", color: "white",
-                  padding: "6px 12px",
-                  borderRadius: 8,
-                  fontSize: 12, fontWeight: 800, letterSpacing: "0.08em",
+        ) : (
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+            // Animation : défile en boucle infinie. Vitesse adaptée au nombre de devis.
+            // 5s par devis = pour 17 devis, boucle complète en ~85s (la slide dure 60s, donc on voit ~70% de la liste)
+            animation: sorted.length > 5 ? `scrollQuotes ${sorted.length * 5}s linear infinite` : "none",
+          }}>
+            {/* Liste dupliquée 2x pour boucle infinie fluide */}
+            {[...sorted, ...sorted].map((quote, i) => {
+              const stage = QUOTE_STAGES[quote.stage] || QUOTE_STAGES.envoye;
+              return (
+                <div key={i} style={{
+                  backgroundColor: "white",
+                  border: quote.urgent ? "3px solid #DC2626" : "1px solid #E5E7EB",
+                  borderRadius: 12,
+                  padding: "20px 24px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 22,
+                  boxShadow: "0 2px 6px rgba(0,0,0,.04)",
                   flexShrink: 0,
-                }}>URGENT</div>
-              )}
-
-              {/* Référence */}
-              <div style={{
-                fontFamily: "'DM Mono', monospace",
-                fontSize: 18, fontWeight: 700, color: "#111827",
-                minWidth: 110, flexShrink: 0,
-              }}>{quote.ref || "—"}</div>
-
-              {/* Client + Titre */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: QUOTES_ACCENT, letterSpacing: "0.02em", marginBottom: 3 }}>
-                  {quote.client}
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 600, color: "#111827", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {quote.title}
-                </div>
-              </div>
-
-              {/* Date d'envoi */}
-              {quote.dateLabel && (
-                <div style={{
-                  fontSize: 13, color: "#6B7280", fontWeight: 500,
-                  textAlign: "right", flexShrink: 0,
                 }}>
-                  <div style={{ fontSize: 11, color: "#9CA3AF", letterSpacing: "0.05em", textTransform: "uppercase" }}>Envoyé</div>
-                  <div style={{ fontSize: 15, color: "#111827", fontWeight: 600, marginTop: 2 }}>{quote.dateLabel}</div>
+                  {/* Badge URGENT à gauche si urgent */}
+                  {quote.urgent && (
+                    <div style={{
+                      backgroundColor: "#DC2626", color: "white",
+                      padding: "8px 14px",
+                      borderRadius: 8,
+                      fontSize: 14, fontWeight: 800, letterSpacing: "0.08em",
+                      flexShrink: 0,
+                    }}>URGENT</div>
+                  )}
+
+                  {/* Référence */}
+                  <div style={{
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: 20, fontWeight: 700, color: "#111827",
+                    minWidth: 130, flexShrink: 0,
+                  }}>{quote.ref || "—"}</div>
+
+                  {/* Client + Titre — CLIENT EN GROS */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 26, fontWeight: 800, color: QUOTES_ACCENT,
+                      letterSpacing: "-0.5px", marginBottom: 6, lineHeight: 1,
+                    }}>
+                      {quote.client}
+                    </div>
+                    <div style={{
+                      fontSize: 17, fontWeight: 500, color: "#374151", lineHeight: 1.3,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {quote.title}
+                    </div>
+                  </div>
+
+                  {/* Date d'envoi */}
+                  {quote.dateLabel && (
+                    <div style={{
+                      fontSize: 14, color: "#6B7280", fontWeight: 500,
+                      textAlign: "right", flexShrink: 0,
+                    }}>
+                      <div style={{ fontSize: 11, color: "#9CA3AF", letterSpacing: "0.05em", textTransform: "uppercase" }}>Envoyé</div>
+                      <div style={{ fontSize: 17, color: "#111827", fontWeight: 700, marginTop: 3 }}>{quote.dateLabel}</div>
+                    </div>
+                  )}
+
+                  {/* Étape */}
+                  <div style={{
+                    backgroundColor: stage.bg, color: stage.color,
+                    padding: "10px 16px",
+                    borderRadius: 8,
+                    fontSize: 13, fontWeight: 800, letterSpacing: "0.05em",
+                    textAlign: "center",
+                    minWidth: 120, flexShrink: 0,
+                  }}>{stage.short}</div>
                 </div>
-              )}
-
-              {/* Étape */}
-              <div style={{
-                backgroundColor: stage.bg, color: stage.color,
-                padding: "8px 14px",
-                borderRadius: 8,
-                fontSize: 12, fontWeight: 800, letterSpacing: "0.05em",
-                textAlign: "center",
-                minWidth: 110, flexShrink: 0,
-              }}>{stage.short}</div>
-            </div>
-          );
-        })}
-
-        {sorted.length > 8 && (
-          <div style={{ textAlign: "center", color: "#9CA3AF", fontSize: 13, fontWeight: 500, marginTop: 4 }}>
-            +{sorted.length - 8} autres devis non affichés
+              );
+            })}
           </div>
         )}
       </div>
@@ -902,13 +922,15 @@ export default function Dashboard() {
   useEffect(() => {
     setProgress(0);
     const start = Date.now();
+    // Slide Devis : durée plus longue pour laisser le temps au défilement
+    const slideDuration = SLIDES[slideIdx].type === "quotes" ? QUOTES_SLIDE_DURATION : SLIDE_DURATION;
     const tick = setInterval(() => {
       const elapsed = Date.now() - start;
-      setProgress(Math.min(100, (elapsed / SLIDE_DURATION) * 100));
+      setProgress(Math.min(100, (elapsed / slideDuration) * 100));
     }, 100);
     const advance = setTimeout(() => {
       setSlideIdx(i => (i + 1) % SLIDES.length);
-    }, SLIDE_DURATION);
+    }, slideDuration);
     return () => { clearInterval(tick); clearTimeout(advance); };
   }, [slideIdx]);
 
@@ -940,6 +962,7 @@ export default function Dashboard() {
         * { box-sizing: border-box; }
         @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes scrollQuotes { from { transform: translateY(0); } to { transform: translateY(-50%); } }
       `}</style>
 
       {/* HEADER */}
