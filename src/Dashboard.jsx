@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 
 const SLIDE_DURATION = 30000;
 
+// Ordre d'affichage : Jason, Cédric, Ghulam (Ghulam est alternant, en dernier)
+// Les IDs restent stables (1=Ghulam, 2=Cédric, 3=Jason) pour ne pas casser PLANNING et AFFAIRS
 const TECHNICIANS = [
-  { id: 1, name: "Ghulam", color: "#1D4ED8", light: "#DBEAFE", dot: "#3B82F6" },
+  { id: 3, name: "Jason",  color: "#B45309", light: "#FEF3C7", dot: "#F59E0B" },
   { id: 2, name: "Cédric", color: "#047857", light: "#D1FAE5", dot: "#10B981" },
-  { id: 3, name: "Jayson", color: "#B45309", light: "#FEF3C7", dot: "#F59E0B" },
+  { id: 1, name: "Ghulam", color: "#1D4ED8", light: "#DBEAFE", dot: "#3B82F6" },
 ];
 
 const TENANTS = [
@@ -30,20 +32,20 @@ const STAGES = {
 const DAY_NAMES = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 
 const PLANNING = [
-  { techId: 1, tasks: [
-    { day: 0, label: "Maintenance Voodoo",      client: "Voodoo" },
-    { day: 1, label: "Diagnostic chauffage",    client: "La Poste Enseigne" },
-    { day: 3, label: "Vidéosurveillance",       client: "Logistique Urbaine" },
+  { techId: 3, tasks: [
+    { day: 1, label: "Mise aux normes incendie", client: "La Poste Enseigne" },
+    { day: 2, label: "Sécurisation coffre",      client: "Louvre Banque Privée" },
+    { day: 3, label: "Portail automatique",      client: "Logistique Urbaine" },
   ]},
   { techId: 2, tasks: [
     { day: 0, label: "Audit système accès",     client: "Louvre Banque Privée" },
     { day: 2, label: "Hall — peinture",         client: "Parties communes" },
     { day: 4, label: "SAV imprimante",          client: "Voodoo" },
   ]},
-  { techId: 3, tasks: [
-    { day: 1, label: "Mise aux normes incendie", client: "La Poste Enseigne" },
-    { day: 2, label: "Sécurisation coffre",      client: "Louvre Banque Privée" },
-    { day: 3, label: "Portail automatique",      client: "Logistique Urbaine" },
+  { techId: 1, tasks: [
+    { day: 0, label: "Maintenance Voodoo",      client: "Voodoo" },
+    { day: 1, label: "Diagnostic chauffage",    client: "La Poste Enseigne" },
+    { day: 3, label: "Vidéosurveillance",       client: "Logistique Urbaine" },
   ]},
 ];
 
@@ -84,9 +86,18 @@ const AFFAIRS = {
   ],
 };
 
+const SUBCONTRACTORS = [
+  { day: 0, company: "ELEC+",        domain: "Électricité",       location: "Voodoo",                color: "#1D4ED8", light: "#DBEAFE" },
+  { day: 1, company: "CLIM PRO",     domain: "Climatisation",     location: "La Poste Enseigne",     color: "#0891B2", light: "#CFFAFE" },
+  { day: 2, company: "SERRURIA",     domain: "Serrurerie",        location: "Louvre Banque Privée",  color: "#B45309", light: "#FEF3C7" },
+  { day: 3, company: "PEINTRIX",     domain: "Peinture",          location: "Parties communes",      color: "#7C3AED", light: "#EDE9FE" },
+  { day: 4, company: "SECURIPLUS",   domain: "Sécurité incendie", location: "Logistique Urbaine",    color: "#DC2626", light: "#FEE2E2" },
+];
+
 const SLIDES = [
   { id: "planning", type: "planning" },
   ...TENANTS.map(t => ({ id: t.id, type: "tenant", tenantId: t.id })),
+  { id: "subcontractors", type: "subcontractors" },
 ];
 
 // ─── UTILITAIRES ────────────────────────────────────────────────────────────
@@ -361,6 +372,123 @@ function PlanningSlide() {
   );
 }
 
+// ─── SLIDE SOUS-TRAITANTS ────────────────────────────────────────────────────
+
+const SUBCONTRACTORS_ACCENT = "#0F766E";
+const SUBCONTRACTORS_ACCENT_LIGHT = "#CCFBF1";
+
+function getNextWeekDates() {
+  const today = new Date();
+  const day = today.getDay();
+  const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(today);
+  monday.setDate(diff + 7); // semaine prochaine
+  return DAY_NAMES.map((_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+}
+
+function SubcontractorsSlide() {
+  const weekDates = getNextWeekDates();
+
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "32px 44px" }}>
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 28 }}>
+        <div style={{
+          width: 96, height: 96, borderRadius: 18,
+          backgroundColor: SUBCONTRACTORS_ACCENT_LIGHT, color: SUBCONTRACTORS_ACCENT,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 30, fontWeight: 800, letterSpacing: "-0.5px",
+          border: `3px solid ${SUBCONTRACTORS_ACCENT}`,
+          flexShrink: 0,
+        }}>ST</div>
+
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#9CA3AF", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
+            Interventions externes
+          </div>
+          <div style={{ fontSize: 48, fontWeight: 800, color: "#111827", letterSpacing: "-1.5px", lineHeight: 1 }}>
+            Sous-traitants
+          </div>
+          <div style={{ fontSize: 16, color: "#6B7280", marginTop: 10, fontWeight: 500 }}>
+            Semaine prochaine — du {fmt(weekDates[0])} au {fmt(weekDates[4])}
+          </div>
+        </div>
+
+        {/* Compteur total */}
+        <div style={{
+          backgroundColor: SUBCONTRACTORS_ACCENT_LIGHT, color: SUBCONTRACTORS_ACCENT,
+          padding: "16px 24px",
+          borderRadius: 12,
+          textAlign: "center",
+          minWidth: 100,
+        }}>
+          <div style={{ fontSize: 36, fontWeight: 800, lineHeight: 1 }}>{SUBCONTRACTORS.length}</div>
+          <div style={{ fontSize: 11, fontWeight: 800, marginTop: 6, letterSpacing: "0.08em" }}>INTERVENTIONS</div>
+        </div>
+      </div>
+
+      {/* Grille jours */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(5, 1fr)",
+        gap: 12,
+        flex: 1,
+      }}>
+        {DAY_NAMES.map((day, dayIdx) => {
+          const daySubs = SUBCONTRACTORS.filter(s => s.day === dayIdx);
+          return (
+            <div key={day} style={{
+              backgroundColor: "white",
+              border: "1px solid #E5E7EB",
+              borderRadius: 12,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              boxShadow: "0 2px 6px rgba(0,0,0,.05)",
+            }}>
+              {/* En-tête du jour */}
+              <div style={{
+                padding: "14px 12px",
+                textAlign: "center",
+                backgroundColor: "#F9FAFB",
+                borderBottom: "1px solid #E5E7EB",
+              }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#111827" }}>{day}</div>
+                <div style={{ fontSize: 12, color: "#6B7280", marginTop: 3, fontWeight: 500 }}>{fmt(weekDates[dayIdx])}</div>
+              </div>
+
+              {/* Liste des sous-traitants du jour */}
+              <div style={{ flex: 1, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                {daySubs.length === 0 ? (
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: 28, height: 1.5, backgroundColor: "#D1D5DB" }} />
+                  </div>
+                ) : daySubs.map((sub, i) => (
+                  <div key={i} style={{
+                    backgroundColor: sub.light,
+                    borderLeft: `4px solid ${sub.color}`,
+                    borderRadius: "0 8px 8px 0",
+                    padding: "12px 13px",
+                  }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: sub.color, lineHeight: 1.2 }}>{sub.company}</div>
+                    <div style={{ fontSize: 12, color: "#374151", marginTop: 4, fontWeight: 600 }}>{sub.domain}</div>
+                    <div style={{ fontSize: 11, color: "#6B7280", marginTop: 4, fontStyle: "italic" }}>→ {sub.location}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── COMPOSANT PRINCIPAL ─────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -391,6 +519,8 @@ export default function Dashboard() {
 
   const currentSlide = SLIDES[slideIdx];
   const currentTenant = currentSlide.type === "tenant" ? TENANTS.find(t => t.id === currentSlide.tenantId) : null;
+  const isSubcontractors = currentSlide.type === "subcontractors";
+  const headerAccent = currentTenant ? currentTenant.accent : (isSubcontractors ? SUBCONTRACTORS_ACCENT : "#1D4ED8");
   const totalUrgent = Object.values(AFFAIRS).flat().filter(a => a.urgent).length;
 
   return (
@@ -418,13 +548,13 @@ export default function Dashboard() {
         alignItems: "center",
         justifyContent: "space-between",
         flexShrink: 0,
-        borderBottom: `4px solid ${currentTenant ? currentTenant.accent : "#1D4ED8"}`,
+        borderBottom: `4px solid ${headerAccent}`,
         transition: "border-color 0.5s ease",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
           <div style={{
             width: 8, height: 56,
-            backgroundColor: currentTenant ? currentTenant.accent : "#3B82F6",
+            backgroundColor: headerAccent,
             borderRadius: 4,
             transition: "background-color 0.5s ease",
           }} />
@@ -461,7 +591,7 @@ export default function Dashboard() {
         <div style={{
           height: "100%",
           width: `${progress}%`,
-          backgroundColor: currentTenant ? currentTenant.accent : "#3B82F6",
+          backgroundColor: headerAccent,
           transition: "width 0.1s linear, background-color 0.5s ease",
         }} />
       </div>
@@ -479,8 +609,17 @@ export default function Dashboard() {
         {SLIDES.map((s, i) => {
           const isActive = i === slideIdx;
           const tenant = s.type === "tenant" ? TENANTS.find(t => t.id === s.tenantId) : null;
-          const label = s.type === "planning" ? "ÉQUIPE" : tenant.name.toUpperCase();
-          const accentColor = tenant ? tenant.accent : "#3B82F6";
+          let label, accentColor;
+          if (s.type === "planning") {
+            label = "ÉQUIPE";
+            accentColor = "#3B82F6";
+          } else if (s.type === "subcontractors") {
+            label = "SOUS-TRAITANTS";
+            accentColor = SUBCONTRACTORS_ACCENT;
+          } else {
+            label = tenant.name.toUpperCase();
+            accentColor = tenant.accent;
+          }
           return (
             <div key={s.id} style={{
               padding: isActive ? "8px 18px" : "8px 14px",
@@ -502,6 +641,7 @@ export default function Dashboard() {
       }}>
         {currentSlide.type === "planning" && <PlanningSlide />}
         {currentSlide.type === "tenant" && <TenantSlide tenant={currentTenant} />}
+        {currentSlide.type === "subcontractors" && <SubcontractorsSlide />}
       </div>
     </div>
   );
