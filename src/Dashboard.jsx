@@ -1,9 +1,5 @@
 import { useState, useEffect } from "react";
 
-// ─── LOGO VINCI ──────────────────────────────────────────────────────────────
-// Logo Vinci embarqué en base64 (JPEG, 201x56px, ~2.4kB)
-const VINCI_LOGO = "data:image/jpeg;base64,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";
-
 
 // ─── CONFIGURATION ──────────────────────────────────────────────────────────
 
@@ -995,16 +991,33 @@ export default function Dashboard() {
               Slide {slideIdx + 1} / {SLIDES.length} · rotation auto 30s
             </div>
           </div>
-          <img
-            src={VINCI_LOGO}
-            alt="Vinci Facilities"
-            style={{
-              height: 44,
-              width: "auto",
-              marginLeft: 16,
-              borderRadius: 6,
-            }}
-          />
+          <div style={{
+            marginLeft: 16,
+            padding: "8px 16px",
+            backgroundColor: "white",
+            borderRadius: 8,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            lineHeight: 1,
+          }}>
+            <div style={{
+              fontSize: 22,
+              fontWeight: 800,
+              color: "#003C71",
+              letterSpacing: "0.05em",
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+            }}>VINCI</div>
+            <div style={{
+              fontSize: 9,
+              fontWeight: 700,
+              color: "#DA291C",
+              letterSpacing: "0.18em",
+              marginTop: 2,
+              textTransform: "uppercase",
+            }}>Facilities</div>
+          </div>
           {totalUrgent > 0 && (
             <div style={{
               marginLeft: 18,
