@@ -3,9 +3,16 @@ import { useState, useEffect } from "react";
 // ─── CONFIGURATION ──────────────────────────────────────────────────────────
 
 const SLIDE_DURATION = 30000;
+const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+// URLs Google Sheets publiées en CSV
+const SHEET_URLS = {
+  planning: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=0&single=true&output=csv",
+  affaires: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=584135097&single=true&output=csv",
+  soustraitants: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=1074854777&single=true&output=csv",
+};
 
 // Ordre d'affichage : Jason, Cédric, Ghulam (Ghulam est alternant, en dernier)
-// Les IDs restent stables (1=Ghulam, 2=Cédric, 3=Jason) pour ne pas casser PLANNING et AFFAIRS
 const TECHNICIANS = [
   { id: 3, name: "Jason",  color: "#B45309", light: "#FEF3C7", dot: "#F59E0B" },
   { id: 2, name: "Cédric", color: "#047857", light: "#D1FAE5", dot: "#10B981" },
@@ -31,68 +38,138 @@ const STAGES = {
 
 const DAY_NAMES = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 
-const PLANNING = [
-  { techId: 3, tasks: [
-    { day: 1, label: "Mise aux normes incendie", client: "La Poste Enseigne" },
-    { day: 2, label: "Sécurisation coffre",      client: "Louvre Banque Privée" },
-    { day: 3, label: "Portail automatique",      client: "Logistique Urbaine" },
-  ]},
-  { techId: 2, tasks: [
-    { day: 0, label: "Audit système accès",     client: "Louvre Banque Privée" },
-    { day: 2, label: "Hall — peinture",         client: "Parties communes" },
-    { day: 4, label: "SAV imprimante",          client: "Voodoo" },
-  ]},
-  { techId: 1, tasks: [
-    { day: 0, label: "Maintenance Voodoo",      client: "Voodoo" },
-    { day: 1, label: "Diagnostic chauffage",    client: "La Poste Enseigne" },
-    { day: 3, label: "Vidéosurveillance",       client: "Logistique Urbaine" },
-  ]},
+// Mapping des couleurs pour les sous-traitants (cycle automatique)
+const SUB_COLORS = [
+  { color: "#1D4ED8", light: "#DBEAFE" },
+  { color: "#0891B2", light: "#CFFAFE" },
+  { color: "#B45309", light: "#FEF3C7" },
+  { color: "#7C3AED", light: "#EDE9FE" },
+  { color: "#DC2626", light: "#FEE2E2" },
+  { color: "#059669", light: "#D1FAE5" },
 ];
 
-const AFFAIRS = {
-  voodoo: [
-    { id: 1, ref: "VDO-187", title: "Réfection sols open space", stage: "validation", tech: 1, validator: "Telma", days: 3, urgent: true },
-    { id: 2, ref: "VDO-186", title: "Remplacement éclairage LED",  stage: "travaux", tech: 2, days: 8 },
-    { id: 3, ref: "VDO-185", title: "Audit électrique annuel",     stage: "diagnostic", tech: 3, days: 1 },
-    { id: 4, ref: "VDO-184", title: "Climatisation salle B",       stage: "devis", tech: 1, days: 2 },
-    { id: 5, ref: "VDO-183", title: "SAV imprimante 2e étage",     stage: "termine", tech: 2, days: 12 },
-  ],
-  laposte: [
-    { id: 6, ref: "LPE-215", title: "Mise aux normes incendie",     stage: "validation", tech: 3, validator: "Philippe", days: 5, urgent: true },
-    { id: 7, ref: "LPE-214", title: "Alarme zone livraison",        stage: "travaux", tech: 1, days: 4 },
-    { id: 8, ref: "LPE-213", title: "Câblage RJ45 bureau",          stage: "valide", tech: 2, days: 1 },
-    { id: 9, ref: "LPE-212", title: "Diagnostic chauffage",         stage: "diagnostic", tech: 3, days: 0 },
-    { id: 10, ref: "LPE-211", title: "Maintenance climatisation",   stage: "devis", tech: 1, days: 6 },
-    { id: 11, ref: "LPE-210", title: "Peinture couloir étage 3",    stage: "termine", tech: 2, days: 15 },
-  ],
-  logistique: [
-    { id: 12, ref: "LOG-088", title: "Vidéosurveillance entrepôt",  stage: "validation", tech: 1, validator: "Telma", days: 2 },
-    { id: 13, ref: "LOG-087", title: "Portail automatique",         stage: "travaux", tech: 3, days: 3 },
-    { id: 14, ref: "LOG-086", title: "Diagnostic ventilation",      stage: "diagnostic", tech: 2, days: 1 },
-    { id: 15, ref: "LOG-085", title: "Quais de chargement",         stage: "devis", tech: 1, days: 7 },
-  ],
-  louvre: [
-    { id: 16, ref: "LBP-094", title: "Sécurisation salle coffre",   stage: "validation", tech: 3, validator: "Philippe", days: 4, urgent: true },
-    { id: 17, ref: "LBP-093", title: "Climatisation accueil",       stage: "valide", tech: 2, days: 2 },
-    { id: 18, ref: "LBP-092", title: "Audit système d'accès",       stage: "diagnostic", tech: 1, days: 0 },
-    { id: 19, ref: "LBP-091", title: "Moquette bureau direction",   stage: "termine", tech: 3, days: 20 },
-  ],
-  communes: [
-    { id: 20, ref: "PC-322", title: "Hall d'entrée — peinture",     stage: "travaux", tech: 2, days: 5 },
-    { id: 21, ref: "PC-321", title: "Ascenseur — maintenance",      stage: "validation", tech: 1, validator: "Telma", days: 6 },
-    { id: 22, ref: "PC-320", title: "Éclairage parking sous-sol",   stage: "devis", tech: 3, days: 4 },
-    { id: 23, ref: "PC-319", title: "Nettoyage façade extérieure",  stage: "diagnostic", tech: 2, days: 2 },
-    { id: 24, ref: "PC-318", title: "Boîtes aux lettres",           stage: "termine", tech: 1, days: 18 },
-  ],
+// Mapping nom technicien → ID
+const TECH_NAME_TO_ID = {
+  "ghulam": 1,
+  "cédric": 2, "cedric": 2,
+  "jason": 3, "jayson": 3,
 };
 
-const SUBCONTRACTORS = [
-  { day: 0, company: "ELEC+",        domain: "Électricité",       location: "Voodoo",                color: "#1D4ED8", light: "#DBEAFE" },
-  { day: 1, company: "CLIM PRO",     domain: "Climatisation",     location: "La Poste Enseigne",     color: "#0891B2", light: "#CFFAFE" },
-  { day: 2, company: "SERRURIA",     domain: "Serrurerie",        location: "Louvre Banque Privée",  color: "#B45309", light: "#FEF3C7" },
-  { day: 3, company: "PEINTRIX",     domain: "Peinture",          location: "Parties communes",      color: "#7C3AED", light: "#EDE9FE" },
-  { day: 4, company: "SECURIPLUS",   domain: "Sécurité incendie", location: "Logistique Urbaine",    color: "#DC2626", light: "#FEE2E2" },
+// Mapping nom locataire → ID
+const TENANT_NAME_TO_ID = {
+  "voodoo": "voodoo",
+  "la poste enseigne": "laposte", "laposte": "laposte",
+  "logistique urbaine": "logistique", "logistique": "logistique",
+  "louvre banque privée": "louvre", "louvre banque privee": "louvre", "louvre": "louvre",
+  "parties communes": "communes", "communes": "communes",
+};
+
+// Mapping jour → index
+const DAY_NAME_TO_INDEX = {
+  "lundi": 0, "mardi": 1, "mercredi": 2, "jeudi": 3, "vendredi": 4,
+};
+
+// ─── JOURS FÉRIÉS FRANÇAIS ──────────────────────────────────────────────────
+
+function getEasterDate(year) {
+  // Algorithme de Butcher pour calculer Pâques
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
+
+function getFrenchHolidays(year) {
+  const easter = getEasterDate(year);
+  const easterMonday = new Date(easter); easterMonday.setDate(easter.getDate() + 1);
+  const ascension = new Date(easter); ascension.setDate(easter.getDate() + 39);
+  const pentecost = new Date(easter); pentecost.setDate(easter.getDate() + 50);
+
+  return [
+    { date: new Date(year, 0, 1),  name: "Jour de l'an" },
+    { date: easterMonday,          name: "Lundi de Pâques" },
+    { date: new Date(year, 4, 1),  name: "Fête du Travail" },
+    { date: new Date(year, 4, 8),  name: "Victoire 1945" },
+    { date: ascension,             name: "Ascension" },
+    { date: pentecost,             name: "Lundi de Pentecôte" },
+    { date: new Date(year, 6, 14), name: "Fête nationale" },
+    { date: new Date(year, 7, 15), name: "Assomption" },
+    { date: new Date(year, 10, 1), name: "Toussaint" },
+    { date: new Date(year, 10, 11),name: "Armistice 1918" },
+    { date: new Date(year, 11, 25),name: "Noël" },
+  ];
+}
+
+function getHolidayForDate(date) {
+  const holidays = getFrenchHolidays(date.getFullYear());
+  return holidays.find(h =>
+    h.date.getFullYear() === date.getFullYear() &&
+    h.date.getMonth() === date.getMonth() &&
+    h.date.getDate() === date.getDate()
+  );
+}
+
+// ─── PARSING CSV ────────────────────────────────────────────────────────────
+
+function parseCSV(text) {
+  // Parser CSV simple avec gestion des guillemets
+  const lines = [];
+  let current = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') { field += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (char === "," && !inQuotes) {
+      current.push(field); field = "";
+    } else if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && next === "\n") i++;
+      current.push(field); field = "";
+      if (current.some(c => c.trim() !== "")) lines.push(current);
+      current = [];
+    } else {
+      field += char;
+    }
+  }
+  if (field !== "" || current.length > 0) {
+    current.push(field);
+    if (current.some(c => c.trim() !== "")) lines.push(current);
+  }
+
+  if (lines.length === 0) return [];
+  const headers = lines[0].map(h => h.trim().toLowerCase());
+  return lines.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((h, idx) => { obj[h] = (row[idx] || "").trim(); });
+    return obj;
+  });
+}
+
+// ─── FALLBACK (données de secours si Sheets indisponible) ───────────────────
+
+const FALLBACK_PLANNING = [
+  { techId: 3, tasks: [{ day: 0, label: "—", client: "Aucune donnée" }] },
+  { techId: 2, tasks: [{ day: 0, label: "—", client: "Aucune donnée" }] },
+  { techId: 1, tasks: [{ day: 0, label: "—", client: "Aucune donnée" }] },
 ];
+const FALLBACK_AFFAIRS = { voodoo: [], laposte: [], logistique: [], louvre: [], communes: [] };
+const FALLBACK_SUBCONTRACTORS = [];
 
 const SLIDES = [
   { id: "planning", type: "planning" },
@@ -188,8 +265,7 @@ function AffairCard({ affair }) {
   );
 }
 
-function TenantSlide({ tenant }) {
-  const affairs = AFFAIRS[tenant.id] || [];
+function TenantSlide({ tenant, affairs }) {
   const sorted = [...affairs].sort((a, b) => {
     if (a.urgent && !b.urgent) return -1;
     if (!a.urgent && b.urgent) return 1;
@@ -262,7 +338,7 @@ function TenantSlide({ tenant }) {
   );
 }
 
-function PlanningSlide() {
+function PlanningSlide({ planning }) {
   const weekDates = getWeekDates();
   const todayIdx = getTodayIndex();
 
@@ -291,13 +367,14 @@ function PlanningSlide() {
         <div />
         {DAY_NAMES.map((day, i) => {
           const isToday = i === todayIdx;
+          const holiday = getHolidayForDate(weekDates[i]);
           return (
             <div key={day} style={{
               padding: "16px 10px",
               textAlign: "center",
               borderRadius: "12px 12px 0 0",
-              backgroundColor: isToday ? "#1D4ED8" : "#E5E7EB",
-              color: isToday ? "white" : "#6B7280",
+              backgroundColor: holiday ? "#9CA3AF" : (isToday ? "#1D4ED8" : "#E5E7EB"),
+              color: (holiday || isToday) ? "white" : "#6B7280",
               fontWeight: 700, fontSize: 17,
             }}>
               <div>{day}</div>
@@ -309,7 +386,7 @@ function PlanningSlide() {
 
       {/* Lignes techniciens */}
       <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
-        {PLANNING.map(({ techId, tasks }) => {
+        {planning.map(({ techId, tasks }) => {
           const tech = TECHNICIANS.find(t => t.id === techId);
           return (
             <div key={techId} style={{
@@ -338,6 +415,21 @@ function PlanningSlide() {
               {DAY_NAMES.map((_, dayIdx) => {
                 const dayTasks = tasks.filter(t => t.day === dayIdx);
                 const isToday = dayIdx === todayIdx;
+                const holiday = getHolidayForDate(weekDates[dayIdx]);
+                if (holiday) {
+                  return (
+                    <div key={dayIdx} style={{
+                      backgroundColor: "#F3F4F6",
+                      border: "1px solid #E5E7EB",
+                      borderRadius: 8,
+                      padding: "12px 11px",
+                      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4,
+                    }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: "#9CA3AF", letterSpacing: "0.1em" }}>FÉRIÉ</div>
+                      <div style={{ fontSize: 12, color: "#6B7280", textAlign: "center", lineHeight: 1.2 }}>{holiday.name}</div>
+                    </div>
+                  );
+                }
                 return (
                   <div key={dayIdx} style={{
                     backgroundColor: isToday ? "#F0F4FF" : "#FAFAFA",
@@ -390,7 +482,7 @@ function getNextWeekDates() {
   });
 }
 
-function SubcontractorsSlide() {
+function SubcontractorsSlide({ subcontractors }) {
   const weekDates = getNextWeekDates();
 
   return (
@@ -427,7 +519,7 @@ function SubcontractorsSlide() {
           textAlign: "center",
           minWidth: 100,
         }}>
-          <div style={{ fontSize: 36, fontWeight: 800, lineHeight: 1 }}>{SUBCONTRACTORS.length}</div>
+          <div style={{ fontSize: 36, fontWeight: 800, lineHeight: 1 }}>{subcontractors.length}</div>
           <div style={{ fontSize: 11, fontWeight: 800, marginTop: 6, letterSpacing: "0.08em" }}>INTERVENTIONS</div>
         </div>
       </div>
@@ -440,7 +532,7 @@ function SubcontractorsSlide() {
         flex: 1,
       }}>
         {DAY_NAMES.map((day, dayIdx) => {
-          const daySubs = SUBCONTRACTORS.filter(s => s.day === dayIdx);
+          const daySubs = subcontractors.filter(s => s.day === dayIdx);
           return (
             <div key={day} style={{
               backgroundColor: "white",
@@ -495,6 +587,101 @@ export default function Dashboard() {
   const [time, setTime] = useState(new Date());
   const [slideIdx, setSlideIdx] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [planning, setPlanning] = useState(FALLBACK_PLANNING);
+  const [affairs, setAffairs] = useState(FALLBACK_AFFAIRS);
+  const [subcontractors, setSubcontractors] = useState(FALLBACK_SUBCONTRACTORS);
+  const [dataStatus, setDataStatus] = useState("loading"); // "loading" | "ok" | "error"
+  const [lastUpdate, setLastUpdate] = useState(null);
+
+  // Charger les données depuis Google Sheets
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchAllData() {
+      try {
+        const [planningRes, affairsRes, subsRes] = await Promise.all([
+          fetch(SHEET_URLS.planning).then(r => r.text()),
+          fetch(SHEET_URLS.affaires).then(r => r.text()),
+          fetch(SHEET_URLS.soustraitants).then(r => r.text()),
+        ]);
+
+        if (cancelled) return;
+
+        // Parser Planning : technicien, jour, tache, client
+        const planningRows = parseCSV(planningRes);
+        const planningByTech = {};
+        planningRows.forEach(row => {
+          const techId = TECH_NAME_TO_ID[(row.technicien || "").toLowerCase()];
+          const dayIdx = DAY_NAME_TO_INDEX[(row.jour || "").toLowerCase()];
+          if (techId === undefined || dayIdx === undefined) return;
+          if (!planningByTech[techId]) planningByTech[techId] = [];
+          planningByTech[techId].push({
+            day: dayIdx,
+            label: row.tache || "",
+            client: row.client || "",
+          });
+        });
+        // Reconstruire dans l'ordre Jason, Cédric, Ghulam
+        const newPlanning = TECHNICIANS.map(t => ({
+          techId: t.id,
+          tasks: planningByTech[t.id] || [],
+        }));
+
+        // Parser Affaires : locataire, reference, titre, etape, technicien, validateur, jours, urgent
+        const affairsRows = parseCSV(affairsRes);
+        const newAffairs = { voodoo: [], laposte: [], logistique: [], louvre: [], communes: [] };
+        affairsRows.forEach((row, idx) => {
+          const tenantId = TENANT_NAME_TO_ID[(row.locataire || "").toLowerCase()];
+          const techId = TECH_NAME_TO_ID[(row.technicien || "").toLowerCase()];
+          const stage = (row.etape || "").toLowerCase();
+          if (!tenantId || !STAGES[stage]) return;
+          newAffairs[tenantId].push({
+            id: idx + 1,
+            ref: row.reference || "",
+            title: row.titre || "",
+            stage: stage,
+            tech: techId || 1,
+            validator: row.validateur || undefined,
+            days: parseInt(row.jours, 10) || 0,
+            urgent: ["oui", "yes", "true", "1"].includes((row.urgent || "").toLowerCase()),
+          });
+        });
+
+        // Parser SousTraitants : jour, entreprise, domaine, lieu
+        const subsRows = parseCSV(subsRes);
+        const newSubs = subsRows
+          .map((row, idx) => {
+            const dayIdx = DAY_NAME_TO_INDEX[(row.jour || "").toLowerCase()];
+            if (dayIdx === undefined) return null;
+            const colorIdx = idx % SUB_COLORS.length;
+            return {
+              day: dayIdx,
+              company: row.entreprise || "",
+              domain: row.domaine || "",
+              location: row.lieu || "",
+              color: SUB_COLORS[colorIdx].color,
+              light: SUB_COLORS[colorIdx].light,
+            };
+          })
+          .filter(Boolean);
+
+        setPlanning(newPlanning);
+        setAffairs(newAffairs);
+        setSubcontractors(newSubs);
+        setDataStatus("ok");
+        setLastUpdate(new Date());
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Erreur chargement Sheets:", err);
+          setDataStatus("error");
+        }
+      }
+    }
+
+    fetchAllData();
+    const interval = setInterval(fetchAllData, REFRESH_INTERVAL);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
@@ -521,7 +708,7 @@ export default function Dashboard() {
   const currentTenant = currentSlide.type === "tenant" ? TENANTS.find(t => t.id === currentSlide.tenantId) : null;
   const isSubcontractors = currentSlide.type === "subcontractors";
   const headerAccent = currentTenant ? currentTenant.accent : (isSubcontractors ? SUBCONTRACTORS_ACCENT : "#1D4ED8");
-  const totalUrgent = Object.values(AFFAIRS).flat().filter(a => a.urgent).length;
+  const totalUrgent = Object.values(affairs).flat().filter(a => a.urgent).length;
 
   return (
     <div style={{
@@ -639,9 +826,9 @@ export default function Dashboard() {
         overflow: "hidden",
         animation: "fadeIn 0.5s ease",
       }}>
-        {currentSlide.type === "planning" && <PlanningSlide />}
-        {currentSlide.type === "tenant" && <TenantSlide tenant={currentTenant} />}
-        {currentSlide.type === "subcontractors" && <SubcontractorsSlide />}
+        {currentSlide.type === "planning" && <PlanningSlide planning={planning} />}
+        {currentSlide.type === "tenant" && <TenantSlide tenant={currentTenant} affairs={affairs[currentTenant.id] || []} />}
+        {currentSlide.type === "subcontractors" && <SubcontractorsSlide subcontractors={subcontractors} />}
       </div>
     </div>
   );
