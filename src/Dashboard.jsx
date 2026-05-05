@@ -189,7 +189,8 @@ const SLIDES = [
   { id: "planning", type: "planning" },
   ...TENANTS.map(t => ({ id: t.id, type: "tenant", tenantId: t.id })),
   { id: "quotes", type: "quotes" },
-  { id: "subcontractors", type: "subcontractors" },
+  { id: "subcontractorsCurrent", type: "subcontractors", week: "current" },
+  { id: "subcontractorsNext", type: "subcontractors", week: "next" },
 ];
 
 // ─── UTILITAIRES ────────────────────────────────────────────────────────────
@@ -659,6 +660,19 @@ function QuotesSlide({ quotes }) {
 const SUBCONTRACTORS_ACCENT = "#0F766E";
 const SUBCONTRACTORS_ACCENT_LIGHT = "#CCFBF1";
 
+function getCurrentWeekDates() {
+  const today = new Date();
+  const day = today.getDay();
+  const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(today);
+  monday.setDate(diff);
+  return DAY_NAMES.map((_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+}
+
 function getNextWeekDates() {
   const today = new Date();
   const day = today.getDay();
@@ -672,8 +686,12 @@ function getNextWeekDates() {
   });
 }
 
-function SubcontractorsSlide({ subcontractors }) {
-  const weekDates = getNextWeekDates();
+function SubcontractorsSlide({ subcontractors, week = "next" }) {
+  const isCurrent = week === "current";
+  const weekDates = isCurrent ? getCurrentWeekDates() : getNextWeekDates();
+  const subtitle = isCurrent
+    ? `Cette semaine — du ${fmt(weekDates[0])} au ${fmt(weekDates[4])}`
+    : `Semaine prochaine — du ${fmt(weekDates[0])} au ${fmt(weekDates[4])}`;
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "32px 44px" }}>
@@ -697,7 +715,7 @@ function SubcontractorsSlide({ subcontractors }) {
             Sous-traitants
           </div>
           <div style={{ fontSize: 16, color: "#6B7280", marginTop: 10, fontWeight: 500 }}>
-            Semaine prochaine — du {fmt(weekDates[0])} au {fmt(weekDates[4])}
+            {subtitle}
           </div>
         </div>
 
@@ -779,7 +797,8 @@ export default function Dashboard() {
   const [progress, setProgress] = useState(0);
   const [planning, setPlanning] = useState(FALLBACK_PLANNING);
   const [affairs, setAffairs] = useState(FALLBACK_AFFAIRS);
-  const [subcontractors, setSubcontractors] = useState(FALLBACK_SUBCONTRACTORS);
+  const [subcontractorsCurrent, setSubcontractorsCurrent] = useState(FALLBACK_SUBCONTRACTORS);
+  const [subcontractorsNext, setSubcontractorsNext] = useState(FALLBACK_SUBCONTRACTORS);
   const [quotes, setQuotes] = useState(FALLBACK_QUOTES);
   const [dataStatus, setDataStatus] = useState("loading"); // "loading" | "ok" | "error"
   const [lastUpdate, setLastUpdate] = useState(null);
@@ -843,23 +862,31 @@ export default function Dashboard() {
           });
         });
 
-        // Parser SousTraitants : jour, entreprise, domaine, lieu
+        // Parser SousTraitants : jour, entreprise, domaine, lieu, semaine
         const subsRows = parseCSV(subsRes);
-        const newSubs = subsRows
-          .map((row, idx) => {
-            const dayIdx = DAY_NAME_TO_INDEX[(row.jour || "").toLowerCase()];
-            if (dayIdx === undefined) return null;
-            const colorIdx = idx % SUB_COLORS.length;
-            return {
-              day: dayIdx,
-              company: row.entreprise || "",
-              domain: row.domaine || "",
-              location: row.lieu || "",
-              color: SUB_COLORS[colorIdx].color,
-              light: SUB_COLORS[colorIdx].light,
-            };
-          })
-          .filter(Boolean);
+        const newSubsCurrent = [];
+        const newSubsNext = [];
+        subsRows.forEach((row, idx) => {
+          const dayIdx = DAY_NAME_TO_INDEX[(row.jour || "").toLowerCase()];
+          if (dayIdx === undefined) return;
+          const colorIdx = idx % SUB_COLORS.length;
+          const sub = {
+            day: dayIdx,
+            company: row.entreprise || "",
+            domain: row.domaine || "",
+            location: row.lieu || "",
+            color: SUB_COLORS[colorIdx].color,
+            light: SUB_COLORS[colorIdx].light,
+          };
+          // Tri par colonne "semaine" : actuelle / prochaine
+          // Si la colonne est vide ou non reconnue, on met dans "prochaine" (compatibilité ascendante)
+          const semaine = (row.semaine || "").toLowerCase().trim();
+          if (semaine === "actuelle" || semaine === "current" || semaine === "cette") {
+            newSubsCurrent.push(sub);
+          } else {
+            newSubsNext.push(sub);
+          }
+        });
 
         // Parser Devis : client, reference, titre, date_envoi, etape, urgent
         const quotesRows = quotesRes ? parseCSV(quotesRes) : [];
@@ -898,7 +925,8 @@ export default function Dashboard() {
 
         setPlanning(newPlanning);
         setAffairs(newAffairs);
-        setSubcontractors(newSubs);
+        setSubcontractorsCurrent(newSubsCurrent);
+        setSubcontractorsNext(newSubsNext);
         setQuotes(newQuotes);
         setDataStatus("ok");
         setLastUpdate(new Date());
@@ -1068,7 +1096,7 @@ export default function Dashboard() {
             label = "ÉQUIPE";
             accentColor = "#3B82F6";
           } else if (s.type === "subcontractors") {
-            label = "SOUS-TRAITANTS";
+            label = s.week === "current" ? "ST CETTE SEM." : "ST SEM. PROCH.";
             accentColor = SUBCONTRACTORS_ACCENT;
           } else if (s.type === "quotes") {
             label = "DEVIS";
@@ -1099,7 +1127,12 @@ export default function Dashboard() {
         {currentSlide.type === "planning" && <PlanningSlide planning={planning} />}
         {currentSlide.type === "tenant" && <TenantSlide tenant={currentTenant} affairs={affairs[currentTenant.id] || []} />}
         {currentSlide.type === "quotes" && <QuotesSlide quotes={quotes} />}
-        {currentSlide.type === "subcontractors" && <SubcontractorsSlide subcontractors={subcontractors} />}
+        {currentSlide.type === "subcontractors" && (
+          <SubcontractorsSlide
+            subcontractors={currentSlide.week === "current" ? subcontractorsCurrent : subcontractorsNext}
+            week={currentSlide.week}
+          />
+        )}
       </div>
     </div>
   );
