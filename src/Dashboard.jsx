@@ -34,7 +34,7 @@ const TECHNICIANS = [
 
 const TENANTS = [
   { id: "voodoo",     name: "Voodoo",                short: "VDO", accent: "#7C3AED", accentLight: "#EDE9FE" },
-  { id: "laposte",    name: "La Poste Enseigne",     short: "LPE", accent: "#D97706", accentLight: "#FEF3C7" },
+  { id: "laposte",    name: "La Poste Enseigne",     short: "PE", accent: "#D97706", accentLight: "#FEF3C7" },
   { id: "logistique", name: "Logistique Urbaine",    short: "ELU", accent: "#059669", accentLight: "#D1FAE5" },
   { id: "louvre",     name: "Louvre Banque Privée",  short: "LBP", accent: "#1E40AF", accentLight: "#DBEAFE" },
   { id: "communes",   name: "Parties communes",      short: "PC",  accent: "#475569", accentLight: "#F1F5F9" },
