@@ -938,30 +938,43 @@ function SubcontractorsSlide({ subcontractors, week = "next" }) {
       }}>
         {DAY_NAMES.map((day, dayIdx) => {
           const daySubs = subcontractors.filter(s => s.day === dayIdx);
+          const holiday = getHolidayForDate(weekDates[dayIdx]);
           return (
             <div key={day} style={{
-              backgroundColor: "white",
-              border: "1px solid #E5E7EB",
+              backgroundColor: holiday ? "#F3F4F6" : "white",
+              border: holiday ? "1px solid #D1D5DB" : "1px solid #E5E7EB",
               borderRadius: 12,
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
               boxShadow: "0 2px 6px rgba(0,0,0,.05)",
+              opacity: holiday ? 0.85 : 1,
             }}>
               {/* En-tête du jour */}
               <div style={{
                 padding: "14px 12px",
                 textAlign: "center",
-                backgroundColor: "#F9FAFB",
+                backgroundColor: holiday ? "#9CA3AF" : "#F9FAFB",
                 borderBottom: "1px solid #E5E7EB",
+                color: holiday ? "white" : "inherit",
               }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: "#111827" }}>{day}</div>
-                <div style={{ fontSize: 12, color: "#6B7280", marginTop: 3, fontWeight: 500 }}>{fmt(weekDates[dayIdx])}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: holiday ? "white" : "#111827" }}>{day}</div>
+                <div style={{ fontSize: 12, color: holiday ? "rgba(255,255,255,0.8)" : "#6B7280", marginTop: 3, fontWeight: 500 }}>{fmt(weekDates[dayIdx])}</div>
               </div>
 
               {/* Liste des sous-traitants du jour */}
               <div style={{ flex: 1, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-                {daySubs.length === 0 ? (
+                {holiday ? (
+                  <div style={{
+                    flex: 1, display: "flex", flexDirection: "column",
+                    alignItems: "center", justifyContent: "center", gap: 6,
+                  }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: "#9CA3AF", letterSpacing: "0.12em" }}>FÉRIÉ</div>
+                    <div style={{ fontSize: 12, color: "#6B7280", textAlign: "center", lineHeight: 1.3, padding: "0 8px" }}>
+                      {holiday.name}
+                    </div>
+                  </div>
+                ) : daySubs.length === 0 ? (
                   <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <div style={{ width: 28, height: 1.5, backgroundColor: "#D1D5DB" }} />
                   </div>
