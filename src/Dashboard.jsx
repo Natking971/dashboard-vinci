@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 
 const SLIDE_DURATION = 30000;
 const QUOTES_SLIDE_DURATION = 60000; // Plus long pour laisser défiler tous les devis
+const PLANNING_SLIDE_DURATION = 45000; // Plus long quand le planning défile
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 // URLs Google Sheets publiées en CSV
@@ -34,8 +35,8 @@ const TECHNICIANS = [
 
 const TENANTS = [
   { id: "voodoo",     name: "Voodoo",                short: "VDO", accent: "#7C3AED", accentLight: "#EDE9FE" },
-  { id: "laposte",    name: "La Poste Enseigne",     short: "PE", accent: "#D97706", accentLight: "#FEF3C7" },
-  { id: "logistique", name: "Logistique Urbaine",    short: "ELU", accent: "#059669", accentLight: "#D1FAE5" },
+  { id: "laposte",    name: "La Poste Enseigne",     short: "LPE", accent: "#D97706", accentLight: "#FEF3C7" },
+  { id: "logistique", name: "Logistique Urbaine",    short: "LOG", accent: "#059669", accentLight: "#D1FAE5" },
   { id: "louvre",     name: "Louvre Banque Privée",  short: "LBP", accent: "#1E40AF", accentLight: "#DBEAFE" },
   { id: "communes",   name: "Parties communes",      short: "PC",  accent: "#475569", accentLight: "#F1F5F9" },
 ];
@@ -400,8 +401,23 @@ function PlanningSlide({ planning }) {
         })}
       </div>
 
-      {/* Lignes techniciens */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+      {/* Lignes techniciens - avec défilement automatique si déborde */}
+      <div style={{
+        flex: 1,
+        overflow: "hidden",
+        position: "relative",
+        maskImage: "linear-gradient(to bottom, transparent, black 5%, black 95%, transparent)",
+        WebkitMaskImage: "linear-gradient(to bottom, transparent, black 5%, black 95%, transparent)",
+      }}>
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+          // Animation de défilement si plus de 3 techniciens OU si trop de tâches au total
+          animation: planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12
+            ? `scrollPlanning 40s linear infinite`
+            : "none",
+        }}>
         {planning.map(({ techId, tasks }) => {
           const tech = TECHNICIANS.find(t => t.id === techId);
           return (
@@ -409,7 +425,7 @@ function PlanningSlide({ planning }) {
               display: "grid",
               gridTemplateColumns: "230px repeat(5, 1fr)",
               gap: 6,
-              flex: 1,
+              minHeight: 180,
             }}>
               <div style={{
                 display: "flex", alignItems: "center", gap: 16,
@@ -420,21 +436,20 @@ function PlanningSlide({ planning }) {
                 boxShadow: "0 2px 6px rgba(0,0,0,.05)",
               }}>
                 <div style={{
-                  width: 56, height: 56, borderRadius: "50%",
+                  width: 44, height: 44, borderRadius: "50%",
                   backgroundColor: tech.light, color: tech.color,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 22, fontWeight: 800, flexShrink: 0,
+                  fontSize: 20, fontWeight: 800,
                 }}>{tech.name[0]}</div>
-                <span style={{ fontSize: 22, fontWeight: 700, color: "#111827" }}>{tech.name}</span>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "#111827" }}>{tech.name}</div>
               </div>
-
               {DAY_NAMES.map((_, dayIdx) => {
                 const dayTasks = tasks.filter(t => t.day === dayIdx);
                 const isToday = dayIdx === todayIdx;
                 const holiday = getHolidayForDate(weekDates[dayIdx]);
                 if (holiday) {
                   return (
-                    <div key={dayIdx} style={{
+                    <div key={`dup-${dayIdx}`} style={{
                       backgroundColor: "#F3F4F6",
                       border: "1px solid #E5E7EB",
                       borderRadius: 8,
@@ -447,7 +462,7 @@ function PlanningSlide({ planning }) {
                   );
                 }
                 return (
-                  <div key={dayIdx} style={{
+                  <div key={`dup-${dayIdx}`} style={{
                     backgroundColor: isToday ? "#F0F4FF" : "#FAFAFA",
                     border: `1px solid ${isToday ? "#BFDBFE" : "#EFEFEF"}`,
                     borderRadius: 8,
@@ -475,6 +490,81 @@ function PlanningSlide({ planning }) {
             </div>
           );
         })}
+
+        {/* Duplication pour effet de boucle infinie - uniquement si on défile */}
+        {planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12 && planning.map(({ techId, tasks }) => {
+          const tech = TECHNICIANS.find(t => t.id === techId);
+          return (
+            <div key={`loop-${techId}`} style={{
+              display: "grid",
+              gridTemplateColumns: "230px repeat(5, 1fr)",
+              gap: 6,
+              minHeight: 180,
+            }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 16,
+                padding: "20px 20px",
+                backgroundColor: "white",
+                borderRadius: "12px 0 0 12px",
+                borderLeft: `6px solid ${tech.dot}`,
+                boxShadow: "0 2px 6px rgba(0,0,0,.05)",
+              }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: "50%",
+                  backgroundColor: tech.light, color: tech.color,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 20, fontWeight: 800,
+                }}>{tech.name[0]}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "#111827" }}>{tech.name}</div>
+              </div>
+              {DAY_NAMES.map((_, dayIdx) => {
+                const dayTasks = tasks.filter(t => t.day === dayIdx);
+                const isToday = dayIdx === todayIdx;
+                const holiday = getHolidayForDate(weekDates[dayIdx]);
+                if (holiday) {
+                  return (
+                    <div key={`loop-${dayIdx}`} style={{
+                      backgroundColor: "#F3F4F6",
+                      border: "1px solid #E5E7EB",
+                      borderRadius: 8,
+                      padding: "12px 11px",
+                      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4,
+                    }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: "#9CA3AF", letterSpacing: "0.1em" }}>FÉRIÉ</div>
+                      <div style={{ fontSize: 12, color: "#6B7280", textAlign: "center", lineHeight: 1.2 }}>{holiday.name}</div>
+                    </div>
+                  );
+                }
+                return (
+                  <div key={`loop-${dayIdx}`} style={{
+                    backgroundColor: isToday ? "#F0F4FF" : "#FAFAFA",
+                    border: `1px solid ${isToday ? "#BFDBFE" : "#EFEFEF"}`,
+                    borderRadius: 8,
+                    padding: "12px 11px",
+                    display: "flex", flexDirection: "column", gap: 8,
+                  }}>
+                    {dayTasks.length === 0 ? (
+                      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{ width: 28, height: 1.5, backgroundColor: "#D1D5DB" }} />
+                      </div>
+                    ) : dayTasks.map((task, i) => (
+                      <div key={i} style={{
+                        backgroundColor: tech.light,
+                        borderLeft: `4px solid ${tech.dot}`,
+                        borderRadius: "0 8px 8px 0",
+                        padding: "10px 13px",
+                      }}>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: tech.color, lineHeight: 1.3 }}>{task.label}</div>
+                        <div style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}>{task.client}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+        </div>
       </div>
     </div>
   );
@@ -866,13 +956,24 @@ export default function Dashboard() {
         const subsRows = parseCSV(subsRes);
         const newSubsCurrent = [];
         const newSubsNext = [];
-        subsRows.forEach((row, idx) => {
+        // Map entreprise → couleur (pour cohérence entre jours/semaines)
+        const companyColorMap = {};
+        let nextColorIdx = 0;
+        subsRows.forEach(row => {
+          const company = (row.entreprise || "").trim();
+          if (company && companyColorMap[company.toLowerCase()] === undefined) {
+            companyColorMap[company.toLowerCase()] = nextColorIdx % SUB_COLORS.length;
+            nextColorIdx++;
+          }
+        });
+        subsRows.forEach(row => {
           const dayIdx = DAY_NAME_TO_INDEX[(row.jour || "").toLowerCase()];
           if (dayIdx === undefined) return;
-          const colorIdx = idx % SUB_COLORS.length;
+          const company = (row.entreprise || "").trim();
+          const colorIdx = companyColorMap[company.toLowerCase()] ?? 0;
           const sub = {
             day: dayIdx,
-            company: row.entreprise || "",
+            company: company,
             domain: row.domaine || "",
             location: row.lieu || "",
             color: SUB_COLORS[colorIdx].color,
@@ -952,7 +1053,12 @@ export default function Dashboard() {
     setProgress(0);
     const start = Date.now();
     // Slide Devis : durée plus longue pour laisser le temps au défilement
-    const slideDuration = SLIDES[slideIdx].type === "quotes" ? QUOTES_SLIDE_DURATION : SLIDE_DURATION;
+    // Slide Planning : durée moyenne si beaucoup de tâches
+    let slideDuration = SLIDE_DURATION;
+    if (SLIDES[slideIdx].type === "quotes") slideDuration = QUOTES_SLIDE_DURATION;
+    else if (SLIDES[slideIdx].type === "planning" && planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12) {
+      slideDuration = PLANNING_SLIDE_DURATION;
+    }
     const tick = setInterval(() => {
       const elapsed = Date.now() - start;
       setProgress(Math.min(100, (elapsed / slideDuration) * 100));
@@ -961,7 +1067,7 @@ export default function Dashboard() {
       setSlideIdx(i => (i + 1) % SLIDES.length);
     }, slideDuration);
     return () => { clearInterval(tick); clearTimeout(advance); };
-  }, [slideIdx]);
+  }, [slideIdx, planning]);
 
   const timeStr = time.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const dateStr = time.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -992,6 +1098,7 @@ export default function Dashboard() {
         @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes scrollQuotes { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+        @keyframes scrollPlanning { from { transform: translateY(0); } to { transform: translateY(-50%); } }
       `}</style>
 
       {/* HEADER */}
