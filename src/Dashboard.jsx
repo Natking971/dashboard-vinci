@@ -34,19 +34,19 @@ const TECHNICIANS = [
 ];
 
 const TENANTS = [
+  { id: "communes",   name: "Parties communes",      short: "PC",  accent: "#475569", accentLight: "#F1F5F9" },
   { id: "voodoo",     name: "Voodoo",                short: "VDO", accent: "#7C3AED", accentLight: "#EDE9FE" },
   { id: "laposte",    name: "La Poste Enseigne",     short: "LPE", accent: "#D97706", accentLight: "#FEF3C7" },
   { id: "logistique", name: "Logistique Urbaine",    short: "LOG", accent: "#059669", accentLight: "#D1FAE5" },
-  { id: "louvre",     name: "Louvre Banque Privée",  short: "LBP", accent: "#1E40AF", accentLight: "#DBEAFE" },
+  { id: "louvre",     name: "Louvre Banque Privée",  short: "LBP", accent: "#7B2C3B", accentLight: "#FCE7F3" },
   { id: "iad",        name: "IAD",                   short: "IAD", accent: "#0EA5E9", accentLight: "#E0F2FE" },
-  { id: "communes",   name: "Parties communes",      short: "PC",  accent: "#475569", accentLight: "#F1F5F9" },
 ];
 
 const STAGES = {
   diagnostic: { label: "Diagnostic",          short: "DIAG",     color: "#6B7280", bg: "#F3F4F6", order: 1 },
-  devis:      { label: "Chiffrage devis",     short: "DEVIS",    color: "#1D4ED8", bg: "#DBEAFE", order: 2 },
+  devis:      { label: "Devis en cours",      short: "DEVIS",    color: "#1D4ED8", bg: "#DBEAFE", order: 2 },
   validation: { label: "Attente validation",  short: "VALID",    color: "#B45309", bg: "#FEF3C7", order: 3 },
-  valide:     { label: "Devis validé",        short: "OK",       color: "#047857", bg: "#D1FAE5", order: 4 },
+  valide:     { label: "Devis validé",        short: "VALIDÉ",   color: "#047857", bg: "#D1FAE5", order: 4 },
   travaux:    { label: "Travaux en cours",    short: "EN COURS", color: "#5B21B6", bg: "#EDE9FE", order: 5 },
   termine:    { label: "Terminé",             short: "FAIT",     color: "#374151", bg: "#E5E7EB", order: 6 },
 };
@@ -253,7 +253,7 @@ const getTodayIndex = () => { const d = new Date().getDay(); return d === 0 ? 6 
 
 // ─── COMPOSANTS ─────────────────────────────────────────────────────────────
 
-function AffairCard({ affair }) {
+function AffairCard({ affair, index, total }) {
   const stage = STAGES[affair.stage];
   // Récupérer tous les techniciens (multi-tech)
   const techIds = affair.techIds && affair.techIds.length > 0 ? affair.techIds : [affair.tech];
@@ -278,6 +278,18 @@ function AffairCard({ affair }) {
         backgroundColor: affair.urgent ? "#EF4444" : stage.color,
       }} />
 
+      {/* Numérotation en haut à droite */}
+      {index !== undefined && total !== undefined && (
+        <div style={{
+          position: "absolute", top: 8, right: 12,
+          fontSize: 10, fontWeight: 700, color: "#9CA3AF",
+          letterSpacing: "0.05em",
+          fontFamily: "'DM Mono', monospace",
+        }}>
+          {index + 1}/{total}
+        </div>
+      )}
+
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: "#9CA3AF", letterSpacing: "0.06em" }}>
           {affair.ref}
@@ -286,7 +298,7 @@ function AffairCard({ affair }) {
           )}
         </span>
         {affair.urgent && (
-          <span style={{ fontSize: 11, fontWeight: 800, color: "#EF4444", letterSpacing: "0.08em" }}>● URGENT</span>
+          <span style={{ fontSize: 11, fontWeight: 800, color: "#EF4444", letterSpacing: "0.08em", marginRight: 36 }}>● URGENT</span>
         )}
       </div>
 
@@ -419,11 +431,31 @@ function TenantSlide({ tenant, affairs }) {
           alignContent: "start",
           animation: affairs.length > 8 ? `scrollTenant ${affairs.length * 3}s linear infinite` : "none",
         }}>
-          {sorted.map(affair => <AffairCard key={affair.id} affair={affair} />)}
-          {/* Duplication pour boucle infinie */}
-          {affairs.length > 8 && sorted.map(affair => (
-            <AffairCard key={`loop-${affair.id}`} affair={affair} />
+          {sorted.map((affair, idx) => (
+            <AffairCard key={affair.id} affair={affair} index={idx} total={sorted.length} />
           ))}
+
+          {/* Espace de démarcation visible (4 colonnes vides) si beaucoup d'affaires */}
+          {affairs.length > 8 && (
+            <>
+              <div style={{ gridColumn: "1 / -1", padding: "30px 0", display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ flex: 1, height: 2, backgroundColor: "#D1D5DB", borderRadius: 1 }} />
+                <div style={{
+                  fontSize: 13, fontWeight: 800, color: "#9CA3AF",
+                  letterSpacing: "0.15em", textTransform: "uppercase",
+                  padding: "8px 16px", backgroundColor: "#F3F4F6", borderRadius: 20,
+                }}>
+                  ↻ Reprise du défilement
+                </div>
+                <div style={{ flex: 1, height: 2, backgroundColor: "#D1D5DB", borderRadius: 1 }} />
+              </div>
+
+              {/* Duplication pour boucle infinie */}
+              {sorted.map((affair, idx) => (
+                <AffairCard key={`loop-${affair.id}`} affair={affair} index={idx} total={sorted.length} />
+              ))}
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -974,15 +1006,10 @@ export default function Dashboard() {
 
     async function fetchAllData() {
       try {
-        const fetchDevis = SHEET_URLS.devis && SHEET_URLS.devis !== "DEVIS_URL_TO_REPLACE"
-          ? fetch(SHEET_URLS.devis).then(r => r.text()).catch(() => "")
-          : Promise.resolve("");
-
-        const [planningRes, affairsRes, subsRes, quotesRes] = await Promise.all([
+        const [planningRes, affairsRes, subsRes] = await Promise.all([
           fetch(SHEET_URLS.planning).then(r => r.text()),
           fetch(SHEET_URLS.affaires).then(r => r.text()),
           fetch(SHEET_URLS.soustraitants).then(r => r.text()),
-          fetchDevis,
         ]);
 
         if (cancelled) return;
@@ -1072,65 +1099,6 @@ export default function Dashboard() {
           } else {
             newSubsNext.push(sub);
           }
-        });
-
-        // Parser Devis : client, reference, titre, date_envoi, etape, urgent
-        // Les devis sont automatiquement injectés dans les affaires du locataire correspondant
-        // Telmma → Parties communes (sauf si "ELU" dans titre/ref → Logistique)
-        const quotesRows = quotesRes ? parseCSV(quotesRes) : [];
-        quotesRows.forEach((row, idx) => {
-          const client = (row.client || "").trim();
-          const ref = row.reference || "";
-          const title = row.titre || "";
-          if (!client && !ref && !title) return;
-
-          // Mapping étape devis → étape affaire
-          const quoteStage = (row.etape || "envoye").toLowerCase().trim();
-          const stageMap = {
-            "chiffrage": "diagnostic",
-            "envoye": "devis",
-            "envoyé": "devis",
-            "attente": "validation",
-            "valide": "valide",
-            "validé": "valide",
-            "travaux": "travaux",
-          };
-          const affairStage = stageMap[quoteStage] || "devis";
-
-          // Trouver le locataire automatiquement
-          const tenantId = guessTenantForQuote(client, ref, title);
-          if (!newAffairs[tenantId]) return;
-
-          // Parser date au format JJ/MM ou JJ/MM/AAAA pour calculer "jours"
-          let days = 0;
-          const rawDate = (row.date_envoi || row.date || "").trim();
-          if (rawDate) {
-            const parts = rawDate.split(/[\/\-\.]/);
-            if (parts.length >= 2) {
-              const day = parseInt(parts[0], 10);
-              const month = parseInt(parts[1], 10);
-              const year = parts[2] ? parseInt(parts[2], 10) : new Date().getFullYear();
-              const fullYear = year < 100 ? 2000 + year : year;
-              const d = new Date(fullYear, month - 1, day);
-              if (!isNaN(d.getTime())) {
-                days = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
-              }
-            }
-          }
-
-          newAffairs[tenantId].push({
-            id: `quote-${idx}`,
-            ref: ref,
-            title: title,
-            stage: affairStage,
-            tech: 1,            // pas de tech assigné par défaut
-            techIds: [],        // pas de techs sur un devis
-            validator: undefined,
-            days: days,
-            urgent: ["oui", "yes", "true", "1"].includes((row.urgent || "").toLowerCase()),
-            isQuote: true,      // marqueur pour différencier visuellement si besoin
-            client: client,     // garder le nom du client externe (Telmma, IAD, etc.)
-          });
         });
 
         setPlanning(newPlanning);
