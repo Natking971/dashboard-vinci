@@ -38,6 +38,7 @@ const TENANTS = [
   { id: "laposte",    name: "La Poste Enseigne",     short: "LPE", accent: "#D97706", accentLight: "#FEF3C7" },
   { id: "logistique", name: "Logistique Urbaine",    short: "LOG", accent: "#059669", accentLight: "#D1FAE5" },
   { id: "louvre",     name: "Louvre Banque Privée",  short: "LBP", accent: "#1E40AF", accentLight: "#DBEAFE" },
+  { id: "iad",        name: "IAD",                   short: "IAD", accent: "#0EA5E9", accentLight: "#E0F2FE" },
   { id: "communes",   name: "Parties communes",      short: "PC",  accent: "#475569", accentLight: "#F1F5F9" },
 ];
 
@@ -63,10 +64,21 @@ const SUB_COLORS = [
 ];
 
 // Mapping nom technicien → ID
+// Mapping nom technicien → ID
+// "vinci" est un ID spécial pour le stagiaire Vinci (utilisé sur les affaires uniquement)
 const TECH_NAME_TO_ID = {
   "ghulam": 1,
   "cédric": 2, "cedric": 2,
   "jason": 3, "jayson": 3,
+  "vinci": 4,
+};
+
+// Liste étendue avec Vinci (utilisé pour les affaires, pas pour le planning)
+const ALL_PEOPLE = {
+  1: { name: "Ghulam", color: "#1D4ED8", light: "#DBEAFE" },
+  2: { name: "Cédric", color: "#047857", light: "#D1FAE5" },
+  3: { name: "Jason",  color: "#B45309", light: "#FEF3C7" },
+  4: { name: "Vinci",  color: "#DA291C", light: "#FEE2E2" },
 };
 
 // Mapping nom locataire → ID
@@ -75,8 +87,36 @@ const TENANT_NAME_TO_ID = {
   "la poste enseigne": "laposte", "laposte": "laposte",
   "logistique urbaine": "logistique", "logistique": "logistique",
   "louvre banque privée": "louvre", "louvre banque privee": "louvre", "louvre": "louvre",
+  "iad": "iad",
   "parties communes": "communes", "communes": "communes",
+  // Telmma est un client externe rattaché par défaut à Parties communes (sauf ELU = Logistique)
+  "telmma": "communes", "thelma": "communes", "telma": "communes",
 };
+
+// Devine automatiquement le locataire pour un devis Telmma : si "ELU" est dans la ref/titre → Logistique
+function guessTenantForQuote(client, ref, title) {
+  const clientLower = (client || "").toLowerCase().trim();
+  const fullText = `${ref || ""} ${title || ""}`.toUpperCase();
+
+  // Cas Telmma : ELU = Logistique, sinon Parties communes
+  if (clientLower.includes("telm") || clientLower.includes("thelm")) {
+    if (fullText.includes("ELU")) return "logistique";
+    return "communes";
+  }
+
+  // Pour les autres clients, on essaie le mapping direct
+  if (TENANT_NAME_TO_ID[clientLower]) return TENANT_NAME_TO_ID[clientLower];
+
+  // Si rien trouvé, on tente quelques mots-clés dans le client
+  if (clientLower.includes("voodoo")) return "voodoo";
+  if (clientLower.includes("iad")) return "iad";
+  if (clientLower.includes("poste")) return "laposte";
+  if (clientLower.includes("logistique")) return "logistique";
+  if (clientLower.includes("louvre")) return "louvre";
+
+  // Par défaut : Parties communes
+  return "communes";
+}
 
 // Mapping jour → index
 const DAY_NAME_TO_INDEX = {
@@ -182,14 +222,13 @@ const FALLBACK_PLANNING = [
   { techId: 2, tasks: [{ day: 0, label: "—", client: "Aucune donnée" }] },
   { techId: 1, tasks: [{ day: 0, label: "—", client: "Aucune donnée" }] },
 ];
-const FALLBACK_AFFAIRS = { voodoo: [], laposte: [], logistique: [], louvre: [], communes: [] };
+const FALLBACK_AFFAIRS = { voodoo: [], laposte: [], logistique: [], louvre: [], iad: [], communes: [] };
 const FALLBACK_SUBCONTRACTORS = [];
 const FALLBACK_QUOTES = [];
 
 const SLIDES = [
   { id: "planning", type: "planning" },
   ...TENANTS.map(t => ({ id: t.id, type: "tenant", tenantId: t.id })),
-  { id: "quotes", type: "quotes" },
   { id: "subcontractorsCurrent", type: "subcontractors", week: "current" },
   { id: "subcontractorsNext", type: "subcontractors", week: "next" },
 ];
@@ -216,7 +255,12 @@ const getTodayIndex = () => { const d = new Date().getDay(); return d === 0 ? 6 
 
 function AffairCard({ affair }) {
   const stage = STAGES[affair.stage];
-  const tech = TECHNICIANS.find(t => t.id === affair.tech);
+  // Récupérer tous les techniciens (multi-tech)
+  const techIds = affair.techIds && affair.techIds.length > 0 ? affair.techIds : [affair.tech];
+  const techs = techIds
+    .map(id => ALL_PEOPLE[id])
+    .filter(Boolean);
+
   return (
     <div style={{
       backgroundColor: "white",
@@ -235,7 +279,12 @@ function AffairCard({ affair }) {
       }} />
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "#9CA3AF", letterSpacing: "0.06em" }}>{affair.ref}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "#9CA3AF", letterSpacing: "0.06em" }}>
+          {affair.ref}
+          {affair.isQuote && affair.client && (
+            <span style={{ marginLeft: 8, color: "#0E7490", fontSize: 11 }}>· {affair.client}</span>
+          )}
+        </span>
         {affair.urgent && (
           <span style={{ fontSize: 11, fontWeight: 800, color: "#EF4444", letterSpacing: "0.08em" }}>● URGENT</span>
         )}
@@ -257,14 +306,29 @@ function AffairCard({ affair }) {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4, paddingTop: 12, borderTop: "1px solid #F3F4F6" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-          <div style={{
-            width: 30, height: 30, borderRadius: "50%",
-            backgroundColor: tech.light, color: tech.color,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 13, fontWeight: 800,
-          }}>{tech.name[0]}</div>
-          <span style={{ fontSize: 13, color: "#374151", fontWeight: 700 }}>{tech.name}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {techs.length === 0 ? (
+            <span style={{ fontSize: 13, color: "#9CA3AF", fontWeight: 600, fontStyle: "italic" }}>Non assigné</span>
+          ) : (
+            <>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                {techs.map((p, idx) => (
+                  <div key={idx} style={{
+                    width: 30, height: 30, borderRadius: "50%",
+                    backgroundColor: p.light, color: p.color,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 13, fontWeight: 800,
+                    marginLeft: idx === 0 ? 0 : -8,
+                    border: "2px solid white",
+                    zIndex: techs.length - idx,
+                  }}>{p.name[0]}</div>
+                ))}
+              </div>
+              <span style={{ fontSize: 13, color: "#374151", fontWeight: 700, marginLeft: 4 }}>
+                {techs.map(p => p.name).join(" + ")}
+              </span>
+            </>
+          )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {affair.validator && (
@@ -340,16 +404,27 @@ function TenantSlide({ tenant, affairs }) {
         </div>
       </div>
 
-      {/* Affairs grid - 4 columns for 60" */}
+      {/* Affairs grid - 4 columns for 60" - avec scroll auto si beaucoup */}
       <div style={{
         flex: 1,
-        display: "grid",
-        gridTemplateColumns: "repeat(4, 1fr)",
-        gap: 16,
-        alignContent: "start",
         overflow: "hidden",
+        position: "relative",
+        maskImage: affairs.length > 8 ? "linear-gradient(to bottom, transparent, black 5%, black 95%, transparent)" : "none",
+        WebkitMaskImage: affairs.length > 8 ? "linear-gradient(to bottom, transparent, black 5%, black 95%, transparent)" : "none",
       }}>
-        {sorted.map(affair => <AffairCard key={affair.id} affair={affair} />)}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: 16,
+          alignContent: "start",
+          animation: affairs.length > 8 ? `scrollTenant ${affairs.length * 3}s linear infinite` : "none",
+        }}>
+          {sorted.map(affair => <AffairCard key={affair.id} affair={affair} />)}
+          {/* Duplication pour boucle infinie */}
+          {affairs.length > 8 && sorted.map(affair => (
+            <AffairCard key={`loop-${affair.id}`} affair={affair} />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -795,14 +870,14 @@ function SubcontractorsSlide({ subcontractors, week = "next" }) {
           fontSize: 30, fontWeight: 800, letterSpacing: "-0.5px",
           border: `3px solid ${SUBCONTRACTORS_ACCENT}`,
           flexShrink: 0,
-        }}>ST</div>
+        }}>EV</div>
 
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#9CA3AF", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
             Interventions externes
           </div>
           <div style={{ fontSize: 48, fontWeight: 800, color: "#111827", letterSpacing: "-1.5px", lineHeight: 1 }}>
-            Sous-traitants
+            Événements
           </div>
           <div style={{ fontSize: 16, color: "#6B7280", marginTop: 10, fontWeight: 500 }}>
             {subtitle}
@@ -818,7 +893,7 @@ function SubcontractorsSlide({ subcontractors, week = "next" }) {
           minWidth: 100,
         }}>
           <div style={{ fontSize: 36, fontWeight: 800, lineHeight: 1 }}>{subcontractors.length}</div>
-          <div style={{ fontSize: 11, fontWeight: 800, marginTop: 6, letterSpacing: "0.08em" }}>INTERVENTIONS</div>
+          <div style={{ fontSize: 11, fontWeight: 800, marginTop: 6, letterSpacing: "0.08em" }}>ÉVÉNEMENTS</div>
         </div>
       </div>
 
@@ -933,22 +1008,32 @@ export default function Dashboard() {
         }));
 
         // Parser Affaires : locataire, reference, titre, etape, technicien, validateur, jours, urgent
+        // Le champ technicien peut contenir plusieurs noms séparés par virgule
         const affairsRows = parseCSV(affairsRes);
-        const newAffairs = { voodoo: [], laposte: [], logistique: [], louvre: [], communes: [] };
+        const newAffairs = { voodoo: [], laposte: [], logistique: [], louvre: [], iad: [], communes: [] };
         affairsRows.forEach((row, idx) => {
-          const tenantId = TENANT_NAME_TO_ID[(row.locataire || "").toLowerCase()];
-          const techId = TECH_NAME_TO_ID[(row.technicien || "").toLowerCase()];
-          const stage = (row.etape || "").toLowerCase();
+          const tenantId = TENANT_NAME_TO_ID[(row.locataire || "").toLowerCase().trim()];
+          const stage = (row.etape || "").toLowerCase().trim();
           if (!tenantId || !STAGES[stage]) return;
+          // Multi-techniciens : split par virgule, slash, ou "et"
+          const techNames = (row.technicien || "")
+            .split(/[,\/]|\set\s/i)
+            .map(n => n.trim())
+            .filter(Boolean);
+          const techIds = techNames
+            .map(n => TECH_NAME_TO_ID[n.toLowerCase()])
+            .filter(id => id !== undefined);
           newAffairs[tenantId].push({
-            id: idx + 1,
+            id: `aff-${idx}`,
             ref: row.reference || "",
             title: row.titre || "",
             stage: stage,
-            tech: techId || 1,
+            tech: techIds[0] || 1,        // 1er technicien (compatibilité ancien code)
+            techIds: techIds.length > 0 ? techIds : [1], // tableau complet
             validator: row.validateur || undefined,
             days: parseInt(row.jours, 10) || 0,
             urgent: ["oui", "yes", "true", "1"].includes((row.urgent || "").toLowerCase()),
+            isQuote: false,
           });
         });
 
@@ -990,45 +1075,68 @@ export default function Dashboard() {
         });
 
         // Parser Devis : client, reference, titre, date_envoi, etape, urgent
+        // Les devis sont automatiquement injectés dans les affaires du locataire correspondant
+        // Telmma → Parties communes (sauf si "ELU" dans titre/ref → Logistique)
         const quotesRows = quotesRes ? parseCSV(quotesRes) : [];
-        const newQuotes = quotesRows
-          .map(row => {
-            const stage = (row.etape || "envoye").toLowerCase().trim();
-            // Parser date au format JJ/MM ou JJ/MM/AAAA
-            let dateValue = 0;
-            let dateLabel = "";
-            const rawDate = (row.date_envoi || row.date || "").trim();
-            if (rawDate) {
-              const parts = rawDate.split(/[\/\-\.]/);
-              if (parts.length >= 2) {
-                const day = parseInt(parts[0], 10);
-                const month = parseInt(parts[1], 10);
-                const year = parts[2] ? parseInt(parts[2], 10) : new Date().getFullYear();
-                const fullYear = year < 100 ? 2000 + year : year;
-                const d = new Date(fullYear, month - 1, day);
-                if (!isNaN(d.getTime())) {
-                  dateValue = d.getTime();
-                  dateLabel = `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}`;
-                }
+        quotesRows.forEach((row, idx) => {
+          const client = (row.client || "").trim();
+          const ref = row.reference || "";
+          const title = row.titre || "";
+          if (!client && !ref && !title) return;
+
+          // Mapping étape devis → étape affaire
+          const quoteStage = (row.etape || "envoye").toLowerCase().trim();
+          const stageMap = {
+            "chiffrage": "diagnostic",
+            "envoye": "devis",
+            "envoyé": "devis",
+            "attente": "validation",
+            "valide": "valide",
+            "validé": "valide",
+            "travaux": "travaux",
+          };
+          const affairStage = stageMap[quoteStage] || "devis";
+
+          // Trouver le locataire automatiquement
+          const tenantId = guessTenantForQuote(client, ref, title);
+          if (!newAffairs[tenantId]) return;
+
+          // Parser date au format JJ/MM ou JJ/MM/AAAA pour calculer "jours"
+          let days = 0;
+          const rawDate = (row.date_envoi || row.date || "").trim();
+          if (rawDate) {
+            const parts = rawDate.split(/[\/\-\.]/);
+            if (parts.length >= 2) {
+              const day = parseInt(parts[0], 10);
+              const month = parseInt(parts[1], 10);
+              const year = parts[2] ? parseInt(parts[2], 10) : new Date().getFullYear();
+              const fullYear = year < 100 ? 2000 + year : year;
+              const d = new Date(fullYear, month - 1, day);
+              if (!isNaN(d.getTime())) {
+                days = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
               }
             }
-            return {
-              client: row.client || "",
-              ref: row.reference || "",
-              title: row.titre || "",
-              dateLabel,
-              dateValue,
-              stage: QUOTE_STAGES[stage] ? stage : "envoye",
-              urgent: ["oui", "yes", "true", "1"].includes((row.urgent || "").toLowerCase()),
-            };
-          })
-          .filter(q => q.client || q.ref || q.title);
+          }
+
+          newAffairs[tenantId].push({
+            id: `quote-${idx}`,
+            ref: ref,
+            title: title,
+            stage: affairStage,
+            tech: 1,            // pas de tech assigné par défaut
+            techIds: [],        // pas de techs sur un devis
+            validator: undefined,
+            days: days,
+            urgent: ["oui", "yes", "true", "1"].includes((row.urgent || "").toLowerCase()),
+            isQuote: true,      // marqueur pour différencier visuellement si besoin
+            client: client,     // garder le nom du client externe (Telmma, IAD, etc.)
+          });
+        });
 
         setPlanning(newPlanning);
         setAffairs(newAffairs);
         setSubcontractorsCurrent(newSubsCurrent);
         setSubcontractorsNext(newSubsNext);
-        setQuotes(newQuotes);
         setDataStatus("ok");
         setLastUpdate(new Date());
       } catch (err) {
@@ -1099,6 +1207,7 @@ export default function Dashboard() {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes scrollQuotes { from { transform: translateY(0); } to { transform: translateY(-50%); } }
         @keyframes scrollPlanning { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+        @keyframes scrollTenant { from { transform: translateY(0); } to { transform: translateY(-50%); } }
       `}</style>
 
       {/* HEADER */}
@@ -1203,11 +1312,8 @@ export default function Dashboard() {
             label = "ÉQUIPE";
             accentColor = "#3B82F6";
           } else if (s.type === "subcontractors") {
-            label = s.week === "current" ? "ST CETTE SEM." : "ST SEM. PROCH.";
+            label = s.week === "current" ? "ÉVÉN. CETTE SEM." : "ÉVÉN. SEM. PROCH.";
             accentColor = SUBCONTRACTORS_ACCENT;
-          } else if (s.type === "quotes") {
-            label = "DEVIS";
-            accentColor = QUOTES_ACCENT;
           } else {
             label = tenant.name.toUpperCase();
             accentColor = tenant.accent;
@@ -1233,7 +1339,6 @@ export default function Dashboard() {
       }}>
         {currentSlide.type === "planning" && <PlanningSlide planning={planning} />}
         {currentSlide.type === "tenant" && <TenantSlide tenant={currentTenant} affairs={affairs[currentTenant.id] || []} />}
-        {currentSlide.type === "quotes" && <QuotesSlide quotes={quotes} />}
         {currentSlide.type === "subcontractors" && (
           <SubcontractorsSlide
             subcontractors={currentSlide.week === "current" ? subcontractorsCurrent : subcontractorsNext}
