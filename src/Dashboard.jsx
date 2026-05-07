@@ -231,6 +231,7 @@ const SLIDES = [
   ...TENANTS.map(t => ({ id: t.id, type: "tenant", tenantId: t.id })),
   { id: "subcontractorsCurrent", type: "subcontractors", week: "current" },
   { id: "subcontractorsNext", type: "subcontractors", week: "next" },
+  { id: "planningNext", type: "planning", week: "next" },
 ];
 
 // ─── UTILITAIRES ────────────────────────────────────────────────────────────
@@ -462,23 +463,43 @@ function TenantSlide({ tenant, affairs }) {
   );
 }
 
-function PlanningSlide({ planning }) {
-  const weekDates = getWeekDates();
-  const todayIdx = getTodayIndex();
+function PlanningSlide({ planning, week = "current" }) {
+  const isNext = week === "next";
+  // Pour la semaine prochaine, on calcule les dates de la semaine suivante
+  const baseWeekDates = getWeekDates();
+  const weekDates = isNext
+    ? baseWeekDates.map(d => { const newD = new Date(d); newD.setDate(d.getDate() + 7); return newD; })
+    : baseWeekDates;
+  const todayIdx = isNext ? -1 : getTodayIndex(); // pas de "today" pour la semaine prochaine
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "32px 44px" }}>
 
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#9CA3AF", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
-          Vue équipe
+      <div style={{ marginBottom: 24, display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: isNext ? "#0E7490" : "#9CA3AF", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6 }}>
+            {isNext ? "À venir — Vue équipe" : "Vue équipe"}
+          </div>
+          <div style={{ fontSize: 48, fontWeight: 800, color: "#111827", letterSpacing: "-1.5px", lineHeight: 1 }}>
+            {isNext ? "Planning semaine prochaine" : "Planning techniciens"}
+          </div>
+          <div style={{ fontSize: 16, color: "#6B7280", marginTop: 10, fontWeight: 500 }}>
+            Semaine du {fmt(weekDates[0])} au {fmt(weekDates[4])}
+          </div>
         </div>
-        <div style={{ fontSize: 48, fontWeight: 800, color: "#111827", letterSpacing: "-1.5px", lineHeight: 1 }}>
-          Planning techniciens
-        </div>
-        <div style={{ fontSize: 16, color: "#6B7280", marginTop: 10, fontWeight: 500 }}>
-          Semaine du {fmt(weekDates[0])} au {fmt(weekDates[4])}
-        </div>
+        {isNext && (
+          <div style={{
+            backgroundColor: "#CFFAFE",
+            color: "#0E7490",
+            padding: "12px 22px",
+            borderRadius: 12,
+            fontSize: 14, fontWeight: 800,
+            letterSpacing: "0.08em",
+            border: "2px dashed #0E7490",
+          }}>
+            🗓 SEMAINE À VENIR
+          </div>
+        )}
       </div>
 
       {/* Header jours */}
@@ -1006,6 +1027,7 @@ export default function Dashboard() {
   const [slideIdx, setSlideIdx] = useState(0);
   const [progress, setProgress] = useState(0);
   const [planning, setPlanning] = useState(FALLBACK_PLANNING);
+  const [planningNext, setPlanningNext] = useState(FALLBACK_PLANNING);
   const [affairs, setAffairs] = useState(FALLBACK_AFFAIRS);
   const [subcontractorsCurrent, setSubcontractorsCurrent] = useState(FALLBACK_SUBCONTRACTORS);
   const [subcontractorsNext, setSubcontractorsNext] = useState(FALLBACK_SUBCONTRACTORS);
@@ -1027,24 +1049,35 @@ export default function Dashboard() {
 
         if (cancelled) return;
 
-        // Parser Planning : technicien, jour, tache, client
+        // Parser Planning : technicien, jour, tache, client, semaine
+        // La colonne "semaine" peut être "actuelle" ou "prochaine" (vide = actuelle par défaut)
         const planningRows = parseCSV(planningRes);
-        const planningByTech = {};
+        const planningByTechCurrent = {};
+        const planningByTechNext = {};
         planningRows.forEach(row => {
           const techId = TECH_NAME_TO_ID[(row.technicien || "").toLowerCase()];
           const dayIdx = DAY_NAME_TO_INDEX[(row.jour || "").toLowerCase()];
           if (techId === undefined || dayIdx === undefined) return;
-          if (!planningByTech[techId]) planningByTech[techId] = [];
-          planningByTech[techId].push({
+          const task = {
             day: dayIdx,
             label: row.tache || "",
             client: row.client || "",
-          });
+          };
+          // Détermination de la semaine
+          const semaine = (row.semaine || "").toLowerCase().trim();
+          const isNext = semaine === "prochaine" || semaine === "next" || semaine === "suivante";
+          const target = isNext ? planningByTechNext : planningByTechCurrent;
+          if (!target[techId]) target[techId] = [];
+          target[techId].push(task);
         });
-        // Reconstruire dans l'ordre Jason, Cédric, Ghulam
+        // Reconstruire dans l'ordre Jason, Cédric, Ghulam (techniciens uniquement, pas Vinci dans le planning)
         const newPlanning = TECHNICIANS.map(t => ({
           techId: t.id,
-          tasks: planningByTech[t.id] || [],
+          tasks: planningByTechCurrent[t.id] || [],
+        }));
+        const newPlanningNext = TECHNICIANS.map(t => ({
+          techId: t.id,
+          tasks: planningByTechNext[t.id] || [],
         }));
 
         // Parser Affaires : locataire, reference, titre, etape, technicien, validateur, jours, urgent
@@ -1115,6 +1148,7 @@ export default function Dashboard() {
         });
 
         setPlanning(newPlanning);
+        setPlanningNext(newPlanningNext);
         setAffairs(newAffairs);
         setSubcontractorsCurrent(newSubsCurrent);
         setSubcontractorsNext(newSubsNext);
@@ -1290,8 +1324,8 @@ export default function Dashboard() {
           const tenant = s.type === "tenant" ? TENANTS.find(t => t.id === s.tenantId) : null;
           let label, accentColor;
           if (s.type === "planning") {
-            label = "ÉQUIPE";
-            accentColor = "#3B82F6";
+            label = s.week === "next" ? "PLAN. PROCH." : "ÉQUIPE";
+            accentColor = s.week === "next" ? "#0E7490" : "#3B82F6";
           } else if (s.type === "subcontractors") {
             label = s.week === "current" ? "ÉVÉN. CETTE SEM." : "ÉVÉN. SEM. PROCH.";
             accentColor = SUBCONTRACTORS_ACCENT;
@@ -1318,7 +1352,12 @@ export default function Dashboard() {
         overflow: "hidden",
         animation: "fadeIn 0.5s ease",
       }}>
-        {currentSlide.type === "planning" && <PlanningSlide planning={planning} />}
+        {currentSlide.type === "planning" && (
+          <PlanningSlide
+            planning={currentSlide.week === "next" ? planningNext : planning}
+            week={currentSlide.week || "current"}
+          />
+        )}
         {currentSlide.type === "tenant" && <TenantSlide tenant={currentTenant} affairs={affairs[currentTenant.id] || []} />}
         {currentSlide.type === "subcontractors" && (
           <SubcontractorsSlide
