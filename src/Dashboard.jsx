@@ -226,32 +226,58 @@ const FALLBACK_AFFAIRS = { voodoo: [], laposte: [], logistique: [], louvre: [], 
 const FALLBACK_SUBCONTRACTORS = [];
 const FALLBACK_QUOTES = [];
 
+// SVG icons for golden rules (no emoji dependency)
+const RuleIcon1 = () => (
+  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="13" y="2" width="6" height="28" rx="2" fill="white" fillOpacity="0.9"/>
+    <rect x="5" y="2" width="6" height="28" rx="2" fill="white" fillOpacity="0.9"/>
+    <rect x="5" y="8" width="22" height="3" rx="1.5" fill="white"/>
+    <rect x="5" y="15" width="22" height="3" rx="1.5" fill="white"/>
+    <rect x="5" y="22" width="22" height="3" rx="1.5" fill="white"/>
+    <path d="M22 4 L28 10 L22 10 Z" fill="#FFD700"/>
+    <circle cx="25" cy="6" r="3" fill="#FFD700" fillOpacity="0.7"/>
+  </svg>
+);
+const RuleIcon2 = () => (
+  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="8" y="5" width="16" height="22" rx="3" fill="white" fillOpacity="0.9"/>
+    <rect x="11" y="9" width="10" height="8" rx="1" fill="#1D4ED8"/>
+    <circle cx="16" cy="22" r="2" fill="#1D4ED8"/>
+    <line x1="4" y1="4" x2="28" y2="28" stroke="#EF4444" strokeWidth="3" strokeLinecap="round"/>
+  </svg>
+);
+const RuleIcon3 = () => (
+  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="16" cy="7" r="4" fill="white" fillOpacity="0.9"/>
+    <path d="M10 14 Q16 12 22 14 L20 26 H18 L16 20 L14 26 H12 Z" fill="white" fillOpacity="0.9"/>
+    <path d="M6 18 L10 15" stroke="#FFD700" strokeWidth="2.5" strokeLinecap="round"/>
+    <path d="M26 18 L22 15" stroke="#FFD700" strokeWidth="2.5" strokeLinecap="round"/>
+    <path d="M4 22 L12 18" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 2"/>
+  </svg>
+);
+const RuleIcon4 = () => (
+  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="12" cy="16" rx="7" ry="5" fill="white" fillOpacity="0.9"/>
+    <ellipse cx="20" cy="16" rx="7" ry="5" fill="white" fillOpacity="0.9"/>
+    <rect x="10" y="14" width="12" height="4" fill="white"/>
+    <rect x="11" y="13" width="4" height="6" rx="1" fill="#1D4ED8"/>
+    <rect x="17" y="13" width="4" height="6" rx="1" fill="#1D4ED8"/>
+    <path d="M5 16 Q6 10 10 10" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none"/>
+    <path d="M27 16 Q26 10 22 10" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none"/>
+  </svg>
+);
+const RuleIcon5 = () => (
+  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M18 3 L10 17 H15 L14 29 L22 15 H17 Z" fill="#FFD700" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
+  </svg>
+);
+
 const GOLDEN_RULES = [
-  {
-    num: 1,
-    icon: "🪜",
-    text: "J'analyse obligatoirement les risques avant toute opération en hauteur",
-  },
-  {
-    num: 2,
-    icon: "📵",
-    text: "Je n'utilise pas le téléphone en me déplaçant",
-  },
-  {
-    num: 3,
-    icon: "🚶",
-    text: "J'évite les déplacements précipités dans les zones techniques ou sur les terrasses et je respecte les chemins de circulation sécurisés",
-  },
-  {
-    num: 4,
-    icon: "🥽",
-    text: "Je porte les EPI adaptés : gants résistants, lunettes, masques, vêtements spécifiques selon le produit",
-  },
-  {
-    num: 5,
-    icon: "⚡",
-    text: "Je consigne systématiquement avant toute intervention électrique : mise hors tension, test d'absence de tension (VAT)",
-  },
+  { num: 1, Icon: RuleIcon1, text: "J'analyse obligatoirement les risques avant toute opération en hauteur" },
+  { num: 2, Icon: RuleIcon2, text: "Je n'utilise pas le téléphone en me déplaçant" },
+  { num: 3, Icon: RuleIcon3, text: "J'évite les déplacements précipités dans les zones techniques ou sur les terrasses et je respecte les chemins de circulation sécurisés" },
+  { num: 4, Icon: RuleIcon4, text: "Je porte les EPI adaptés : gants résistants, lunettes, masques, vêtements spécifiques selon le produit" },
+  { num: 5, Icon: RuleIcon5, text: "Je consigne systématiquement avant toute intervention électrique : mise hors tension, test d'absence de tension (VAT)" },
 ];
 
 const SLIDES = [
@@ -1105,7 +1131,7 @@ function GoldenRulesSlide() {
               fontSize: 24, fontWeight: 900, color: "white", flexShrink: 0,
               boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
             }}>{rule.num}</div>
-            <div style={{ fontSize: 28, flexShrink: 0 }}>{rule.icon}</div>
+            <div style={{ width: 32, height: 32, flexShrink: 0 }}><rule.Icon /></div>
             <div style={{ fontSize: 18, fontWeight: 700, color: "white", lineHeight: 1.35, flex: 1 }}>
               {rule.text}
             </div>
