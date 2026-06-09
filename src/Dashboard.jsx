@@ -1138,17 +1138,20 @@ function PieChart({ done, total, color, size = 160, dark = false }) {
 }
 
 function AutoScrollList({ items, color, bgColor, borderColor }) {
-  const needsScroll = items.length > 3;
+  const ITEM_H = 62; // hauteur item + gap
+  const VISIBLE = 3; // items visibles
+  const needsScroll = items.length > VISIBLE;
   const doubled = needsScroll ? [...items, ...items] : items;
-  const animName = `scroll_${color.replace(/[^a-z0-9]/gi, "")}`;
+  const uid = color.replace(/[^a-z0-9]/gi, "");
+  const duration = items.length * 2.5; // secondes
 
   return (
-    <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+    <div style={{ flex: 1, overflow: "hidden", position: "relative", height: ITEM_H * VISIBLE }}>
       {needsScroll && (
         <style>{`
-          @keyframes ${animName} {
-            0%   { transform: translateY(0); }
-            100% { transform: translateY(-50%); }
+          @keyframes marquee_${uid} {
+            0%   { transform: translateY(0px); }
+            100% { transform: translateY(-${items.length * ITEM_H}px); }
           }
         `}</style>
       )}
@@ -1156,14 +1159,17 @@ function AutoScrollList({ items, color, bgColor, borderColor }) {
         display: "flex",
         flexDirection: "column",
         gap: 8,
-        animation: needsScroll ? `${animName} ${items.length * 3}s linear infinite` : "none",
+        willChange: "transform",
+        animation: needsScroll
+          ? `marquee_${uid} ${duration}s linear infinite`
+          : "none",
       }}>
         {doubled.map((item, i) => (
           <div key={i} style={{
             display: "flex", alignItems: "center", gap: 10,
             backgroundColor: bgColor, borderRadius: 10,
             padding: "10px 14px", border: `1px solid ${borderColor}`,
-            flexShrink: 0,
+            flexShrink: 0, minHeight: 54,
           }}>
             <div style={{
               minWidth: 22, height: 22, borderRadius: "50%",
@@ -1172,7 +1178,7 @@ function AutoScrollList({ items, color, bgColor, borderColor }) {
               fontSize: 11, fontWeight: 800, flexShrink: 0,
             }}>{(i % items.length) + 1}</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "white" }}>{item.titre}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "white", lineHeight: 1.3 }}>{item.titre}</div>
               {item.date && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{item.date}</div>}
             </div>
           </div>
@@ -1487,18 +1493,33 @@ export default function Dashboard() {
         function excelDateToStr(val) {
           if (!val) return "";
           const trimmed = String(val).trim();
-          // Si c'est déjà une date lisible (contient / ou -)
-          if (trimmed.includes("/") || trimmed.includes("-")) return trimmed;
+          if (!trimmed) return "";
+
+          // Déjà au bon format JJ/MM/AA ou JJ/MM/AAAA
+          if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(trimmed)) {
+            const parts = trimmed.split("/");
+            const y = parts[2].length === 2 ? parts[2] : parts[2].slice(-2);
+            return `${parts[0].padStart(2,"0")}/${parts[1].padStart(2,"0")}/${y}`;
+          }
+
+          // Format AAAA-MM-JJ (ISO)
+          if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+            const d = new Date(trimmed);
+            if (!isNaN(d)) {
+              return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getFullYear()).slice(-2)}`;
+            }
+          }
+
+          // Nombre Excel (serial date)
           const num = parseFloat(trimmed);
-          if (isNaN(num)) return trimmed;
-          // Conversion serial Excel → date JS
-          // Excel considère le 1er jan 1900 = 1, avec bug année bissextile (60 = 29 fev 1900 inexistant)
-          const d = new Date(Date.UTC(1899, 11, 30) + num * 86400000);
-          if (isNaN(d.getTime())) return trimmed;
-          const day = String(d.getUTCDate()).padStart(2, "0");
-          const month = String(d.getUTCMonth() + 1).padStart(2, "0");
-          const year = String(d.getUTCFullYear()).slice(-2);
-          return `${day}/${month}/${year}`;
+          if (!isNaN(num) && num > 1000) {
+            const d = new Date(Date.UTC(1899, 11, 30) + num * 86400000);
+            if (!isNaN(d.getTime())) {
+              return `${String(d.getUTCDate()).padStart(2,"0")}/${String(d.getUTCMonth()+1).padStart(2,"0")}/${String(d.getUTCFullYear()).slice(-2)}`;
+            }
+          }
+
+          return trimmed;
         }
 
         const onesiteRows = onesiteRes ? parseCSV(onesiteRes) : [];
