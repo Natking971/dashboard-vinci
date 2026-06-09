@@ -178,8 +178,10 @@ function getHolidayForDate(date) {
 
 // ─── PARSING CSV ────────────────────────────────────────────────────────────
 
-function parseCSV(text) {
-  // Parser CSV simple avec gestion des guillemets
+function parseCSV(text, forceSep = null) {
+  // Détection automatique du séparateur (virgule ou point-virgule)
+  const sep = forceSep || (text.split("\n")[0]?.includes(";") ? ";" : ",");
+
   const lines = [];
   let current = [];
   let field = "";
@@ -192,7 +194,7 @@ function parseCSV(text) {
     if (char === '"') {
       if (inQuotes && next === '"') { field += '"'; i++; }
       else { inQuotes = !inQuotes; }
-    } else if (char === "," && !inQuotes) {
+    } else if (char === sep && !inQuotes) {
       current.push(field); field = "";
     } else if ((char === "\n" || char === "\r") && !inQuotes) {
       if (char === "\r" && next === "\n") i++;
@@ -1136,27 +1138,26 @@ function PieChart({ done, total, color, size = 160, dark = false }) {
 }
 
 function AutoScrollList({ items, color, bgColor, borderColor }) {
-  const ref = React.useRef(null);
-  React.useEffect(() => {
-    if (!ref.current || items.length <= 3) return;
-    let pos = 0;
-    const itemH = 58; // hauteur approximative d'un item
-    const total = items.length * itemH;
-    const interval = setInterval(() => {
-      if (!ref.current) return;
-      pos += 1;
-      if (pos >= total / 2) pos = 0;
-      ref.current.style.transform = `translateY(-${pos}px)`;
-    }, 30);
-    return () => clearInterval(interval);
-  }, [items]);
-
-  // Dupliquer la liste pour un défilement infini fluide
-  const doubled = items.length > 3 ? [...items, ...items] : items;
+  const needsScroll = items.length > 3;
+  const doubled = needsScroll ? [...items, ...items] : items;
+  const animName = `scroll_${color.replace(/[^a-z0-9]/gi, "")}`;
 
   return (
     <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-      <div ref={ref} style={{ display: "flex", flexDirection: "column", gap: 8, transition: "none" }}>
+      {needsScroll && (
+        <style>{`
+          @keyframes ${animName} {
+            0%   { transform: translateY(0); }
+            100% { transform: translateY(-50%); }
+          }
+        `}</style>
+      )}
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        animation: needsScroll ? `${animName} ${items.length * 3}s linear infinite` : "none",
+      }}>
         {doubled.map((item, i) => (
           <div key={i} style={{
             display: "flex", alignItems: "center", gap: 10,
@@ -1501,16 +1502,24 @@ export default function Dashboard() {
         }
 
         const onesiteRows = onesiteRes ? parseCSV(onesiteRes) : [];
+        console.log("📋 ONESITE raw rows:", onesiteRows);
         const newPat = [];
         const newQhs = [];
         onesiteRows.forEach(row => {
-          const type = (row.type || "").toLowerCase().trim();
-          const titre = row.titre || row.title || "";
+          // Cherche la colonne type (insensible à la casse, espaces, accents)
+          const keys = Object.keys(row);
+          const typeKey = keys.find(k => k.toLowerCase().includes("type")) || "type";
+          const titreKey = keys.find(k => k.toLowerCase().includes("titre") || k.toLowerCase().includes("title")) || "titre";
+          const dateKey = keys.find(k => k.toLowerCase().includes("date")) || "date";
+
+          const type = (row[typeKey] || "").toLowerCase().trim();
+          const titre = (row[titreKey] || "").trim();
           if (!titre) return;
-          const item = { titre, date: excelDateToStr(row.date || "") };
+          const item = { titre, date: excelDateToStr(row[dateKey] || "") };
           if (type === "pat") newPat.push(item);
-          else if (type === "qhs" || type === "1/4h" || type === "quart" || type === "quartier") newQhs.push(item);
+          else if (type === "qhs" || type.includes("quart") || type.includes("1/4") || type.includes("heur")) newQhs.push(item);
         });
+        console.log("✅ PAT:", newPat.length, "QHS:", newQhs.length);
         setOnesite({ pat: newPat, qhs: newQhs });
 
         setDataStatus("ok");
