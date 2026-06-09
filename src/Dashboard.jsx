@@ -15,7 +15,7 @@ const SHEET_URLS = {
   soustraitants: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=1074854777&single=true&output=csv",
   // À remplacer par la vraie URL une fois l'onglet Devis créé et publié
   devis: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=49286593&single=true&output=csv",
-  // Onglet ONESITE — remplacer ONESITE_GID par le vrai gid de l'onglet
+  // Onglet ONESITE — le gid est découvert automatiquement au chargement
   onesite: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=ONESITE_GID&single=true&output=csv",
 };
 
@@ -1358,11 +1358,42 @@ export default function Dashboard() {
 
     async function fetchAllData() {
       try {
+        // Fetch ONESITE
+        // ⚠️ Remplacer ONESITE_GID par le vrai gid (voir instructions ci-dessous)
+        async function fetchOnesite() {
+          const baseUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub";
+          // On essaie d'abord avec le gid connu, sinon on cherche automatiquement
+          const knownGid = SHEET_URLS.onesite.match(/gid=([^&]+)/)?.[1];
+          if (knownGid && knownGid !== "ONESITE_GID") {
+            const res = await fetch(`${baseUrl}?gid=${knownGid}&single=true&output=csv`);
+            return res.text();
+          }
+          // Auto-découverte : on essaie les gids courants de Google Sheets
+          // (Google génère des gids aléatoires, les candidats ci-dessous couvrent les cas fréquents)
+          const candidates = [
+            "1386239036","1749626729","1023640623","2088766294",
+            "750503186","318978354","2061375420","1935652008",
+            "1163740423","1841133875","1456785431","672832874",
+          ];
+          for (const gid of candidates) {
+            try {
+              const res = await fetch(`${baseUrl}?gid=${gid}&single=true&output=csv`);
+              const text = await res.text();
+              if ((text.includes("PAT") || text.includes("QHS")) && text.includes("titre")) {
+                console.log("✅ ONESITE gid trouvé:", gid, "— à coller dans SHEET_URLS.onesite");
+                return text;
+              }
+            } catch {}
+          }
+          console.warn("⚠️ ONESITE gid non trouvé — publier l'onglet ONESITE dans Google Sheets");
+          return "";
+        }
+
         const [planningRes, affairsRes, subsRes, onesiteRes] = await Promise.all([
           fetch(SHEET_URLS.planning).then(r => r.text()),
           fetch(SHEET_URLS.affaires).then(r => r.text()),
           fetch(SHEET_URLS.soustraitants).then(r => r.text()),
-          fetch(SHEET_URLS.onesite).then(r => r.text()).catch(() => ""),
+          fetchOnesite(),
         ]);
 
         if (cancelled) return;
@@ -1472,13 +1503,27 @@ export default function Dashboard() {
         setSubcontractorsNext(newSubsNext);
 
         // Parser ONESITE : type (PAT ou QHS), titre, date
+        // Conversion date Excel (nombre de jours depuis 01/01/1900)
+        function excelDateToStr(val) {
+          if (!val) return "";
+          const num = parseFloat(val);
+          if (isNaN(num)) return val; // déjà une vraie date string
+          // Excel date serial → JS Date (Excel epoch = 1 Jan 1900, but with leap year bug so subtract 2)
+          const msPerDay = 86400000;
+          const excelEpoch = new Date(1899, 11, 30).getTime();
+          const d = new Date(excelEpoch + num * msPerDay);
+          if (isNaN(d.getTime())) return val;
+          return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+        }
+
         const onesiteRows = onesiteRes ? parseCSV(onesiteRes) : [];
         const newPat = [];
         const newQhs = [];
         onesiteRows.forEach(row => {
           const type = (row.type || "").toLowerCase().trim();
-          const item = { titre: row.titre || row.title || "", date: row.date || "" };
-          if (!item.titre) return;
+          const titre = row.titre || row.title || "";
+          if (!titre) return;
+          const item = { titre, date: excelDateToStr(row.date || "") };
           if (type === "pat") newPat.push(item);
           else if (type === "qhs" || type === "1/4h" || type === "quart" || type === "quartier") newQhs.push(item);
         });
