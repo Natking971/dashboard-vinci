@@ -1135,7 +1135,51 @@ function PieChart({ done, total, color, size = 160, dark = false }) {
   );
 }
 
-function OneSiteSlide({ onesite }) {
+function AutoScrollList({ items, color, bgColor, borderColor }) {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!ref.current || items.length <= 3) return;
+    let pos = 0;
+    const itemH = 58; // hauteur approximative d'un item
+    const total = items.length * itemH;
+    const interval = setInterval(() => {
+      if (!ref.current) return;
+      pos += 1;
+      if (pos >= total / 2) pos = 0;
+      ref.current.style.transform = `translateY(-${pos}px)`;
+    }, 30);
+    return () => clearInterval(interval);
+  }, [items]);
+
+  // Dupliquer la liste pour un défilement infini fluide
+  const doubled = items.length > 3 ? [...items, ...items] : items;
+
+  return (
+    <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+      <div ref={ref} style={{ display: "flex", flexDirection: "column", gap: 8, transition: "none" }}>
+        {doubled.map((item, i) => (
+          <div key={i} style={{
+            display: "flex", alignItems: "center", gap: 10,
+            backgroundColor: bgColor, borderRadius: 10,
+            padding: "10px 14px", border: `1px solid ${borderColor}`,
+            flexShrink: 0,
+          }}>
+            <div style={{
+              minWidth: 22, height: 22, borderRadius: "50%",
+              backgroundColor: color, color: "white",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 11, fontWeight: 800, flexShrink: 0,
+            }}>{(i % items.length) + 1}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "white" }}>{item.titre}</div>
+              {item.date && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{item.date}</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
   const patDone = onesite.pat.length;
   const qhsDone = onesite.qhs.length;
 
@@ -1192,32 +1236,15 @@ function OneSiteSlide({ onesite }) {
           <div style={{ display: "flex", justifyContent: "center", flexShrink: 0 }}>
             <PieChart done={patDone} total={ONESITE_TOTAL} color="#10B981" size={180} dark />
           </div>
-          <div style={{ flex: 1, overflowY: "hidden" }}>
-            {onesite.pat.length === 0 ? (
-              <div style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 13, paddingTop: 12 }}>Aucune PAT enregistrée</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {onesite.pat.map((item, i) => (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "center", gap: 10,
-                    backgroundColor: "rgba(16,185,129,0.15)", borderRadius: 10,
-                    padding: "10px 14px", border: "1px solid rgba(16,185,129,0.35)",
-                  }}>
-                    <div style={{
-                      minWidth: 22, height: 22, borderRadius: "50%",
-                      backgroundColor: "#10B981", color: "white",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 11, fontWeight: 800, flexShrink: 0,
-                    }}>{i + 1}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "white" }}>{item.titre}</div>
-                      {item.date && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{item.date}</div>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <AutoScrollList
+            items={onesite.pat}
+            color="#10B981"
+            bgColor="rgba(16,185,129,0.15)"
+            borderColor="rgba(16,185,129,0.35)"
+          />
+          {onesite.pat.length === 0 && (
+            <div style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 13, paddingTop: 12 }}>Aucune PAT enregistrée</div>
+          )}
         </div>
 
         {/* Colonne QHS */}
@@ -1236,32 +1263,15 @@ function OneSiteSlide({ onesite }) {
           <div style={{ display: "flex", justifyContent: "center", flexShrink: 0 }}>
             <PieChart done={qhsDone} total={ONESITE_TOTAL} color={ONESITE_ACCENT} size={180} dark />
           </div>
-          <div style={{ flex: 1, overflowY: "hidden" }}>
-            {onesite.qhs.length === 0 ? (
-              <div style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 13, paddingTop: 12 }}>Aucun QHS enregistré</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {onesite.qhs.map((item, i) => (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "center", gap: 10,
-                    backgroundColor: "rgba(14,165,233,0.15)", borderRadius: 10,
-                    padding: "10px 14px", border: "1px solid rgba(14,165,233,0.35)",
-                  }}>
-                    <div style={{
-                      minWidth: 22, height: 22, borderRadius: "50%",
-                      backgroundColor: ONESITE_ACCENT, color: "white",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 11, fontWeight: 800, flexShrink: 0,
-                    }}>{i + 1}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "white" }}>{item.titre}</div>
-                      {item.date && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{item.date}</div>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <AutoScrollList
+            items={onesite.qhs}
+            color={ONESITE_ACCENT}
+            bgColor="rgba(14,165,233,0.15)"
+            borderColor="rgba(14,165,233,0.35)"
+          />
+          {onesite.qhs.length === 0 && (
+            <div style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 13, paddingTop: 12 }}>Aucun QHS enregistré</div>
+          )}
         </div>
 
       </div>
@@ -1475,14 +1485,19 @@ export default function Dashboard() {
         // Conversion date Excel (nombre de jours depuis 01/01/1900)
         function excelDateToStr(val) {
           if (!val) return "";
-          const num = parseFloat(val);
-          if (isNaN(num)) return val; // déjà une vraie date string
-          // Excel date serial → JS Date (Excel epoch = 1 Jan 1900, but with leap year bug so subtract 2)
-          const msPerDay = 86400000;
-          const excelEpoch = new Date(1899, 11, 30).getTime();
-          const d = new Date(excelEpoch + num * msPerDay);
-          if (isNaN(d.getTime())) return val;
-          return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+          const trimmed = String(val).trim();
+          // Si c'est déjà une date lisible (contient / ou -)
+          if (trimmed.includes("/") || trimmed.includes("-")) return trimmed;
+          const num = parseFloat(trimmed);
+          if (isNaN(num)) return trimmed;
+          // Conversion serial Excel → date JS
+          // Excel considère le 1er jan 1900 = 1, avec bug année bissextile (60 = 29 fev 1900 inexistant)
+          const d = new Date(Date.UTC(1899, 11, 30) + num * 86400000);
+          if (isNaN(d.getTime())) return trimmed;
+          const day = String(d.getUTCDate()).padStart(2, "0");
+          const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+          const year = String(d.getUTCFullYear()).slice(-2);
+          return `${day}/${month}/${year}`;
         }
 
         const onesiteRows = onesiteRes ? parseCSV(onesiteRes) : [];
