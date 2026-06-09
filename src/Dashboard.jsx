@@ -1084,7 +1084,7 @@ function SubcontractorsSlide({ subcontractors, week = "next" }) {
 const ONESITE_ACCENT = "#0EA5E9";
 const ONESITE_TOTAL = 12; // objectif annuel
 
-function PieChart({ done, total, color, label, size = 160 }) {
+function PieChart({ done, total, color, size = 160, dark = false }) {
   const radius = size / 2 - 14;
   const cx = size / 2;
   const cy = size / 2;
@@ -1117,18 +1117,18 @@ function PieChart({ done, total, color, label, size = 160 }) {
           <circle cx={cx} cy={cy} r={radius} fill="none" stroke={color} strokeWidth={24} />
         )}
         {/* Texte centre */}
-        <text x={cx} y={cy - 10} textAnchor="middle" fontSize="32" fontWeight="800" fill="#111827">{done}</text>
-        <text x={cx} y={cy + 18} textAnchor="middle" fontSize="13" fontWeight="600" fill="#6B7280">/ {total}</text>
+        <text x={cx} y={cy - 10} textAnchor="middle" fontSize="32" fontWeight="800" fill={dark ? "white" : "#111827"}>{done}</text>
+        <text x={cx} y={cy + 18} textAnchor="middle" fontSize="13" fontWeight="600" fill={dark ? "rgba(255,255,255,0.5)" : "#6B7280"}>/ {total}</text>
       </svg>
       {/* Légende */}
       <div style={{ display: "flex", gap: 16, fontSize: 12, fontWeight: 700 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <div style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: color }} />
-          <span style={{ color: "#374151" }}>{done} réalisé{done > 1 ? "s" : ""}</span>
+          <span style={{ color: dark ? "rgba(255,255,255,0.8)" : "#374151" }}>{done} réalisé{done > 1 ? "s" : ""}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: "#FCA5A5" }} />
-          <span style={{ color: "#6B7280" }}>{remaining} restant{remaining > 1 ? "s" : ""}</span>
+          <div style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: dark ? "rgba(255,100,100,0.7)" : "#FCA5A5" }} />
+          <span style={{ color: dark ? "rgba(255,255,255,0.5)" : "#6B7280" }}>{remaining} restant{remaining > 1 ? "s" : ""}</span>
         </div>
       </div>
     </div>
@@ -1140,54 +1140,68 @@ function OneSiteSlide({ onesite }) {
   const qhsDone = onesite.qhs.length;
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "32px 44px" }}>
+    <div style={{
+      height: "100%", display: "flex", flexDirection: "column", padding: "32px 44px",
+      background: "linear-gradient(135deg, #0B1E3D 0%, #003C71 60%, #0B2E5E 100%)",
+      position: "relative", overflow: "hidden",
+    }}>
+      {/* Déco fond */}
+      <div style={{
+        position: "absolute", top: -80, right: -80, width: 360, height: 360, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(14,165,233,0.18) 0%, transparent 70%)",
+        pointerEvents: "none",
+      }} />
+      <div style={{
+        position: "absolute", bottom: -60, left: -60, width: 280, height: 280, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(0,160,145,0.12) 0%, transparent 70%)",
+        pointerEvents: "none",
+      }} />
+
       {/* Titre */}
-      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 28, flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 28, flexShrink: 0, position: "relative" }}>
         <div style={{
           backgroundColor: ONESITE_ACCENT, borderRadius: 14, padding: "10px 20px",
           fontSize: 13, fontWeight: 800, color: "white", letterSpacing: "0.16em",
         }}>ONESITE</div>
         <div>
-          <div style={{ fontSize: 42, fontWeight: 800, color: "#111827", letterSpacing: "-1px", lineHeight: 1 }}>
+          <div style={{ fontSize: 42, fontWeight: 800, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>
             Suivi Sécurité Annuel
           </div>
-          <div style={{ fontSize: 14, color: "#6B7280", marginTop: 6, fontWeight: 500 }}>
+          <div style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", marginTop: 6, fontWeight: 500 }}>
             Objectif : {ONESITE_TOTAL} PAT · {ONESITE_TOTAL} quarts d'heure sécurité
           </div>
         </div>
       </div>
 
       {/* Contenu : 2 colonnes */}
-      <div style={{ flex: 1, display: "flex", gap: 28, overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "flex", gap: 28, overflow: "hidden", position: "relative" }}>
 
         {/* Colonne PAT */}
         <div style={{
-          flex: 1, backgroundColor: "white", borderRadius: 18,
-          border: "1px solid #E5E7EB", padding: "24px 28px",
+          flex: 1, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 18,
+          border: "1px solid rgba(255,255,255,0.14)", padding: "24px 28px",
           display: "flex", flexDirection: "column", gap: 20,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
             <div style={{ width: 6, height: 40, borderRadius: 3, backgroundColor: "#10B981" }} />
             <div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: "#111827" }}>Presque Accidents (PAT)</div>
-              <div style={{ fontSize: 13, color: "#6B7280", marginTop: 2 }}>{patDone} / {ONESITE_TOTAL} réalisés</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "white" }}>Presque Accidents (PAT)</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{patDone} / {ONESITE_TOTAL} réalisés</div>
             </div>
           </div>
           <div style={{ display: "flex", justifyContent: "center", flexShrink: 0 }}>
-            <PieChart done={patDone} total={ONESITE_TOTAL} color="#10B981" size={180} />
+            <PieChart done={patDone} total={ONESITE_TOTAL} color="#10B981" size={180} dark />
           </div>
-          {/* Liste des PAT */}
           <div style={{ flex: 1, overflowY: "hidden" }}>
             {onesite.pat.length === 0 ? (
-              <div style={{ textAlign: "center", color: "#9CA3AF", fontSize: 13, paddingTop: 12 }}>Aucune PAT enregistrée</div>
+              <div style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 13, paddingTop: 12 }}>Aucune PAT enregistrée</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {onesite.pat.map((item, i) => (
                   <div key={i} style={{
                     display: "flex", alignItems: "center", gap: 10,
-                    backgroundColor: "#F0FDF4", borderRadius: 10,
-                    padding: "10px 14px", border: "1px solid #BBF7D0",
+                    backgroundColor: "rgba(16,185,129,0.15)", borderRadius: 10,
+                    padding: "10px 14px", border: "1px solid rgba(16,185,129,0.35)",
                   }}>
                     <div style={{
                       minWidth: 22, height: 22, borderRadius: "50%",
@@ -1196,8 +1210,8 @@ function OneSiteSlide({ onesite }) {
                       fontSize: 11, fontWeight: 800, flexShrink: 0,
                     }}>{i + 1}</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>{item.titre}</div>
-                      {item.date && <div style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>{item.date}</div>}
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "white" }}>{item.titre}</div>
+                      {item.date && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{item.date}</div>}
                     </div>
                   </div>
                 ))}
@@ -1208,32 +1222,30 @@ function OneSiteSlide({ onesite }) {
 
         {/* Colonne QHS */}
         <div style={{
-          flex: 1, backgroundColor: "white", borderRadius: 18,
-          border: "1px solid #E5E7EB", padding: "24px 28px",
+          flex: 1, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 18,
+          border: "1px solid rgba(255,255,255,0.14)", padding: "24px 28px",
           display: "flex", flexDirection: "column", gap: 20,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
             <div style={{ width: 6, height: 40, borderRadius: 3, backgroundColor: ONESITE_ACCENT }} />
             <div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: "#111827" }}>Quarts d'heure Sécurité</div>
-              <div style={{ fontSize: 13, color: "#6B7280", marginTop: 2 }}>{qhsDone} / {ONESITE_TOTAL} réalisés</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "white" }}>Quarts d'heure Sécurité</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{qhsDone} / {ONESITE_TOTAL} réalisés</div>
             </div>
           </div>
           <div style={{ display: "flex", justifyContent: "center", flexShrink: 0 }}>
-            <PieChart done={qhsDone} total={ONESITE_TOTAL} color={ONESITE_ACCENT} size={180} />
+            <PieChart done={qhsDone} total={ONESITE_TOTAL} color={ONESITE_ACCENT} size={180} dark />
           </div>
-          {/* Liste QHS */}
           <div style={{ flex: 1, overflowY: "hidden" }}>
             {onesite.qhs.length === 0 ? (
-              <div style={{ textAlign: "center", color: "#9CA3AF", fontSize: 13, paddingTop: 12 }}>Aucun QHS enregistré</div>
+              <div style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 13, paddingTop: 12 }}>Aucun QHS enregistré</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {onesite.qhs.map((item, i) => (
                   <div key={i} style={{
                     display: "flex", alignItems: "center", gap: 10,
-                    backgroundColor: "#F0F9FF", borderRadius: 10,
-                    padding: "10px 14px", border: "1px solid #BAE6FD",
+                    backgroundColor: "rgba(14,165,233,0.15)", borderRadius: 10,
+                    padding: "10px 14px", border: "1px solid rgba(14,165,233,0.35)",
                   }}>
                     <div style={{
                       minWidth: 22, height: 22, borderRadius: "50%",
@@ -1242,8 +1254,8 @@ function OneSiteSlide({ onesite }) {
                       fontSize: 11, fontWeight: 800, flexShrink: 0,
                     }}>{i + 1}</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>{item.titre}</div>
-                      {item.date && <div style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>{item.date}</div>}
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "white" }}>{item.titre}</div>
+                      {item.date && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{item.date}</div>}
                     </div>
                   </div>
                 ))}
