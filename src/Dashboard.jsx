@@ -226,7 +226,36 @@ const FALLBACK_AFFAIRS = { voodoo: [], laposte: [], logistique: [], louvre: [], 
 const FALLBACK_SUBCONTRACTORS = [];
 const FALLBACK_QUOTES = [];
 
+const GOLDEN_RULES = [
+  {
+    num: 1,
+    icon: "🪜",
+    text: "J'analyse obligatoirement les risques avant toute opération en hauteur",
+  },
+  {
+    num: 2,
+    icon: "📵",
+    text: "Je n'utilise pas le téléphone en me déplaçant",
+  },
+  {
+    num: 3,
+    icon: "🚶",
+    text: "J'évite les déplacements précipités dans les zones techniques ou sur les terrasses et je respecte les chemins de circulation sécurisés",
+  },
+  {
+    num: 4,
+    icon: "🥽",
+    text: "Je porte les EPI adaptés : gants résistants, lunettes, masques, vêtements spécifiques selon le produit",
+  },
+  {
+    num: 5,
+    icon: "⚡",
+    text: "Je consigne systématiquement avant toute intervention électrique : mise hors tension, test d'absence de tension (VAT)",
+  },
+];
+
 const SLIDES = [
+  { id: "goldenRules", type: "goldenRules" },
   { id: "planning", type: "planning" },
   ...TENANTS.map(t => ({ id: t.id, type: "tenant", tenantId: t.id })),
   { id: "subcontractorsCurrent", type: "subcontractors", week: "current" },
@@ -1020,6 +1049,73 @@ function SubcontractorsSlide({ subcontractors, week = "next" }) {
   );
 }
 
+// ─── SLIDE RÈGLES D'OR ───────────────────────────────────────────────────────
+
+function GoldenRulesSlide() {
+  return (
+    <div style={{
+      height: "100%",
+      display: "flex",
+      flexDirection: "column",
+      padding: "32px 44px",
+      background: "linear-gradient(135deg, #0B1E3D 0%, #003C71 60%, #0B2E5E 100%)",
+      position: "relative",
+      overflow: "hidden",
+    }}>
+      <div style={{
+        position: "absolute", top: -80, right: -80,
+        width: 360, height: 360, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(0,160,145,0.18) 0%, transparent 70%)",
+        pointerEvents: "none",
+      }} />
+      <div style={{
+        position: "absolute", bottom: -60, left: -60,
+        width: 280, height: 280, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(218,41,28,0.12) 0%, transparent 70%)",
+        pointerEvents: "none",
+      }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 32, flexShrink: 0 }}>
+        <div style={{
+          backgroundColor: "#00A091", borderRadius: 14, padding: "10px 20px",
+          fontSize: 13, fontWeight: 800, color: "white", letterSpacing: "0.16em", textTransform: "uppercase",
+        }}>Safety Excellence</div>
+        <div>
+          <div style={{ fontSize: 42, fontWeight: 800, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>
+            5 Règles d'Or <span style={{ color: "#00A091" }}>Sécurité</span>
+          </div>
+          <div style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", marginTop: 6, fontWeight: 500 }}>
+            Vinci Facilities POP · à respecter en toutes circonstances
+          </div>
+        </div>
+      </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 14 }}>
+        {GOLDEN_RULES.map((rule, idx) => (
+          <div key={rule.num} style={{
+            display: "flex", alignItems: "center", gap: 20,
+            backgroundColor: "rgba(255,255,255,0.07)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderLeft: `5px solid ${idx % 2 === 0 ? "#00A091" : "#3BB5E8"}`,
+            borderRadius: "0 14px 14px 0",
+            padding: "16px 22px",
+          }}>
+            <div style={{
+              minWidth: 52, height: 52, borderRadius: "50%",
+              backgroundColor: idx % 2 === 0 ? "#00A091" : "#1D4ED8",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 24, fontWeight: 900, color: "white", flexShrink: 0,
+              boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+            }}>{rule.num}</div>
+            <div style={{ fontSize: 28, flexShrink: 0 }}>{rule.icon}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "white", lineHeight: 1.35, flex: 1 }}>
+              {rule.text}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── COMPOSANT PRINCIPAL ─────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -1199,7 +1295,9 @@ export default function Dashboard() {
   const currentTenant = currentSlide.type === "tenant" ? TENANTS.find(t => t.id === currentSlide.tenantId) : null;
   const isSubcontractors = currentSlide.type === "subcontractors";
   const isQuotes = currentSlide.type === "quotes";
-  const headerAccent = currentTenant
+  const headerAccent = currentSlide.type === "goldenRules"
+    ? "#00A091"
+    : currentTenant
     ? currentTenant.accent
     : isSubcontractors ? SUBCONTRACTORS_ACCENT
     : isQuotes ? QUOTES_ACCENT
@@ -1323,7 +1421,10 @@ export default function Dashboard() {
           const isActive = i === slideIdx;
           const tenant = s.type === "tenant" ? TENANTS.find(t => t.id === s.tenantId) : null;
           let label, accentColor;
-          if (s.type === "planning") {
+          if (s.type === "goldenRules") {
+            label = "RÈGLES D'OR";
+            accentColor = "#00A091";
+          } else if (s.type === "planning") {
             label = s.week === "next" ? "PLAN. PROCH." : "ÉQUIPE";
             accentColor = s.week === "next" ? "#0E7490" : "#3B82F6";
           } else if (s.type === "subcontractors") {
@@ -1352,6 +1453,7 @@ export default function Dashboard() {
         overflow: "hidden",
         animation: "fadeIn 0.5s ease",
       }}>
+        {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
         {currentSlide.type === "planning" && (
           <PlanningSlide
             planning={currentSlide.week === "next" ? planningNext : planning}
