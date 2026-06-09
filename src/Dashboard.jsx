@@ -15,6 +15,8 @@ const SHEET_URLS = {
   soustraitants: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=1074854777&single=true&output=csv",
   // À remplacer par la vraie URL une fois l'onglet Devis créé et publié
   devis: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=49286593&single=true&output=csv",
+  // Onglet ONESITE — remplacer ONESITE_GID par le vrai gid de l'onglet
+  onesite: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=ONESITE_GID&single=true&output=csv",
 };
 
 // Étapes pour la slide Devis (différentes des affaires, plus orientées client)
@@ -225,6 +227,7 @@ const FALLBACK_PLANNING = [
 const FALLBACK_AFFAIRS = { voodoo: [], laposte: [], logistique: [], louvre: [], iad: [], communes: [] };
 const FALLBACK_SUBCONTRACTORS = [];
 const FALLBACK_QUOTES = [];
+const FALLBACK_ONESITE = { pat: [], qhs: [] };
 
 // SVG icons for golden rules (no emoji dependency)
 const RuleIcon1 = () => (
@@ -287,6 +290,7 @@ const SLIDES = [
   { id: "subcontractorsCurrent", type: "subcontractors", week: "current" },
   { id: "subcontractorsNext", type: "subcontractors", week: "next" },
   { id: "planningNext", type: "planning", week: "next" },
+  { id: "onesite", type: "onesite" },
 ];
 
 // ─── UTILITAIRES ────────────────────────────────────────────────────────────
@@ -1075,6 +1079,184 @@ function SubcontractorsSlide({ subcontractors, week = "next" }) {
   );
 }
 
+// ─── SLIDE ONESITE ───────────────────────────────────────────────────────────
+
+const ONESITE_ACCENT = "#0EA5E9";
+const ONESITE_TOTAL = 12; // objectif annuel
+
+function PieChart({ done, total, color, label, size = 160 }) {
+  const radius = size / 2 - 14;
+  const cx = size / 2;
+  const cy = size / 2;
+  const pct = Math.min(done / total, 1);
+  const angle = pct * 2 * Math.PI;
+  // Arc SVG
+  const x1 = cx + radius * Math.sin(0);
+  const y1 = cy - radius * Math.cos(0);
+  const x2 = cx + radius * Math.sin(angle);
+  const y2 = cy - radius * Math.cos(angle);
+  const largeArc = pct > 0.5 ? 1 : 0;
+  const remaining = total - done;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        {/* Fond gris (non fait) */}
+        <circle cx={cx} cy={cy} r={radius} fill="none" stroke="#FEE2E2" strokeWidth={24} />
+        {/* Arc vert (fait) */}
+        {done > 0 && done < total && (
+          <path
+            d={`M ${cx} ${cy - radius} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`}
+            fill="none"
+            stroke={color}
+            strokeWidth={24}
+            strokeLinecap="round"
+          />
+        )}
+        {done >= total && (
+          <circle cx={cx} cy={cy} r={radius} fill="none" stroke={color} strokeWidth={24} />
+        )}
+        {/* Texte centre */}
+        <text x={cx} y={cy - 10} textAnchor="middle" fontSize="32" fontWeight="800" fill="#111827">{done}</text>
+        <text x={cx} y={cy + 18} textAnchor="middle" fontSize="13" fontWeight="600" fill="#6B7280">/ {total}</text>
+      </svg>
+      {/* Légende */}
+      <div style={{ display: "flex", gap: 16, fontSize: 12, fontWeight: 700 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: color }} />
+          <span style={{ color: "#374151" }}>{done} réalisé{done > 1 ? "s" : ""}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: "#FCA5A5" }} />
+          <span style={{ color: "#6B7280" }}>{remaining} restant{remaining > 1 ? "s" : ""}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OneSiteSlide({ onesite }) {
+  const patDone = onesite.pat.length;
+  const qhsDone = onesite.qhs.length;
+
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "32px 44px" }}>
+      {/* Titre */}
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 28, flexShrink: 0 }}>
+        <div style={{
+          backgroundColor: ONESITE_ACCENT, borderRadius: 14, padding: "10px 20px",
+          fontSize: 13, fontWeight: 800, color: "white", letterSpacing: "0.16em",
+        }}>ONESITE</div>
+        <div>
+          <div style={{ fontSize: 42, fontWeight: 800, color: "#111827", letterSpacing: "-1px", lineHeight: 1 }}>
+            Suivi Sécurité Annuel
+          </div>
+          <div style={{ fontSize: 14, color: "#6B7280", marginTop: 6, fontWeight: 500 }}>
+            Objectif : {ONESITE_TOTAL} PAT · {ONESITE_TOTAL} quarts d'heure sécurité
+          </div>
+        </div>
+      </div>
+
+      {/* Contenu : 2 colonnes */}
+      <div style={{ flex: 1, display: "flex", gap: 28, overflow: "hidden" }}>
+
+        {/* Colonne PAT */}
+        <div style={{
+          flex: 1, backgroundColor: "white", borderRadius: 18,
+          border: "1px solid #E5E7EB", padding: "24px 28px",
+          display: "flex", flexDirection: "column", gap: 20,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            <div style={{ width: 6, height: 40, borderRadius: 3, backgroundColor: "#10B981" }} />
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#111827" }}>Presque Accidents (PAT)</div>
+              <div style={{ fontSize: 13, color: "#6B7280", marginTop: 2 }}>{patDone} / {ONESITE_TOTAL} réalisés</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "center", flexShrink: 0 }}>
+            <PieChart done={patDone} total={ONESITE_TOTAL} color="#10B981" size={180} />
+          </div>
+          {/* Liste des PAT */}
+          <div style={{ flex: 1, overflowY: "hidden" }}>
+            {onesite.pat.length === 0 ? (
+              <div style={{ textAlign: "center", color: "#9CA3AF", fontSize: 13, paddingTop: 12 }}>Aucune PAT enregistrée</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {onesite.pat.map((item, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    backgroundColor: "#F0FDF4", borderRadius: 10,
+                    padding: "10px 14px", border: "1px solid #BBF7D0",
+                  }}>
+                    <div style={{
+                      minWidth: 22, height: 22, borderRadius: "50%",
+                      backgroundColor: "#10B981", color: "white",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 11, fontWeight: 800, flexShrink: 0,
+                    }}>{i + 1}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>{item.titre}</div>
+                      {item.date && <div style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>{item.date}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Colonne QHS */}
+        <div style={{
+          flex: 1, backgroundColor: "white", borderRadius: 18,
+          border: "1px solid #E5E7EB", padding: "24px 28px",
+          display: "flex", flexDirection: "column", gap: 20,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            <div style={{ width: 6, height: 40, borderRadius: 3, backgroundColor: ONESITE_ACCENT }} />
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#111827" }}>Quarts d'heure Sécurité</div>
+              <div style={{ fontSize: 13, color: "#6B7280", marginTop: 2 }}>{qhsDone} / {ONESITE_TOTAL} réalisés</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "center", flexShrink: 0 }}>
+            <PieChart done={qhsDone} total={ONESITE_TOTAL} color={ONESITE_ACCENT} size={180} />
+          </div>
+          {/* Liste QHS */}
+          <div style={{ flex: 1, overflowY: "hidden" }}>
+            {onesite.qhs.length === 0 ? (
+              <div style={{ textAlign: "center", color: "#9CA3AF", fontSize: 13, paddingTop: 12 }}>Aucun QHS enregistré</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {onesite.qhs.map((item, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    backgroundColor: "#F0F9FF", borderRadius: 10,
+                    padding: "10px 14px", border: "1px solid #BAE6FD",
+                  }}>
+                    <div style={{
+                      minWidth: 22, height: 22, borderRadius: "50%",
+                      backgroundColor: ONESITE_ACCENT, color: "white",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 11, fontWeight: 800, flexShrink: 0,
+                    }}>{i + 1}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>{item.titre}</div>
+                      {item.date && <div style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>{item.date}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 // ─── SLIDE RÈGLES D'OR ───────────────────────────────────────────────────────
 
 function GoldenRulesSlide() {
@@ -1154,6 +1336,7 @@ export default function Dashboard() {
   const [subcontractorsCurrent, setSubcontractorsCurrent] = useState(FALLBACK_SUBCONTRACTORS);
   const [subcontractorsNext, setSubcontractorsNext] = useState(FALLBACK_SUBCONTRACTORS);
   const [quotes, setQuotes] = useState(FALLBACK_QUOTES);
+  const [onesite, setOnesite] = useState(FALLBACK_ONESITE);
   const [dataStatus, setDataStatus] = useState("loading"); // "loading" | "ok" | "error"
   const [lastUpdate, setLastUpdate] = useState(null);
 
@@ -1163,10 +1346,11 @@ export default function Dashboard() {
 
     async function fetchAllData() {
       try {
-        const [planningRes, affairsRes, subsRes] = await Promise.all([
+        const [planningRes, affairsRes, subsRes, onesiteRes] = await Promise.all([
           fetch(SHEET_URLS.planning).then(r => r.text()),
           fetch(SHEET_URLS.affaires).then(r => r.text()),
           fetch(SHEET_URLS.soustraitants).then(r => r.text()),
+          fetch(SHEET_URLS.onesite).then(r => r.text()).catch(() => ""),
         ]);
 
         if (cancelled) return;
@@ -1274,6 +1458,20 @@ export default function Dashboard() {
         setAffairs(newAffairs);
         setSubcontractorsCurrent(newSubsCurrent);
         setSubcontractorsNext(newSubsNext);
+
+        // Parser ONESITE : type (PAT ou QHS), titre, date
+        const onesiteRows = onesiteRes ? parseCSV(onesiteRes) : [];
+        const newPat = [];
+        const newQhs = [];
+        onesiteRows.forEach(row => {
+          const type = (row.type || "").toLowerCase().trim();
+          const item = { titre: row.titre || row.title || "", date: row.date || "" };
+          if (!item.titre) return;
+          if (type === "pat") newPat.push(item);
+          else if (type === "qhs" || type === "1/4h" || type === "quart" || type === "quartier") newQhs.push(item);
+        });
+        setOnesite({ pat: newPat, qhs: newQhs });
+
         setDataStatus("ok");
         setLastUpdate(new Date());
       } catch (err) {
@@ -1323,6 +1521,8 @@ export default function Dashboard() {
   const isQuotes = currentSlide.type === "quotes";
   const headerAccent = currentSlide.type === "goldenRules"
     ? "#00A091"
+    : currentSlide.type === "onesite"
+    ? ONESITE_ACCENT
     : currentTenant
     ? currentTenant.accent
     : isSubcontractors ? SUBCONTRACTORS_ACCENT
@@ -1450,6 +1650,9 @@ export default function Dashboard() {
           if (s.type === "goldenRules") {
             label = "RÈGLES D'OR";
             accentColor = "#00A091";
+          } else if (s.type === "onesite") {
+            label = "ONESITE";
+            accentColor = ONESITE_ACCENT;
           } else if (s.type === "planning") {
             label = s.week === "next" ? "PLAN. PROCH." : "ÉQUIPE";
             accentColor = s.week === "next" ? "#0E7490" : "#3B82F6";
@@ -1480,6 +1683,7 @@ export default function Dashboard() {
         animation: "fadeIn 0.5s ease",
       }}>
         {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
+        {currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
         {currentSlide.type === "planning" && (
           <PlanningSlide
             planning={currentSlide.week === "next" ? planningNext : planning}
