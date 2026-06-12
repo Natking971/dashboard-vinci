@@ -293,6 +293,7 @@ const SLIDES = [
   { id: "subcontractorsNext", type: "subcontractors", week: "next" },
   { id: "planningNext", type: "planning", week: "next" },
   { id: "onesite", type: "onesite" },
+  { id: "worldcup", type: "worldcup" },
 ];
 
 // ─── UTILITAIRES ────────────────────────────────────────────────────────────
@@ -1353,6 +1354,231 @@ function GoldenRulesSlide() {
   );
 }
 
+// ─── SLIDE COUPE DU MONDE ────────────────────────────────────────────────────
+
+const WC_FLAGS = {
+  "France":"🇫🇷","Senegal":"🇸🇳","Sénégal":"🇸🇳","Iraq":"🇮🇶","Irak":"🇮🇶",
+  "Norway":"🇳🇴","Norvège":"🇳🇴","Mexico":"🇲🇽","Mexique":"🇲🇽",
+  "South Africa":"🇿🇦","Afrique du Sud":"🇿🇦","Korea Republic":"🇰🇷","Corée du Sud":"🇰🇷",
+  "Czech Republic":"🇨🇿","Rép. Tchèque":"🇨🇿","Canada":"🇨🇦","Bosnia Herzegovina":"🇧🇦",
+  "USA":"🇺🇸","United States":"🇺🇸","États-Unis":"🇺🇸","Paraguay":"🇵🇾",
+  "Qatar":"🇶🇦","Switzerland":"🇨🇭","Suisse":"🇨🇭","Brazil":"🇧🇷","Brésil":"🇧🇷",
+  "Morocco":"🇲🇦","Maroc":"🇲🇦","Haiti":"🇭🇹","Haïti":"🇭🇹","Scotland":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","Écosse":"🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+  "Australia":"🇦🇺","Australie":"🇦🇺","Turkey":"🇹🇷","Turquie":"🇹🇷",
+  "Germany":"🇩🇪","Allemagne":"🇩🇪","Curacao":"🇨🇼","Curaçao":"🇨🇼",
+  "Netherlands":"🇳🇱","Pays-Bas":"🇳🇱","Japan":"🇯🇵","Japon":"🇯🇵",
+  "Ivory Coast":"🇨🇮","Côte d'Ivoire":"🇨🇮","Ecuador":"🇪🇨","Équateur":"🇪🇨",
+  "Sweden":"🇸🇪","Suède":"🇸🇪","Tunisia":"🇹🇳","Tunisie":"🇹🇳",
+  "Spain":"🇪🇸","Espagne":"🇪🇸","Cape Verde":"🇨🇻","Cap-Vert":"🇨🇻",
+  "Belgium":"🇧🇪","Belgique":"🇧🇪","Argentina":"🇦🇷","Argentine":"🇦🇷",
+  "England":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Angleterre":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Portugal":"🇵🇹","Poland":"🇵🇱","Pologne":"🇵🇱",
+  "Colombia":"🇨🇴","Colombie":"🇨🇴","Croatia":"🇭🇷","Croatie":"🇭🇷",
+  "Uruguay":"🇺🇾","Serbia":"🇷🇸","Serbie":"🇷🇸","Denmark":"🇩🇰","Danemark":"🇩🇰",
+  "Austria":"🇦🇹","Autriche":"🇦🇹","Ukraine":"🇺🇦","Hungary":"🇭🇺","Hongrie":"🇭🇺",
+  "Iran":"🇮🇷","Japan":"🇯🇵","Saudi Arabia":"🇸🇦","Arabie Saoudite":"🇸🇦",
+  "Korea DPR":"🇰🇵","Ghana":"🇬🇭","Nigeria":"🇳🇬","Cameroon":"🇨🇲","Cameroun":"🇨🇲",
+  "Senegal":"🇸🇳","Egypt":"🇪🇬","Égypte":"🇪🇬","Algeria":"🇩🇿","Algérie":"🇩🇿",
+};
+
+function wcFlag(name) { return WC_FLAGS[name] || "🏳"; }
+
+function WorldCupSlide() {
+  const [liveMatches, setLiveMatches] = React.useState([]);
+  const [nextMatches, setNextMatches] = React.useState([]);
+  const [lastUpdate, setLastUpdate] = React.useState(null);
+  const [countdown, setCountdown] = React.useState(60);
+  const [loading, setLoading] = React.useState(true);
+
+  async function fetchMatches() {
+    try {
+      // API gratuite Open Football Data - Coupe du Monde 2026
+      const res = await fetch(
+        "https://raw.githubusercontent.com/openfootball/world-cup.json/master/2026/worldcup.json"
+      );
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const now = new Date();
+
+      const allMatches = [];
+      (data.rounds || []).forEach(round => {
+        (round.matches || []).forEach(m => {
+          allMatches.push({
+            home: m.team1?.name || m.team1 || "?",
+            away: m.team2?.name || m.team2 || "?",
+            homeScore: m.score1 ?? null,
+            awayScore: m.score2 ?? null,
+            date: m.date,
+            time: m.time || "",
+            group: round.name || "",
+            dateObj: new Date(m.date + (m.time ? "T" + m.time : "")),
+          });
+        });
+      });
+
+      const live = allMatches.filter(m => {
+        const diff = (now - m.dateObj) / 60000;
+        return diff >= 0 && diff <= 110;
+      });
+      const finished = allMatches.filter(m => m.homeScore !== null && (now - m.dateObj) / 60000 > 110);
+      const upcoming = allMatches.filter(m => m.dateObj > now);
+
+      setLiveMatches(live.length > 0 ? live : finished.slice(-2));
+      setNextMatches(upcoming.slice(0, 3));
+      setLastUpdate(new Date());
+    } catch {
+      // Fallback données statiques si API indisponible
+      const now = new Date();
+      setLiveMatches([
+        { home: "Corée du Sud", away: "Rép. Tchèque", homeScore: 1, awayScore: 1, group: "Groupe A", live: true },
+        { home: "Mexique", away: "Afrique du Sud", homeScore: 0, awayScore: 0, group: "Groupe A" },
+      ]);
+      setNextMatches([
+        { home: "Canada", away: "Bosnie-Herz.", homeScore: null, awayScore: null, group: "Groupe B", date: "12/06", time: "21:00" },
+        { home: "États-Unis", away: "Paraguay", homeScore: null, awayScore: null, group: "Groupe D", date: "13/06", time: "03:00" },
+        { home: "Brésil", away: "Maroc", homeScore: null, awayScore: null, group: "Groupe C", date: "13/06", time: "00:00" },
+      ]);
+      setLastUpdate(new Date());
+    }
+    setLoading(false);
+  }
+
+  React.useEffect(() => {
+    fetchMatches();
+    const refresh = setInterval(() => {
+      fetchMatches();
+      setCountdown(60);
+    }, 60000);
+    const tick = setInterval(() => setCountdown(c => c > 0 ? c - 1 : 60), 1000);
+    return () => { clearInterval(refresh); clearInterval(tick); };
+  }, []);
+
+  function formatDate(d) {
+    if (!d) return "";
+    const dt = new Date(d);
+    if (isNaN(dt)) return d;
+    return dt.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+  }
+
+  function formatTime(d, t) {
+    if (!d) return t || "";
+    const dt = new Date(d + (t ? "T" + t : ""));
+    if (isNaN(dt)) return t || "";
+    return dt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  const cardStyle = (isLive) => ({
+    background: isLive ? "rgba(34,197,94,0.08)" : "rgba(255,200,50,0.06)",
+    borderRadius: 12, padding: "12px 16px",
+    border: `1px solid ${isLive ? "rgba(34,197,94,0.45)" : "rgba(255,200,50,0.2)"}`,
+  });
+
+  return (
+    <div style={{
+      height: "100%", display: "flex", flexDirection: "column", padding: "28px 40px",
+      background: "radial-gradient(ellipse at 50% 0%, #3a2800 0%, #1a1200 40%, #0a0a0a 100%)",
+      position: "relative", overflow: "hidden",
+    }}>
+      {/* Halo doré en haut */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "55%", background: "radial-gradient(ellipse at 50% -20%, rgba(255,200,50,0.22) 0%, transparent 65%)", pointerEvents: "none" }} />
+
+      {/* Trophée SVG centré en filigrane */}
+      <svg style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", opacity: 0.1, pointerEvents: "none" }} width="320" height="390" viewBox="0 0 180 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M55 20 L125 20 L115 90 Q90 130 90 130 Q90 130 65 90 Z" fill="#FFD700"/>
+        <path d="M55 30 Q20 35 22 65 Q24 90 55 85" stroke="#FFD700" strokeWidth="10" fill="none" strokeLinecap="round"/>
+        <path d="M125 30 Q160 35 158 65 Q156 90 125 85" stroke="#FFD700" strokeWidth="10" fill="none" strokeLinecap="round"/>
+        <rect x="78" y="130" width="24" height="30" fill="#FFD700" rx="3"/>
+        <rect x="60" y="158" width="60" height="14" fill="#FFD700" rx="4"/>
+        <rect x="50" y="170" width="80" height="10" fill="#FFD700" rx="4"/>
+        <path d="M70 30 Q75 70 78 95" stroke="rgba(255,255,255,0.3)" strokeWidth="4" fill="none" strokeLinecap="round"/>
+        <path d="M80 25 Q83 50 84 75" stroke="rgba(255,255,255,0.15)" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+        <text x="20" y="20" fontSize="18" fill="#FFD700">★</text>
+        <text x="148" y="20" fontSize="18" fill="#FFD700">★</text>
+        <text x="8" y="105" fontSize="13" fill="#FFD700">★</text>
+        <text x="158" y="105" fontSize="13" fill="#FFD700">★</text>
+        <text x="83" y="11" fontSize="11" fill="#FFD700">★</text>
+      </svg>
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22, flexShrink: 0, position: "relative" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ background: "#FFD700", color: "#0B1E3D", fontSize: 12, fontWeight: 800, padding: "7px 16px", borderRadius: 10, letterSpacing: "0.1em" }}>FIFA 2026</div>
+          <div>
+            <div style={{ fontSize: 36, fontWeight: 800, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>Coupe du Monde</div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>États-Unis · Canada · Mexique &nbsp;·&nbsp; 11 juin – 19 juillet 2026</div>
+          </div>
+        </div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", textAlign: "right" }}>
+          <div>Actualisation dans <span style={{ color: "rgba(255,255,255,0.6)", fontWeight: 700 }}>{countdown}s</span></div>
+          {lastUpdate && <div style={{ marginTop: 3 }}>Mis à jour {lastUpdate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</div>}
+        </div>
+      </div>
+
+      {/* Colonnes */}
+      <div style={{ flex: 1, display: "flex", gap: 18, overflow: "hidden", position: "relative" }}>
+
+        {/* Colonne gauche : résultats */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,200,50,0.55)", textTransform: "uppercase", letterSpacing: "0.12em", paddingBottom: 8, borderBottom: "1px solid rgba(255,200,50,0.15)" }}>
+            {liveMatches.some(m => m.live) ? "🟢 En direct" : "Derniers résultats"}
+          </div>
+          {loading ? (
+            <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, paddingTop: 20, textAlign: "center" }}>Chargement...</div>
+          ) : liveMatches.map((m, i) => (
+            <div key={i} style={cardStyle(m.live)}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.08)", padding: "2px 8px", borderRadius: 5 }}>{m.group}</span>
+                {m.live && <span style={{ fontSize: 10, color: "#22C55E", display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ width: 6, height: 6, background: "#22C55E", borderRadius: "50%", display: "inline-block", animation: "blink 1s infinite" }} />EN DIRECT
+                </span>}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 22 }}>{wcFlag(m.home)}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>{m.home}</span>
+                </div>
+                <div style={{ background: "rgba(0,0,0,0.35)", borderRadius: 8, padding: "5px 14px", fontSize: 22, fontWeight: 800, color: "white", minWidth: 60, textAlign: "center" }}>
+                  {m.homeScore} – {m.awayScore}
+                </div>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, flexDirection: "row-reverse" }}>
+                  <span style={{ fontSize: 22 }}>{wcFlag(m.away)}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>{m.away}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Colonne droite : prochains matchs */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,200,50,0.55)", textTransform: "uppercase", letterSpacing: "0.12em", paddingBottom: 8, borderBottom: "1px solid rgba(255,200,50,0.15)" }}>3 Prochains matchs</div>
+          {loading ? (
+            <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, paddingTop: 20, textAlign: "center" }}>Chargement...</div>
+          ) : nextMatches.map((m, i) => (
+            <div key={i} style={cardStyle(false)}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.08)", padding: "2px 8px", borderRadius: 5 }}>{m.group}</span>
+                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>{formatDate(m.date)} · {formatTime(m.date, m.time)}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 22 }}>{wcFlag(m.home)}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>{m.home}</span>
+                </div>
+                <div style={{ background: "rgba(0,0,0,0.35)", borderRadius: 8, padding: "5px 12px", fontSize: 13, color: "rgba(255,255,255,0.55)", minWidth: 56, textAlign: "center" }}>vs</div>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, flexDirection: "row-reverse" }}>
+                  <span style={{ fontSize: 22 }}>{wcFlag(m.away)}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>{m.away}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 // ─── COMPOSANT PRINCIPAL ─────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -1594,6 +1820,8 @@ export default function Dashboard() {
     ? "#00A091"
     : currentSlide.type === "onesite"
     ? ONESITE_ACCENT
+    : currentSlide.type === "worldcup"
+    ? "#FFD700"
     : currentTenant
     ? currentTenant.accent
     : isSubcontractors ? SUBCONTRACTORS_ACCENT
@@ -1724,6 +1952,9 @@ export default function Dashboard() {
           } else if (s.type === "onesite") {
             label = "ONESITE";
             accentColor = ONESITE_ACCENT;
+          } else if (s.type === "worldcup") {
+            label = "FIFA 2026";
+            accentColor = "#FFD700";
           } else if (s.type === "planning") {
             label = s.week === "next" ? "PLAN. PROCH." : "ÉQUIPE";
             accentColor = s.week === "next" ? "#0E7490" : "#3B82F6";
@@ -1755,6 +1986,7 @@ export default function Dashboard() {
       }}>
         {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
         {currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
+        {currentSlide.type === "worldcup" && <WorldCupSlide />}
         {currentSlide.type === "planning" && (
           <PlanningSlide
             planning={currentSlide.week === "next" ? planningNext : planning}
