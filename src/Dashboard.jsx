@@ -1409,37 +1409,33 @@ function WorldCupSlide() {
 
   async function fetchMatches() {
     try {
-      // API FIFA officielle - pas de CORS, pas de clé nécessaire
-      const res = await fetch(
-        "https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&idSeason=278514&count=100&language=fr-FR",
-        { headers: { "Content-Type": "application/json" } }
-      );
+      // Proxy Vercel local — pas de CORS
+      const res = await fetch("/api/football");
       if (!res.ok) throw new Error();
       const data = await res.json();
       const now = new Date();
-      const matches = data.Results || [];
+      const matches = data.matches || [];
+
+      const live = matches.filter(m => m.status === "IN_PLAY" || m.status === "PAUSED");
+      const finished = matches.filter(m => m.status === "FINISHED");
+      const upcoming = matches.filter(m => m.status === "TIMED" || m.status === "SCHEDULED");
 
       const toCard = (m, isLive) => ({
-        home: m.Home?.TeamName?.[0]?.Description || m.Home?.IdTeam || "?",
-        away: m.Away?.TeamName?.[0]?.Description || m.Away?.IdTeam || "?",
-        homeScore: m.Home?.Score ?? null,
-        awayScore: m.Away?.Score ?? null,
-        group: m.GroupName?.[0]?.Description || m.StageName?.[0]?.Description || "",
-        date: m.Date,
+        home: m.homeTeam?.shortName || m.homeTeam?.name || "?",
+        away: m.awayTeam?.shortName || m.awayTeam?.name || "?",
+        homeScore: m.score?.fullTime?.home ?? null,
+        awayScore: m.score?.fullTime?.away ?? null,
+        group: m.group ? m.group.replace("GROUP_", "Groupe ") : (m.stage || ""),
+        date: m.utcDate,
         live: isLive,
       });
-
-      const live = matches.filter(m => m.MatchStatus === 3);
-      const finished = matches.filter(m => m.MatchStatus === 0);
-      const upcoming = matches.filter(m => m.MatchStatus === 1);
 
       const displayed = live.length > 0 ? live : finished.slice(-3);
       setLiveMatches(displayed.map(m => toCard(m, live.includes(m))));
       setNextMatches(upcoming.slice(0, 3).map(m => toCard(m, false)));
       setLastUpdate(new Date());
     } catch(e) {
-      console.error("FIFA API error:", e);
-      // Fallback avec vrais scores connus
+      console.error("Proxy error:", e);
       setLiveMatches([
         { home: "Mexique", away: "Afrique du Sud", homeScore: 0, awayScore: 0, group: "Groupe A" },
         { home: "Corée du Sud", away: "Tchéquie", homeScore: 1, awayScore: 1, group: "Groupe A" },
