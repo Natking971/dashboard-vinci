@@ -1359,30 +1359,32 @@ function GoldenRulesSlide() {
 // ─── SLIDE COUPE DU MONDE ────────────────────────────────────────────────────
 
 const WC_FLAGS = {
-  "France":"fr","Senegal":"sn","Sénégal":"sn","Iraq":"iq","Irak":"iq",
-  "Norway":"no","Norvège":"no","Mexico":"mx","Mexique":"mx",
-  "South Africa":"za","Afrique du Sud":"za","Korea Republic":"kr","Corée du Sud":"kr",
-  "Czech Republic":"cz","Czechia":"cz","Tchéquie":"cz","Rép. Tchèque":"cz",
-  "Canada":"ca","Bosnia Herzegovina":"ba","Bosnie-Herzégovine":"ba","Bosnie-Herze.":"ba",
-  "USA":"us","United States":"us","États-Unis":"us","Paraguay":"py",
-  "Qatar":"qa","Switzerland":"ch","Suisse":"ch","Brazil":"br","Brésil":"br",
-  "Morocco":"ma","Maroc":"ma","Haiti":"ht","Haïti":"ht","Scotland":"gb-sct","Écosse":"gb-sct",
-  "Australia":"au","Australie":"au","Turkey":"tr","Turquie":"tr","Türkiye":"tr",
-  "Germany":"de","Allemagne":"de","Curacao":"cw","Curaçao":"cw",
-  "Netherlands":"nl","Pays-Bas":"nl","Japan":"jp","Japon":"jp",
-  "Ivory Coast":"ci","Côte d'Ivoire":"ci","Ecuador":"ec","Équateur":"ec",
-  "Sweden":"se","Suède":"se","Tunisia":"tn","Tunisie":"tn",
-  "Spain":"es","Espagne":"es","Cape Verde":"cv","Cap-Vert":"cv",
-  "Belgium":"be","Belgique":"be","Argentina":"ar","Argentine":"ar",
-  "England":"gb-eng","Angleterre":"gb-eng","Portugal":"pt","Poland":"pl","Pologne":"pl",
-  "Colombia":"co","Colombie":"co","Croatia":"hr","Croatie":"hr",
-  "Uruguay":"uy","Serbia":"rs","Serbie":"rs","Denmark":"dk","Danemark":"dk",
-  "Austria":"at","Autriche":"at","Ukraine":"ua","Hungary":"hu","Hongrie":"hu",
-  "Iran":"ir","Saudi Arabia":"sa","Arabie Saoudite":"sa","New Zealand":"nz","Nouv.-Zélande":"nz",
-  "Korea DPR":"kp","Ghana":"gh","Nigeria":"ng","Cameroon":"cm","Cameroun":"cm",
-  "Egypt":"eg","Égypte":"eg","Algeria":"dz","Algérie":"dz","Senegal":"sn",
-  "Jordan":"jo","Jordanie":"jo","Uzbekistan":"uz","Ouzbékistan":"uz",
-  "Congo DR":"cd","Rép. Dém. Congo":"cd","Panama":"pa","Scotland":"gb-sct",
+  // Noms anglais de l'API football-data.org
+  "Mexico":"mx","South Africa":"za","Korea Republic":"kr","Czechia":"cz",
+  "Canada":"ca","Bosnia-Herzegovina":"ba","Bosnia-H.":"ba",
+  "USA":"us","United States":"us","Paraguay":"py",
+  "Qatar":"qa","Switzerland":"ch","Brazil":"br","Morocco":"ma",
+  "Haiti":"ht","Scotland":"gb-sct","Australia":"au","Turkey":"tr",
+  "Germany":"de","Curaçao":"cw","Netherlands":"nl","Japan":"jp",
+  "Ivory Coast":"ci","Ecuador":"ec","Sweden":"se","Tunisia":"tn",
+  "Spain":"es","Cape Verde":"cv","Cape Verde Islands":"cv",
+  "Belgium":"be","Egypt":"eg","Saudi Arabia":"sa","Uruguay":"uy",
+  "Iran":"ir","New Zealand":"nz","France":"fr","Senegal":"sn",
+  "Iraq":"iq","Norway":"no","Argentina":"ar","Algeria":"dz",
+  "Austria":"at","Jordan":"jo","Portugal":"pt","Congo DR":"cd",
+  "England":"gb-eng","Croatia":"hr","Ghana":"gh","Panama":"pa",
+  "Uzbekistan":"uz","Colombia":"co","South Korea":"kr",
+  // Noms français (fallback)
+  "Mexique":"mx","Afrique du Sud":"za","Corée du Sud":"kr",
+  "Tchéquie":"cz","Rép. Tchèque":"cz","Bosnie-Herzégovine":"ba",
+  "États-Unis":"us","Suisse":"ch","Brésil":"br","Maroc":"ma",
+  "Haïti":"ht","Écosse":"gb-sct","Australie":"au","Turquie":"tr",
+  "Allemagne":"de","Pays-Bas":"nl","Japon":"jp",
+  "Côte d'Ivoire":"ci","Équateur":"ec","Suède":"se","Tunisie":"tn",
+  "Espagne":"es","Cap-Vert":"cv","Belgique":"be","Égypte":"eg",
+  "Arabie Saoudite":"sa","Norvège":"no","Argentine":"ar","Algérie":"dz",
+  "Autriche":"at","Jordanie":"jo","Angleterre":"gb-eng","Croatie":"hr",
+  "Sénégal":"sn","Irak":"iq","Colombie":"co","Ouzbékistan":"uz",
 };
 
 function WCFlag({ name, size = 24 }) {
@@ -1418,7 +1420,10 @@ function WorldCupSlide() {
 
       const live = matches.filter(m => m.status === "IN_PLAY" || m.status === "PAUSED");
       const finished = matches.filter(m => m.status === "FINISHED");
-      const upcoming = matches.filter(m => m.status === "TIMED" || m.status === "SCHEDULED");
+      const upcoming = matches.filter(m => 
+        (m.status === "TIMED" || m.status === "SCHEDULED") && 
+        m.homeTeam?.name && m.awayTeam?.name
+      );
 
       const toCard = (m, isLive) => ({
         home: m.homeTeam?.shortName || m.homeTeam?.name || "?",
