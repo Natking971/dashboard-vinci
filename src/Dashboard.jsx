@@ -1359,30 +1359,44 @@ function GoldenRulesSlide() {
 // ─── SLIDE COUPE DU MONDE ────────────────────────────────────────────────────
 
 const WC_FLAGS = {
-  "France":"🇫🇷","Senegal":"🇸🇳","Sénégal":"🇸🇳","Iraq":"🇮🇶","Irak":"🇮🇶",
-  "Norway":"🇳🇴","Norvège":"🇳🇴","Mexico":"🇲🇽","Mexique":"🇲🇽",
-  "South Africa":"🇿🇦","Afrique du Sud":"🇿🇦","Korea Republic":"🇰🇷","Corée du Sud":"🇰🇷",
-  "Czech Republic":"🇨🇿","Rép. Tchèque":"🇨🇿","Canada":"🇨🇦","Bosnia Herzegovina":"🇧🇦",
-  "USA":"🇺🇸","United States":"🇺🇸","États-Unis":"🇺🇸","Paraguay":"🇵🇾",
-  "Qatar":"🇶🇦","Switzerland":"🇨🇭","Suisse":"🇨🇭","Brazil":"🇧🇷","Brésil":"🇧🇷",
-  "Morocco":"🇲🇦","Maroc":"🇲🇦","Haiti":"🇭🇹","Haïti":"🇭🇹","Scotland":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","Écosse":"🏴󠁧󠁢󠁳󠁣󠁴󠁿",
-  "Australia":"🇦🇺","Australie":"🇦🇺","Turkey":"🇹🇷","Turquie":"🇹🇷",
-  "Germany":"🇩🇪","Allemagne":"🇩🇪","Curacao":"🇨🇼","Curaçao":"🇨🇼",
-  "Netherlands":"🇳🇱","Pays-Bas":"🇳🇱","Japan":"🇯🇵","Japon":"🇯🇵",
-  "Ivory Coast":"🇨🇮","Côte d'Ivoire":"🇨🇮","Ecuador":"🇪🇨","Équateur":"🇪🇨",
-  "Sweden":"🇸🇪","Suède":"🇸🇪","Tunisia":"🇹🇳","Tunisie":"🇹🇳",
-  "Spain":"🇪🇸","Espagne":"🇪🇸","Cape Verde":"🇨🇻","Cap-Vert":"🇨🇻",
-  "Belgium":"🇧🇪","Belgique":"🇧🇪","Argentina":"🇦🇷","Argentine":"🇦🇷",
-  "England":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Angleterre":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Portugal":"🇵🇹","Poland":"🇵🇱","Pologne":"🇵🇱",
-  "Colombia":"🇨🇴","Colombie":"🇨🇴","Croatia":"🇭🇷","Croatie":"🇭🇷",
-  "Uruguay":"🇺🇾","Serbia":"🇷🇸","Serbie":"🇷🇸","Denmark":"🇩🇰","Danemark":"🇩🇰",
-  "Austria":"🇦🇹","Autriche":"🇦🇹","Ukraine":"🇺🇦","Hungary":"🇭🇺","Hongrie":"🇭🇺",
-  "Iran":"🇮🇷","Japan":"🇯🇵","Saudi Arabia":"🇸🇦","Arabie Saoudite":"🇸🇦",
-  "Korea DPR":"🇰🇵","Ghana":"🇬🇭","Nigeria":"🇳🇬","Cameroon":"🇨🇲","Cameroun":"🇨🇲",
-  "Senegal":"🇸🇳","Egypt":"🇪🇬","Égypte":"🇪🇬","Algeria":"🇩🇿","Algérie":"🇩🇿",
+  "France":"fr","Senegal":"sn","Sénégal":"sn","Iraq":"iq","Irak":"iq",
+  "Norway":"no","Norvège":"no","Mexico":"mx","Mexique":"mx",
+  "South Africa":"za","Afrique du Sud":"za","Korea Republic":"kr","Corée du Sud":"kr",
+  "Czech Republic":"cz","Czechia":"cz","Tchéquie":"cz","Rép. Tchèque":"cz",
+  "Canada":"ca","Bosnia Herzegovina":"ba","Bosnie-Herzégovine":"ba","Bosnie-Herze.":"ba",
+  "USA":"us","United States":"us","États-Unis":"us","Paraguay":"py",
+  "Qatar":"qa","Switzerland":"ch","Suisse":"ch","Brazil":"br","Brésil":"br",
+  "Morocco":"ma","Maroc":"ma","Haiti":"ht","Haïti":"ht","Scotland":"gb-sct","Écosse":"gb-sct",
+  "Australia":"au","Australie":"au","Turkey":"tr","Turquie":"tr","Türkiye":"tr",
+  "Germany":"de","Allemagne":"de","Curacao":"cw","Curaçao":"cw",
+  "Netherlands":"nl","Pays-Bas":"nl","Japan":"jp","Japon":"jp",
+  "Ivory Coast":"ci","Côte d'Ivoire":"ci","Ecuador":"ec","Équateur":"ec",
+  "Sweden":"se","Suède":"se","Tunisia":"tn","Tunisie":"tn",
+  "Spain":"es","Espagne":"es","Cape Verde":"cv","Cap-Vert":"cv",
+  "Belgium":"be","Belgique":"be","Argentina":"ar","Argentine":"ar",
+  "England":"gb-eng","Angleterre":"gb-eng","Portugal":"pt","Poland":"pl","Pologne":"pl",
+  "Colombia":"co","Colombie":"co","Croatia":"hr","Croatie":"hr",
+  "Uruguay":"uy","Serbia":"rs","Serbie":"rs","Denmark":"dk","Danemark":"dk",
+  "Austria":"at","Autriche":"at","Ukraine":"ua","Hungary":"hu","Hongrie":"hu",
+  "Iran":"ir","Saudi Arabia":"sa","Arabie Saoudite":"sa","New Zealand":"nz","Nouv.-Zélande":"nz",
+  "Korea DPR":"kp","Ghana":"gh","Nigeria":"ng","Cameroon":"cm","Cameroun":"cm",
+  "Egypt":"eg","Égypte":"eg","Algeria":"dz","Algérie":"dz","Senegal":"sn",
+  "Jordan":"jo","Jordanie":"jo","Uzbekistan":"uz","Ouzbékistan":"uz",
+  "Congo DR":"cd","Rép. Dém. Congo":"cd","Panama":"pa","Scotland":"gb-sct",
 };
 
-function wcFlag(name) { return WC_FLAGS[name] || "🏳"; }
+function WCFlag({ name, size = 24 }) {
+  const code = WC_FLAGS[name];
+  if (!code) return <span style={{ fontSize: size * 0.7, color: "rgba(255,255,255,0.4)" }}>?</span>;
+  return (
+    <img
+      src={`https://flagcdn.com/w40/${code}.png`}
+      alt={name}
+      style={{ width: size, height: size * 0.67, objectFit: "cover", borderRadius: 3, flexShrink: 0 }}
+      onError={e => { e.target.style.display = "none"; }}
+    />
+  );
+}
 
 function WorldCupSlide() {
   const [liveMatches, setLiveMatches] = useState([]);
@@ -1529,14 +1543,14 @@ function WorldCupSlide() {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 22 }}>{wcFlag(m.home)}</span>
+                  <WCFlag name={m.home} size={28} />
                   <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>{m.home}</span>
                 </div>
                 <div style={{ background: "rgba(0,0,0,0.35)", borderRadius: 8, padding: "5px 14px", fontSize: 22, fontWeight: 800, color: "white", minWidth: 60, textAlign: "center" }}>
                   {m.homeScore} – {m.awayScore}
                 </div>
                 <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, flexDirection: "row-reverse" }}>
-                  <span style={{ fontSize: 22 }}>{wcFlag(m.away)}</span>
+                  <WCFlag name={m.away} size={28} />
                   <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>{m.away}</span>
                 </div>
               </div>
@@ -1557,12 +1571,12 @@ function WorldCupSlide() {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 22 }}>{wcFlag(m.home)}</span>
+                  <WCFlag name={m.home} size={28} />
                   <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>{m.home}</span>
                 </div>
                 <div style={{ background: "rgba(0,0,0,0.35)", borderRadius: 8, padding: "5px 12px", fontSize: 13, color: "rgba(255,255,255,0.55)", minWidth: 56, textAlign: "center" }}>vs</div>
                 <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, flexDirection: "row-reverse" }}>
-                  <span style={{ fontSize: 22 }}>{wcFlag(m.away)}</span>
+                  <WCFlag name={m.away} size={28} />
                   <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>{m.away}</span>
                 </div>
               </div>
