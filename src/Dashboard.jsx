@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 
 // ─── CONFIGURATION ──────────────────────────────────────────────────────────
@@ -1385,15 +1385,14 @@ const WC_FLAGS = {
 function wcFlag(name) { return WC_FLAGS[name] || "🏳"; }
 
 function WorldCupSlide() {
-  const [liveMatches, setLiveMatches] = React.useState([]);
-  const [nextMatches, setNextMatches] = React.useState([]);
-  const [lastUpdate, setLastUpdate] = React.useState(null);
-  const [countdown, setCountdown] = React.useState(60);
-  const [loading, setLoading] = React.useState(true);
+  const [liveMatches, setLiveMatches] = useState([]);
+  const [nextMatches, setNextMatches] = useState([]);
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const [countdown, setCountdown] = useState(60);
+  const [loading, setLoading] = useState(true);
 
   async function fetchMatches() {
     try {
-      // API gratuite Open Football Data - Coupe du Monde 2026
       const res = await fetch(
         "https://raw.githubusercontent.com/openfootball/world-cup.json/master/2026/worldcup.json"
       );
@@ -1428,8 +1427,6 @@ function WorldCupSlide() {
       setNextMatches(upcoming.slice(0, 3));
       setLastUpdate(new Date());
     } catch {
-      // Fallback données statiques si API indisponible
-      const now = new Date();
       setLiveMatches([
         { home: "Corée du Sud", away: "Rép. Tchèque", homeScore: 1, awayScore: 1, group: "Groupe A", live: true },
         { home: "Mexique", away: "Afrique du Sud", homeScore: 0, awayScore: 0, group: "Groupe A" },
@@ -1444,12 +1441,9 @@ function WorldCupSlide() {
     setLoading(false);
   }
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchMatches();
-    const refresh = setInterval(() => {
-      fetchMatches();
-      setCountdown(60);
-    }, 60000);
+    const refresh = setInterval(() => { fetchMatches(); setCountdown(60); }, 60000);
     const tick = setInterval(() => setCountdown(c => c > 0 ? c - 1 : 60), 1000);
     return () => { clearInterval(refresh); clearInterval(tick); };
   }, []);
