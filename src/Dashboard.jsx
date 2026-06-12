@@ -1391,56 +1391,49 @@ function WorldCupSlide() {
   const [countdown, setCountdown] = useState(60);
   const [loading, setLoading] = useState(true);
 
+  const FD_TOKEN = "9d4e468e9860424286f2ba43b2761781";
+
   async function fetchMatches() {
     try {
+      const headers = { "X-Auth-Token": FD_TOKEN };
       const res = await fetch(
-        "https://raw.githubusercontent.com/openfootball/world-cup.json/master/2026/worldcup.json"
+        "https://api.football-data.org/v4/competitions/WC/matches?season=2026",
+        { headers }
       );
       if (!res.ok) throw new Error();
       const data = await res.json();
       const now = new Date();
+      const matches = data.matches || [];
 
-      const allMatches = [];
-      (data.rounds || []).forEach(round => {
-        (round.matches || []).forEach(m => {
-          allMatches.push({
-            home: m.team1?.name || m.team1 || "?",
-            away: m.team2?.name || m.team2 || "?",
-            homeScore: m.score1 ?? null,
-            awayScore: m.score2 ?? null,
-            date: m.date,
-            time: m.time || "",
-            group: round.name || "",
-            dateObj: new Date(m.date + (m.time ? "T" + m.time : "")),
-          });
-        });
+      const live = matches.filter(m => m.status === "IN_PLAY" || m.status === "PAUSED");
+      const finished = matches.filter(m => m.status === "FINISHED");
+      const upcoming = matches.filter(m => m.status === "TIMED" || m.status === "SCHEDULED");
+
+      const toCard = (m, isLive) => ({
+        home: m.homeTeam?.shortName || m.homeTeam?.name || "?",
+        away: m.awayTeam?.shortName || m.awayTeam?.name || "?",
+        homeScore: m.score?.fullTime?.home ?? m.score?.halfTime?.home ?? null,
+        awayScore: m.score?.fullTime?.away ?? m.score?.halfTime?.away ?? null,
+        group: m.group ? m.group.replace("GROUP_", "Groupe ") : (m.stage || ""),
+        date: m.utcDate,
+        time: m.utcDate,
+        live: isLive,
+        minute: m.minute,
       });
 
-      const live = allMatches.filter(m => {
-        const diff = (now - m.dateObj) / 60000;
-        return diff >= 0 && diff <= 110;
-      });
-      const finished = allMatches.filter(m => m.homeScore !== null && (now - m.dateObj) / 60000 > 110);
-      const upcoming = allMatches.filter(m => m.dateObj > now);
-
-      setLiveMatches(live.length > 0 ? live : finished.length > 0 ? finished.slice(-2) : [
-        { home: "Mexique", away: "Afrique du Sud", homeScore: 0, awayScore: 0, group: "Groupe A · 11 juin" },
-      ]);
-      setNextMatches(upcoming.length > 0 ? upcoming.slice(0, 3) : [
-        { home: "Canada", away: "Bosnie-Herzégovine", homeScore: null, awayScore: null, group: "Groupe B", date: "12/06", time: "21:00" },
-        { home: "États-Unis", away: "Paraguay", homeScore: null, awayScore: null, group: "Groupe D", date: "13/06", time: "03:00" },
-        { home: "Qatar", away: "Suisse", homeScore: null, awayScore: null, group: "Groupe B", date: "13/06", time: "21:00" },
-      ]);
+      const displayed = live.length > 0 ? live : finished.slice(-2);
+      setLiveMatches(displayed.map(m => toCard(m, live.includes(m))));
+      setNextMatches(upcoming.slice(0, 3).map(m => toCard(m, false)));
       setLastUpdate(new Date());
-    } catch {
+    } catch(e) {
+      console.error("football-data.org error:", e);
       setLiveMatches([
-        { home: "Mexique", away: "Afrique du Sud", homeScore: 0, awayScore: 0, group: "Groupe A · 11 juin" },
-        { home: "Corée du Sud", away: "Tchéquie", homeScore: null, awayScore: null, group: "Groupe A · 12 juin", date: "12/06", time: "04:00" },
+        { home: "Mexique", away: "Afrique du Sud", homeScore: 0, awayScore: 0, group: "Groupe A" },
       ]);
       setNextMatches([
-        { home: "Canada", away: "Bosnie-Herzégovine", homeScore: null, awayScore: null, group: "Groupe B", date: "12/06", time: "21:00" },
-        { home: "États-Unis", away: "Paraguay", homeScore: null, awayScore: null, group: "Groupe D", date: "13/06", time: "03:00" },
-        { home: "Qatar", away: "Suisse", homeScore: null, awayScore: null, group: "Groupe B", date: "13/06", time: "21:00" },
+        { home: "Canada", away: "Bosnie-Herzégovine", homeScore: null, awayScore: null, group: "Groupe B", date: "2026-06-12T21:00:00Z" },
+        { home: "États-Unis", away: "Paraguay", homeScore: null, awayScore: null, group: "Groupe D", date: "2026-06-13T03:00:00Z" },
+        { home: "Qatar", away: "Suisse", homeScore: null, awayScore: null, group: "Groupe B", date: "2026-06-13T21:00:00Z" },
       ]);
       setLastUpdate(new Date());
     }
@@ -1461,10 +1454,10 @@ function WorldCupSlide() {
     return dt.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
   }
 
-  function formatTime(d, t) {
-    if (!d) return t || "";
-    const dt = new Date(d + (t ? "T" + t : ""));
-    if (isNaN(dt)) return t || "";
+  function formatTime(d) {
+    if (!d) return "";
+    const dt = new Date(d);
+    if (isNaN(dt)) return "";
     return dt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
   }
 
@@ -1559,7 +1552,7 @@ function WorldCupSlide() {
             <div key={i} style={cardStyle(false)}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.08)", padding: "2px 8px", borderRadius: 5 }}>{m.group}</span>
-                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>{formatDate(m.date)} · {formatTime(m.date, m.time)}</span>
+                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>{formatDate(m.date)} · {formatTime(m.date)}</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
