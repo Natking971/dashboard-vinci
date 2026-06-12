@@ -1395,12 +1395,13 @@ function WorldCupSlide() {
 
   async function fetchMatches() {
     try {
-      const headers = { "X-Auth-Token": FD_TOKEN };
-      const res = await fetch(
-        "https://api.football-data.org/v4/competitions/WC/matches?season=2026",
-        { headers }
-      );
-      if (!res.ok) throw new Error();
+      // Proxy CORS pour contourner la restriction du navigateur
+      const url = "https://api.football-data.org/v4/competitions/WC/matches?season=2026";
+      const proxy = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+      const res = await fetch(proxy, {
+        headers: { "X-Auth-Token": FD_TOKEN }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const now = new Date();
       const matches = data.matches || [];
