@@ -1408,15 +1408,27 @@ function WorldCupSlide() {
   const FD_TOKEN = "9d4e468e9860424286f2ba43b2761781";
 
   async function fetchMatches() {
+    const FD_TOKEN = "9d4e468e9860424286f2ba43b2761781";
+    const apiUrl = "https://api.football-data.org/v4/competitions/WC/matches?season=2026";
+    
+    const proxies = [
+      `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`,
+      `https://proxy.cors.sh/${apiUrl}`,
+    ];
+
+    let data = null;
+    for (const proxy of proxies) {
+      try {
+        const res = await fetch(proxy, { headers: { "X-Auth-Token": FD_TOKEN } });
+        if (!res.ok) continue;
+        const json = await res.json();
+        if (json.matches) { data = json; break; }
+      } catch { continue; }
+    }
+
     try {
-      // Proxy CORS pour contourner la restriction du navigateur
-      const url = "https://api.football-data.org/v4/competitions/WC/matches?season=2026";
-      const proxy = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-      const res = await fetch(proxy, {
-        headers: { "X-Auth-Token": FD_TOKEN }
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      if (!data) throw new Error("Proxies failed");
       const now = new Date();
       const matches = data.matches || [];
 
@@ -1431,19 +1443,19 @@ function WorldCupSlide() {
         awayScore: m.score?.fullTime?.away ?? m.score?.halfTime?.away ?? null,
         group: m.group ? m.group.replace("GROUP_", "Groupe ") : (m.stage || ""),
         date: m.utcDate,
-        time: m.utcDate,
         live: isLive,
         minute: m.minute,
       });
 
-      const displayed = live.length > 0 ? live : finished.slice(-2);
+      const displayed = live.length > 0 ? live : finished.slice(-3);
       setLiveMatches(displayed.map(m => toCard(m, live.includes(m))));
       setNextMatches(upcoming.slice(0, 3).map(m => toCard(m, false)));
       setLastUpdate(new Date());
     } catch(e) {
-      console.error("football-data.org error:", e);
+      console.error("football-data error:", e);
       setLiveMatches([
         { home: "Mexique", away: "Afrique du Sud", homeScore: 0, awayScore: 0, group: "Groupe A" },
+        { home: "Corée du Sud", away: "Tchéquie", homeScore: 1, awayScore: 2, group: "Groupe A" },
       ]);
       setNextMatches([
         { home: "Canada", away: "Bosnie-Herzégovine", homeScore: null, awayScore: null, group: "Groupe B", date: "2026-06-12T21:00:00Z" },
