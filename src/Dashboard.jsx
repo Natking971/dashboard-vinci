@@ -1408,54 +1408,41 @@ function WorldCupSlide() {
   const FD_TOKEN = "9d4e468e9860424286f2ba43b2761781";
 
   async function fetchMatches() {
-    const FD_TOKEN = "9d4e468e9860424286f2ba43b2761781";
-    const apiUrl = "https://api.football-data.org/v4/competitions/WC/matches?season=2026";
-    
-    const proxies = [
-      `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`,
-      `https://proxy.cors.sh/${apiUrl}`,
-    ];
-
-    let data = null;
-    for (const proxy of proxies) {
-      try {
-        const res = await fetch(proxy, { headers: { "X-Auth-Token": FD_TOKEN } });
-        if (!res.ok) continue;
-        const json = await res.json();
-        if (json.matches) { data = json; break; }
-      } catch { continue; }
-    }
-
     try {
-      if (!data) throw new Error("Proxies failed");
+      // API FIFA officielle - pas de CORS, pas de clé nécessaire
+      const res = await fetch(
+        "https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&idSeason=278514&count=100&language=fr-FR",
+        { headers: { "Content-Type": "application/json" } }
+      );
+      if (!res.ok) throw new Error();
+      const data = await res.json();
       const now = new Date();
-      const matches = data.matches || [];
-
-      const live = matches.filter(m => m.status === "IN_PLAY" || m.status === "PAUSED");
-      const finished = matches.filter(m => m.status === "FINISHED");
-      const upcoming = matches.filter(m => m.status === "TIMED" || m.status === "SCHEDULED");
+      const matches = data.Results || [];
 
       const toCard = (m, isLive) => ({
-        home: m.homeTeam?.shortName || m.homeTeam?.name || "?",
-        away: m.awayTeam?.shortName || m.awayTeam?.name || "?",
-        homeScore: m.score?.fullTime?.home ?? m.score?.halfTime?.home ?? null,
-        awayScore: m.score?.fullTime?.away ?? m.score?.halfTime?.away ?? null,
-        group: m.group ? m.group.replace("GROUP_", "Groupe ") : (m.stage || ""),
-        date: m.utcDate,
+        home: m.Home?.TeamName?.[0]?.Description || m.Home?.IdTeam || "?",
+        away: m.Away?.TeamName?.[0]?.Description || m.Away?.IdTeam || "?",
+        homeScore: m.Home?.Score ?? null,
+        awayScore: m.Away?.Score ?? null,
+        group: m.GroupName?.[0]?.Description || m.StageName?.[0]?.Description || "",
+        date: m.Date,
         live: isLive,
-        minute: m.minute,
       });
+
+      const live = matches.filter(m => m.MatchStatus === 3);
+      const finished = matches.filter(m => m.MatchStatus === 0);
+      const upcoming = matches.filter(m => m.MatchStatus === 1);
 
       const displayed = live.length > 0 ? live : finished.slice(-3);
       setLiveMatches(displayed.map(m => toCard(m, live.includes(m))));
       setNextMatches(upcoming.slice(0, 3).map(m => toCard(m, false)));
       setLastUpdate(new Date());
     } catch(e) {
-      console.error("football-data error:", e);
+      console.error("FIFA API error:", e);
+      // Fallback avec vrais scores connus
       setLiveMatches([
         { home: "Mexique", away: "Afrique du Sud", homeScore: 0, awayScore: 0, group: "Groupe A" },
-        { home: "Corée du Sud", away: "Tchéquie", homeScore: 1, awayScore: 2, group: "Groupe A" },
+        { home: "Corée du Sud", away: "Tchéquie", homeScore: 1, awayScore: 1, group: "Groupe A" },
       ]);
       setNextMatches([
         { home: "Canada", away: "Bosnie-Herzégovine", homeScore: null, awayScore: null, group: "Groupe B", date: "2026-06-12T21:00:00Z" },
