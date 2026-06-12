@@ -1188,6 +1188,8 @@ function AutoScrollList({ items, color, bgColor, borderColor }) {
     </div>
   );
 }
+
+function OneSiteSlide({ onesite }) {
   const patDone = onesite.pat.length;
   const qhsDone = onesite.qhs.length;
 
