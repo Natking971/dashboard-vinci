@@ -1791,6 +1791,21 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, []);
 
+  // Navigation clavier : espace / flèche droite = suivant, flèche gauche = précédent
+  useEffect(() => {
+    function handleKey(e) {
+      if (e.code === "Space" || e.code === "ArrowRight") {
+        e.preventDefault();
+        setSlideIdx(i => (i + 1) % SLIDES.length);
+      } else if (e.code === "ArrowLeft") {
+        e.preventDefault();
+        setSlideIdx(i => (i - 1 + SLIDES.length) % SLIDES.length);
+      }
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
+
   useEffect(() => {
     setProgress(0);
     const start = Date.now();
