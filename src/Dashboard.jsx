@@ -1423,18 +1423,24 @@ function WorldCupSlide() {
       const finished = allMatches.filter(m => m.homeScore !== null && (now - m.dateObj) / 60000 > 110);
       const upcoming = allMatches.filter(m => m.dateObj > now);
 
-      setLiveMatches(live.length > 0 ? live : finished.slice(-2));
-      setNextMatches(upcoming.slice(0, 3));
+      setLiveMatches(live.length > 0 ? live : finished.length > 0 ? finished.slice(-2) : [
+        { home: "Mexique", away: "Afrique du Sud", homeScore: 0, awayScore: 0, group: "Groupe A · 11 juin" },
+      ]);
+      setNextMatches(upcoming.length > 0 ? upcoming.slice(0, 3) : [
+        { home: "Canada", away: "Bosnie-Herzégovine", homeScore: null, awayScore: null, group: "Groupe B", date: "12/06", time: "21:00" },
+        { home: "États-Unis", away: "Paraguay", homeScore: null, awayScore: null, group: "Groupe D", date: "13/06", time: "03:00" },
+        { home: "Qatar", away: "Suisse", homeScore: null, awayScore: null, group: "Groupe B", date: "13/06", time: "21:00" },
+      ]);
       setLastUpdate(new Date());
     } catch {
       setLiveMatches([
-        { home: "Corée du Sud", away: "Rép. Tchèque", homeScore: 1, awayScore: 1, group: "Groupe A", live: true },
-        { home: "Mexique", away: "Afrique du Sud", homeScore: 0, awayScore: 0, group: "Groupe A" },
+        { home: "Mexique", away: "Afrique du Sud", homeScore: 0, awayScore: 0, group: "Groupe A · 11 juin" },
+        { home: "Corée du Sud", away: "Tchéquie", homeScore: null, awayScore: null, group: "Groupe A · 12 juin", date: "12/06", time: "04:00" },
       ]);
       setNextMatches([
-        { home: "Canada", away: "Bosnie-Herz.", homeScore: null, awayScore: null, group: "Groupe B", date: "12/06", time: "21:00" },
+        { home: "Canada", away: "Bosnie-Herzégovine", homeScore: null, awayScore: null, group: "Groupe B", date: "12/06", time: "21:00" },
         { home: "États-Unis", away: "Paraguay", homeScore: null, awayScore: null, group: "Groupe D", date: "13/06", time: "03:00" },
-        { home: "Brésil", away: "Maroc", homeScore: null, awayScore: null, group: "Groupe C", date: "13/06", time: "00:00" },
+        { home: "Qatar", away: "Suisse", homeScore: null, awayScore: null, group: "Groupe B", date: "13/06", time: "21:00" },
       ]);
       setLastUpdate(new Date());
     }
