@@ -1581,27 +1581,27 @@ function computeStandings(matches) {
 
 function StandingsSlide({ standings }) {
   const groupKeys = Object.keys(standings);
-  const needsScroll = groupKeys.length > 8;
 
   function GroupTable({ groupKey, teams }) {
     return (
       <div style={{
         background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-        borderRadius: 10, padding: "12px 14px", flexShrink: 0,
+        borderRadius: 10, padding: "8px 10px", display: "flex", flexDirection: "column",
+        overflow: "hidden", minHeight: 0,
       }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#FFD700", marginBottom: 8, letterSpacing: "0.05em" }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: "#FFD700", marginBottom: 4, letterSpacing: "0.05em", flexShrink: 0 }}>
           GROUPE {groupKey}
         </div>
-        <table style={{ width: "100%", fontSize: 11, color: "white", borderCollapse: "collapse" }}>
-          <tr style={{ color: "rgba(255,255,255,0.4)", fontSize: 9 }}>
-            <td style={{ padding: "2px 0" }}>Équipe</td>
-            <td style={{ textAlign: "center", width: 18 }}>J</td>
-            <td style={{ textAlign: "center", width: 18 }}>Pts</td>
+        <table style={{ width: "100%", fontSize: 10, color: "white", borderCollapse: "collapse" }}>
+          <tr style={{ color: "rgba(255,255,255,0.4)", fontSize: 8 }}>
+            <td style={{ padding: "1px 0" }}>Équipe</td>
+            <td style={{ textAlign: "center", width: 16 }}>J</td>
+            <td style={{ textAlign: "center", width: 16 }}>Pts</td>
           </tr>
           {teams.map((t, i) => (
             <tr key={i}>
-              <td style={{ padding: "3px 0", display: "flex", alignItems: "center", gap: 5 }}>
-                <WCFlag name={t.name} size={18} />
+              <td style={{ padding: "1px 0", display: "flex", alignItems: "center", gap: 4 }}>
+                <WCFlag name={t.name} size={14} />
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
               </td>
               <td style={{ textAlign: "center" }}>{t.played}</td>
@@ -1630,29 +1630,22 @@ function StandingsSlide({ standings }) {
         <rect x="50" y="170" width="80" height="10" fill="#FFD700" rx="4"/>
       </svg>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20, flexShrink: 0, position: "relative" }}>
-        <div style={{ background: "#FFD700", color: "#0B1E3D", fontSize: 12, fontWeight: 800, padding: "7px 16px", borderRadius: 10, letterSpacing: "0.1em" }}>FIFA 2026</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12, flexShrink: 0, position: "relative" }}>
+        <div style={{ background: "#FFD700", color: "#0B1E3D", fontSize: 12, fontWeight: 800, padding: "6px 14px", borderRadius: 10, letterSpacing: "0.1em" }}>FIFA 2026</div>
         <div>
-          <div style={{ fontSize: 36, fontWeight: 800, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>Classement des poules</div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>{groupKeys.length} groupes · Phase de groupes</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>Classement des poules</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 3 }}>{groupKeys.length} groupes · Phase de groupes</div>
         </div>
       </div>
 
       <div style={{
-        flex: 1, overflow: "hidden", position: "relative",
-        maskImage: needsScroll ? "linear-gradient(to bottom, transparent, black 5%, black 95%, transparent)" : "none",
-        WebkitMaskImage: needsScroll ? "linear-gradient(to bottom, transparent, black 5%, black 95%, transparent)" : "none",
+        flex: 1, position: "relative", minHeight: 0,
+        display: "grid",
+        gridTemplateColumns: "repeat(4, 1fr)",
+        gridTemplateRows: "repeat(3, minmax(0, 1fr))",
+        gap: 10,
       }}>
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: 14,
-          alignContent: "start",
-          animation: needsScroll ? `scrollStandings ${groupKeys.length * 4}s linear infinite` : "none",
-        }}>
-          {groupKeys.map(g => <GroupTable key={g} groupKey={g} teams={standings[g]} />)}
-          {needsScroll && groupKeys.map(g => <GroupTable key={`loop-${g}`} groupKey={g} teams={standings[g]} />)}
-        </div>
+        {groupKeys.map(g => <GroupTable key={g} groupKey={g} teams={standings[g]} />)}
       </div>
     </div>
   );
