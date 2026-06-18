@@ -1592,11 +1592,15 @@ function StandingsSlide({ standings }) {
         <div style={{ fontSize: 10, fontWeight: 700, color: "#FFD700", marginBottom: 4, letterSpacing: "0.05em", flexShrink: 0 }}>
           GROUPE {groupKey}
         </div>
-        <table style={{ width: "100%", fontSize: 10, color: "white", borderCollapse: "collapse" }}>
-          <tr style={{ color: "rgba(255,255,255,0.4)", fontSize: 8 }}>
+        <table style={{ width: "100%", fontSize: 9.5, color: "white", borderCollapse: "collapse" }}>
+          <tr style={{ color: "rgba(255,255,255,0.4)", fontSize: 7.5 }}>
             <td style={{ padding: "1px 0" }}>Équipe</td>
-            <td style={{ textAlign: "center", width: 16 }}>J</td>
-            <td style={{ textAlign: "center", width: 16 }}>Pts</td>
+            <td style={{ textAlign: "center", width: 14 }}>J</td>
+            <td style={{ textAlign: "center", width: 14 }}>G</td>
+            <td style={{ textAlign: "center", width: 14 }}>N</td>
+            <td style={{ textAlign: "center", width: 14 }}>P</td>
+            <td style={{ textAlign: "center", width: 16 }}>DB</td>
+            <td style={{ textAlign: "center", width: 18 }}>Pts</td>
           </tr>
           {teams.map((t, i) => (
             <tr key={i}>
@@ -1605,6 +1609,10 @@ function StandingsSlide({ standings }) {
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
               </td>
               <td style={{ textAlign: "center" }}>{t.played}</td>
+              <td style={{ textAlign: "center" }}>{t.win}</td>
+              <td style={{ textAlign: "center" }}>{t.draw}</td>
+              <td style={{ textAlign: "center" }}>{t.loss}</td>
+              <td style={{ textAlign: "center" }}>{t.gf - t.ga > 0 ? `+${t.gf - t.ga}` : t.gf - t.ga}</td>
               <td style={{ textAlign: "center", fontWeight: i < 2 ? 800 : 400, color: i < 2 ? "#FFD700" : "white" }}>{t.pts}</td>
             </tr>
           ))}
