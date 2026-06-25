@@ -1429,9 +1429,9 @@ function WorldCupSlide({ liveMatches = [], nextMatches = [], lastUpdate = null }
 
   const cardStyle = (isLive) => ({
     background: isLive ? "rgba(34,197,94,0.08)" : "rgba(255,200,50,0.06)",
-    borderRadius: 12, padding: "16px 22px",
+    borderRadius: 12, padding: "12px 20px",
     border: `1px solid ${isLive ? "rgba(34,197,94,0.45)" : "rgba(255,200,50,0.2)"}`,
-    flex: 1, display: "flex", flexDirection: "column", justifyContent: "center",
+    height: 78, flexShrink: 0, display: "flex", flexDirection: "column", justifyContent: "center",
   });
 
   return (
@@ -1487,7 +1487,7 @@ function WorldCupSlide({ liveMatches = [], nextMatches = [], lastUpdate = null }
             <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, paddingTop: 20, textAlign: "center" }}>Chargement...</div>
           ) : liveMatches.map((m, i) => (
             <div key={i} style={cardStyle(m.live)}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.08)", padding: "3px 10px", borderRadius: 6 }}>{m.group}</span>
                 {m.live && <span style={{ fontSize: 11, color: "#22C55E", display: "flex", alignItems: "center", gap: 5 }}>
                   <span style={{ width: 7, height: 7, background: "#22C55E", borderRadius: "50%", display: "inline-block", animation: "blink 1s infinite" }} />EN DIRECT
@@ -1517,7 +1517,7 @@ function WorldCupSlide({ liveMatches = [], nextMatches = [], lastUpdate = null }
             <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, paddingTop: 20, textAlign: "center" }}>Chargement...</div>
           ) : nextMatches.map((m, i) => (
             <div key={i} style={cardStyle(false)}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.08)", padding: "3px 10px", borderRadius: 6 }}>{m.group}</span>
                 <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{formatDate(m.date)} · {formatTime(m.date)}</span>
               </div>
