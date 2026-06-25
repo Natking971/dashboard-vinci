@@ -1579,51 +1579,88 @@ function computeStandings(matches) {
   return result;
 }
 
-function StandingsSlide({ standings }) {
-  const groupKeys = Object.keys(standings);
+function bracketName(m) {
+  if (!m) return "À déterminer";
+  return m.shortName || m.name || "À déterminer";
+}
 
-  function GroupTable({ groupKey, teams }) {
-    return (
-      <div style={{
-        background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-        borderRadius: 12, padding: "14px 18px", display: "flex", flexDirection: "column",
-        justifyContent: "center", overflow: "hidden", minHeight: 0,
-      }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#FFD700", marginBottom: 10, letterSpacing: "0.05em", flexShrink: 0 }}>
-          GROUPE {groupKey}
+function buildBracket(matches) {
+  const stages = { LAST_32: [], LAST_16: [], QUARTER_FINALS: [], SEMI_FINALS: [], FINAL: [], THIRD_PLACE: [] };
+  matches.forEach(m => {
+    if (stages[m.stage]) {
+      stages[m.stage].push({
+        home: m.homeTeam?.shortName || m.homeTeam?.name || null,
+        away: m.awayTeam?.shortName || m.awayTeam?.name || null,
+        homeScore: m.score?.fullTime?.home ?? null,
+        awayScore: m.score?.fullTime?.away ?? null,
+        status: m.status,
+        date: m.utcDate,
+      });
+    }
+  });
+  // Tri par date pour garder un ordre stable
+  Object.keys(stages).forEach(k => stages[k].sort((a, b) => new Date(a.date) - new Date(b.date)));
+  return stages;
+}
+
+function BracketMatch({ match, highlight }) {
+  const home = match?.home || "À déterminer";
+  const away = match?.away || "À déterminer";
+  const hs = match?.homeScore;
+  const as = match?.awayScore;
+  const played = match?.status === "FINISHED";
+  const homeWin = played && hs > as;
+  const awayWin = played && as > hs;
+  return (
+    <div style={{
+      background: highlight ? "rgba(255,215,0,0.08)" : "rgba(255,255,255,0.05)",
+      border: highlight ? "1px solid rgba(255,215,0,0.4)" : "1px solid rgba(255,255,255,0.1)",
+      borderRadius: 8, padding: "7px 12px", display: "flex", flexDirection: "column", gap: 3,
+      minWidth: 0,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: 1 }}>
+          <WCFlag name={home} size={16} />
+          <span style={{ fontSize: 11.5, fontWeight: homeWin ? 800 : 400, color: homeWin ? "#FFD700" : "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{home}</span>
         </div>
-        <table style={{ width: "100%", fontSize: 14, color: "white", borderCollapse: "collapse" }}>
-          <tr style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>
-            <td style={{ padding: "3px 0" }}>Équipe</td>
-            <td style={{ textAlign: "center", width: 22 }}>J</td>
-            <td style={{ textAlign: "center", width: 22 }}>G</td>
-            <td style={{ textAlign: "center", width: 22 }}>N</td>
-            <td style={{ textAlign: "center", width: 22 }}>P</td>
-            <td style={{ textAlign: "center", width: 26 }}>DB</td>
-            <td style={{ textAlign: "center", width: 28 }}>Pts</td>
-          </tr>
-          {teams.map((t, i) => (
-            <tr key={i}>
-              <td style={{ padding: "5px 0", display: "flex", alignItems: "center", gap: 8 }}>
-                <WCFlag name={t.name} size={22} />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
-              </td>
-              <td style={{ textAlign: "center" }}>{t.played}</td>
-              <td style={{ textAlign: "center" }}>{t.win}</td>
-              <td style={{ textAlign: "center" }}>{t.draw}</td>
-              <td style={{ textAlign: "center" }}>{t.loss}</td>
-              <td style={{ textAlign: "center" }}>{t.gf - t.ga > 0 ? `+${t.gf - t.ga}` : t.gf - t.ga}</td>
-              <td style={{ textAlign: "center", fontWeight: i < 2 ? 800 : 400, color: i < 2 ? "#FFD700" : "white" }}>{t.pts}</td>
-            </tr>
-          ))}
-        </table>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{hs ?? "—"}</span>
       </div>
-    );
-  }
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: 1 }}>
+          <WCFlag name={away} size={16} />
+          <span style={{ fontSize: 11.5, fontWeight: awayWin ? 800 : 400, color: awayWin ? "#FFD700" : "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{away}</span>
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{as ?? "—"}</span>
+      </div>
+    </div>
+  );
+}
+
+function BracketSlide({ matches }) {
+  const stages = buildBracket(matches || []);
+  const l32 = stages.LAST_32;
+  const l16 = stages.LAST_16;
+  const qf = stages.QUARTER_FINALS;
+  const sf = stages.SEMI_FINALS;
+  const final = stages.FINAL[0];
+
+  // Découpage gauche/droite : la première moitié des 8es à gauche, le reste à droite
+  const leftR16 = l16.slice(0, 4);
+  const rightR16 = l16.slice(4, 8);
+  const leftQF = qf.slice(0, 2);
+  const rightQF = qf.slice(2, 4);
+  const leftSF = sf.slice(0, 1);
+  const rightSF = sf.slice(1, 2);
+
+  const col = (matchesArr, count, fill = true) => {
+    const arr = [...matchesArr];
+    while (fill && arr.length < count) arr.push(null);
+    return arr;
+  };
 
   return (
     <div style={{
-      height: "100%", display: "flex", flexDirection: "column", padding: "28px 40px",
+      height: "100%", display: "flex", flexDirection: "column", padding: "20px 32px",
       background: "radial-gradient(ellipse at 50% 0%, #3a2800 0%, #1a1200 40%, #0a0a0a 100%)",
       position: "relative", overflow: "hidden",
     }}>
@@ -1638,22 +1675,47 @@ function StandingsSlide({ standings }) {
         <rect x="50" y="170" width="80" height="10" fill="#FFD700" rx="4"/>
       </svg>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16, flexShrink: 0, position: "relative" }}>
-        <div style={{ background: "#FFD700", color: "#0B1E3D", fontSize: 12, fontWeight: 800, padding: "7px 16px", borderRadius: 10, letterSpacing: "0.1em" }}>FIFA 2026</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14, flexShrink: 0, position: "relative" }}>
+        <div style={{ background: "#FFD700", color: "#0B1E3D", fontSize: 11, fontWeight: 800, padding: "6px 14px", borderRadius: 8, letterSpacing: "0.1em" }}>FIFA 2026</div>
         <div>
-          <div style={{ fontSize: 36, fontWeight: 800, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>Classement des poules</div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>{groupKeys.length} groupes · Phase de groupes</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>Phases finales</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 3 }}>Huitièmes · Quarts · Demi-finales · Finale</div>
         </div>
       </div>
 
-      <div style={{
-        flex: 1, position: "relative", minHeight: 0,
-        display: "grid",
-        gridTemplateColumns: "repeat(4, 1fr)",
-        gridTemplateRows: "repeat(3, minmax(0, 1fr))",
-        gap: 16,
-      }}>
-        {groupKeys.map(g => <GroupTable key={g} groupKey={g} teams={standings[g]} />)}
+      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 0.85fr 0.7fr 1fr 0.7fr 0.85fr 1fr", gap: 10, position: "relative", minHeight: 0 }}>
+
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", gap: 6 }}>
+          {col(leftR16, 4).map((m, i) => <BracketMatch key={i} match={m} />)}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", gap: 6 }}>
+          {col(leftQF, 2).map((m, i) => <BracketMatch key={i} match={m} />)}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 6 }}>
+          {col(leftSF, 1).map((m, i) => <BracketMatch key={i} match={m} />)}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,215,0,0.7)", letterSpacing: "0.1em", textTransform: "uppercase" }}>Finale</div>
+          <div style={{ width: "100%" }}>
+            <BracketMatch match={final} highlight />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 6 }}>
+          {col(rightSF, 1).map((m, i) => <BracketMatch key={i} match={m} />)}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", gap: 6 }}>
+          {col(rightQF, 2).map((m, i) => <BracketMatch key={i} match={m} />)}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", gap: 6 }}>
+          {col(rightR16, 4).map((m, i) => <BracketMatch key={i} match={m} />)}
+        </div>
+
       </div>
     </div>
   );
@@ -1674,6 +1736,7 @@ export default function Dashboard() {
   const [wcNext, setWcNext] = useState([]);
   const [wcLastUpdate, setWcLastUpdate] = useState(null);
   const [wcStandings, setWcStandings] = useState({});
+  const [wcRawMatches, setWcRawMatches] = useState([]);
   const [dataStatus, setDataStatus] = useState("loading"); // "loading" | "ok" | "error"
   const [lastUpdate, setLastUpdate] = useState(null);
 
@@ -1890,6 +1953,7 @@ export default function Dashboard() {
         setWcLive(displayed.map(m => toCard(m, live.includes(m))));
         setWcNext(upcoming.slice(0, 5).map(m => toCard(m, false)));
         setWcStandings(computeStandings(matches));
+        setWcRawMatches(matches);
         setWcLastUpdate(new Date());
       } catch {}
     }
@@ -2107,7 +2171,7 @@ export default function Dashboard() {
             label = "FIFA 2026";
             accentColor = "#FFD700";
           } else if (s.type === "worldcupStandings") {
-            label = "CLASSEMENT";
+            label = "PHASES FINALES";
             accentColor = "#FFD700";
           } else if (s.type === "planning") {
             label = s.week === "next" ? "PLAN. PROCH." : "ÉQUIPE";
@@ -2141,7 +2205,7 @@ export default function Dashboard() {
         {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
         {currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
         {currentSlide.type === "worldcup" && <WorldCupSlide liveMatches={wcLive} nextMatches={wcNext} lastUpdate={wcLastUpdate} />}
-        {currentSlide.type === "worldcupStandings" && <StandingsSlide standings={wcStandings} />}
+        {currentSlide.type === "worldcupStandings" && <BracketSlide matches={wcRawMatches} />}
         {currentSlide.type === "planning" && (
           <PlanningSlide
             planning={currentSlide.week === "next" ? planningNext : planning}
