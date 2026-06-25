@@ -1429,8 +1429,9 @@ function WorldCupSlide({ liveMatches = [], nextMatches = [], lastUpdate = null }
 
   const cardStyle = (isLive) => ({
     background: isLive ? "rgba(34,197,94,0.08)" : "rgba(255,200,50,0.06)",
-    borderRadius: 10, padding: "8px 14px",
+    borderRadius: 12, padding: "16px 22px",
     border: `1px solid ${isLive ? "rgba(34,197,94,0.45)" : "rgba(255,200,50,0.2)"}`,
+    flex: 1, display: "flex", flexDirection: "column", justifyContent: "center",
   });
 
   return (
@@ -1478,31 +1479,31 @@ function WorldCupSlide({ liveMatches = [], nextMatches = [], lastUpdate = null }
       <div style={{ flex: 1, display: "flex", gap: 18, overflow: "hidden", position: "relative" }}>
 
         {/* Colonne gauche : résultats */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,200,50,0.55)", textTransform: "uppercase", letterSpacing: "0.12em", paddingBottom: 8, borderBottom: "1px solid rgba(255,200,50,0.15)" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,200,50,0.55)", textTransform: "uppercase", letterSpacing: "0.12em", paddingBottom: 10, borderBottom: "1px solid rgba(255,200,50,0.15)" }}>
             {liveMatches.some(m => m.live) ? "🟢 En direct" : "Derniers résultats"}
           </div>
           {loading ? (
             <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, paddingTop: 20, textAlign: "center" }}>Chargement...</div>
           ) : liveMatches.map((m, i) => (
             <div key={i} style={cardStyle(m.live)}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.08)", padding: "2px 7px", borderRadius: 5 }}>{m.group}</span>
-                {m.live && <span style={{ fontSize: 9, color: "#22C55E", display: "flex", alignItems: "center", gap: 4 }}>
-                  <span style={{ width: 6, height: 6, background: "#22C55E", borderRadius: "50%", display: "inline-block", animation: "blink 1s infinite" }} />EN DIRECT
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.08)", padding: "3px 10px", borderRadius: 6 }}>{m.group}</span>
+                {m.live && <span style={{ fontSize: 11, color: "#22C55E", display: "flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ width: 7, height: 7, background: "#22C55E", borderRadius: "50%", display: "inline-block", animation: "blink 1s infinite" }} />EN DIRECT
                 </span>}
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 5 }}>
-                  <WCFlag name={m.home} size={22} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "white" }}>{m.home}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 9 }}>
+                  <WCFlag name={m.home} size={32} />
+                  <span style={{ fontSize: 18, fontWeight: 700, color: "white" }}>{m.home}</span>
                 </div>
-                <div style={{ background: "rgba(0,0,0,0.35)", borderRadius: 7, padding: "3px 12px", fontSize: 18, fontWeight: 800, color: "white", minWidth: 52, textAlign: "center" }}>
+                <div style={{ background: "rgba(0,0,0,0.35)", borderRadius: 9, padding: "6px 18px", fontSize: 26, fontWeight: 800, color: "white", minWidth: 76, textAlign: "center" }}>
                   {m.homeScore} – {m.awayScore}
                 </div>
-                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 5, flexDirection: "row-reverse" }}>
-                  <WCFlag name={m.away} size={22} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "white" }}>{m.away}</span>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 9, flexDirection: "row-reverse" }}>
+                  <WCFlag name={m.away} size={32} />
+                  <span style={{ fontSize: 18, fontWeight: 700, color: "white" }}>{m.away}</span>
                 </div>
               </div>
             </div>
@@ -1510,25 +1511,25 @@ function WorldCupSlide({ liveMatches = [], nextMatches = [], lastUpdate = null }
         </div>
 
         {/* Colonne droite : prochains matchs */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,200,50,0.55)", textTransform: "uppercase", letterSpacing: "0.12em", paddingBottom: 8, borderBottom: "1px solid rgba(255,200,50,0.15)" }}>5 prochains matchs</div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,200,50,0.55)", textTransform: "uppercase", letterSpacing: "0.12em", paddingBottom: 10, borderBottom: "1px solid rgba(255,200,50,0.15)" }}>5 prochains matchs</div>
           {loading ? (
             <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, paddingTop: 20, textAlign: "center" }}>Chargement...</div>
           ) : nextMatches.map((m, i) => (
             <div key={i} style={cardStyle(false)}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.08)", padding: "2px 7px", borderRadius: 5 }}>{m.group}</span>
-                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>{formatDate(m.date)} · {formatTime(m.date)}</span>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.08)", padding: "3px 10px", borderRadius: 6 }}>{m.group}</span>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{formatDate(m.date)} · {formatTime(m.date)}</span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 5 }}>
-                  <WCFlag name={m.home} size={22} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "white" }}>{m.home}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 9 }}>
+                  <WCFlag name={m.home} size={32} />
+                  <span style={{ fontSize: 18, fontWeight: 700, color: "white" }}>{m.home}</span>
                 </div>
-                <div style={{ background: "rgba(0,0,0,0.35)", borderRadius: 7, padding: "3px 10px", fontSize: 12, color: "rgba(255,255,255,0.55)", minWidth: 48, textAlign: "center" }}>vs</div>
-                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 5, flexDirection: "row-reverse" }}>
-                  <WCFlag name={m.away} size={22} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "white" }}>{m.away}</span>
+                <div style={{ background: "rgba(0,0,0,0.35)", borderRadius: 9, padding: "6px 16px", fontSize: 15, color: "rgba(255,255,255,0.55)", minWidth: 68, textAlign: "center" }}>vs</div>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 9, flexDirection: "row-reverse" }}>
+                  <WCFlag name={m.away} size={32} />
+                  <span style={{ fontSize: 18, fontWeight: 700, color: "white" }}>{m.away}</span>
                 </div>
               </div>
             </div>
@@ -1577,6 +1578,92 @@ function computeStandings(matches) {
     });
   });
   return result;
+}
+
+function isGroupStageComplete(matches) {
+  const groupMatches = matches.filter(m => m.stage === "GROUP_STAGE");
+  if (groupMatches.length === 0) return false;
+  return groupMatches.every(m => m.status === "FINISHED");
+}
+
+function StandingsSlide({ standings }) {
+  const groupKeys = Object.keys(standings);
+
+  function GroupTable({ groupKey, teams }) {
+    return (
+      <div style={{
+        background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+        borderRadius: 12, padding: "14px 18px", display: "flex", flexDirection: "column",
+        justifyContent: "center", overflow: "hidden", minHeight: 0,
+      }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#FFD700", marginBottom: 10, letterSpacing: "0.05em", flexShrink: 0 }}>
+          GROUPE {groupKey}
+        </div>
+        <table style={{ width: "100%", fontSize: 14, color: "white", borderCollapse: "collapse" }}>
+          <tr style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>
+            <td style={{ padding: "3px 0" }}>Équipe</td>
+            <td style={{ textAlign: "center", width: 22 }}>J</td>
+            <td style={{ textAlign: "center", width: 22 }}>G</td>
+            <td style={{ textAlign: "center", width: 22 }}>N</td>
+            <td style={{ textAlign: "center", width: 22 }}>P</td>
+            <td style={{ textAlign: "center", width: 26 }}>DB</td>
+            <td style={{ textAlign: "center", width: 28 }}>Pts</td>
+          </tr>
+          {teams.map((t, i) => (
+            <tr key={i}>
+              <td style={{ padding: "5px 0", display: "flex", alignItems: "center", gap: 8 }}>
+                <WCFlag name={t.name} size={22} />
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
+              </td>
+              <td style={{ textAlign: "center" }}>{t.played}</td>
+              <td style={{ textAlign: "center" }}>{t.win}</td>
+              <td style={{ textAlign: "center" }}>{t.draw}</td>
+              <td style={{ textAlign: "center" }}>{t.loss}</td>
+              <td style={{ textAlign: "center" }}>{t.gf - t.ga > 0 ? `+${t.gf - t.ga}` : t.gf - t.ga}</td>
+              <td style={{ textAlign: "center", fontWeight: i < 2 ? 800 : 400, color: i < 2 ? "#FFD700" : "white" }}>{t.pts}</td>
+            </tr>
+          ))}
+        </table>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      height: "100%", display: "flex", flexDirection: "column", padding: "28px 40px",
+      background: "radial-gradient(ellipse at 50% 0%, #3a2800 0%, #1a1200 40%, #0a0a0a 100%)",
+      position: "relative", overflow: "hidden",
+    }}>
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "55%", background: "radial-gradient(ellipse at 50% -20%, rgba(255,200,50,0.22) 0%, transparent 65%)", pointerEvents: "none" }} />
+
+      <svg style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", opacity: 0.06, pointerEvents: "none" }} width="320" height="390" viewBox="0 0 180 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M55 20 L125 20 L115 90 Q90 130 90 130 Q90 130 65 90 Z" fill="#FFD700"/>
+        <path d="M55 30 Q20 35 22 65 Q24 90 55 85" stroke="#FFD700" strokeWidth="10" fill="none" strokeLinecap="round"/>
+        <path d="M125 30 Q160 35 158 65 Q156 90 125 85" stroke="#FFD700" strokeWidth="10" fill="none" strokeLinecap="round"/>
+        <rect x="78" y="130" width="24" height="30" fill="#FFD700" rx="3"/>
+        <rect x="60" y="158" width="60" height="14" fill="#FFD700" rx="4"/>
+        <rect x="50" y="170" width="80" height="10" fill="#FFD700" rx="4"/>
+      </svg>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16, flexShrink: 0, position: "relative" }}>
+        <div style={{ background: "#FFD700", color: "#0B1E3D", fontSize: 12, fontWeight: 800, padding: "7px 16px", borderRadius: 10, letterSpacing: "0.1em" }}>FIFA 2026</div>
+        <div>
+          <div style={{ fontSize: 36, fontWeight: 800, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>Classement des poules</div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>{groupKeys.length} groupes · Phase de groupes</div>
+        </div>
+      </div>
+
+      <div style={{
+        flex: 1, position: "relative", minHeight: 0,
+        display: "grid",
+        gridTemplateColumns: "repeat(4, 1fr)",
+        gridTemplateRows: "repeat(3, minmax(0, 1fr))",
+        gap: 16,
+      }}>
+        {groupKeys.map(g => <GroupTable key={g} groupKey={g} teams={standings[g]} />)}
+      </div>
+    </div>
+  );
 }
 
 function bracketName(m) {
@@ -2171,7 +2258,7 @@ export default function Dashboard() {
             label = "FIFA 2026";
             accentColor = "#FFD700";
           } else if (s.type === "worldcupStandings") {
-            label = "PHASES FINALES";
+            label = "CLASSEMENT / PHASES";
             accentColor = "#FFD700";
           } else if (s.type === "planning") {
             label = s.week === "next" ? "PLAN. PROCH." : "ÉQUIPE";
@@ -2205,7 +2292,11 @@ export default function Dashboard() {
         {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
         {currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
         {currentSlide.type === "worldcup" && <WorldCupSlide liveMatches={wcLive} nextMatches={wcNext} lastUpdate={wcLastUpdate} />}
-        {currentSlide.type === "worldcupStandings" && <BracketSlide matches={wcRawMatches} />}
+        {currentSlide.type === "worldcupStandings" && (
+          isGroupStageComplete(wcRawMatches)
+            ? <BracketSlide matches={wcRawMatches} />
+            : <StandingsSlide standings={wcStandings} />
+        )}
         {currentSlide.type === "planning" && (
           <PlanningSlide
             planning={currentSlide.week === "next" ? planningNext : planning}
