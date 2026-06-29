@@ -1741,26 +1741,25 @@ function getActiveRoundIndex(roundsArr) {
     const hasMatches = round.length > 0;
     const allFinished = hasMatches && round.every(m => m.status === "FINISHED");
     if (hasMatches && !allFinished) return i;
+    if (!hasMatches) return i; // tour pas encore généré par l'API → on le considère comme "à venir", on l'affiche
   }
-  // Si tous les tours connus sont finis (ou vides), on reste sur le dernier tour ayant des matchs
-  for (let i = roundsArr.length - 1; i >= 0; i--) {
-    if (roundsArr[i].matches.length > 0) return i;
-  }
-  return 0;
+  // Tous les tours sont finis : il ne reste que la finale
+  return roundsArr.length;
 }
 
 function BracketSlide({ matches }) {
   const stages = buildBracket(matches || []);
-  const rounds = [
-    { key: "r16", label: "16es", matches: stages.LAST_32 },
-    { key: "r8", label: "8es", matches: stages.LAST_16 },
-    { key: "qf", label: "Quarts", matches: stages.QUARTER_FINALS },
-    { key: "sf", label: "Demi-finales", matches: stages.SEMI_FINALS },
-    { key: "final", label: "Finale", matches: stages.FINAL },
+  const allRounds = [
+    { key: "r16", label: "16es", matches: stages.LAST_32, count: 16 },
+    { key: "r8", label: "8es", matches: stages.LAST_16, count: 8 },
+    { key: "qf", label: "Quarts", matches: stages.QUARTER_FINALS, count: 4 },
+    { key: "sf", label: "Demi-finales", matches: stages.SEMI_FINALS, count: 2 },
   ];
+  const final = stages.FINAL[0];
 
-  const activeIdx = getActiveRoundIndex(rounds);
-  const visibleRounds = rounds.slice(activeIdx); // on n'affiche que ce tour et les suivants
+  const activeIdx = getActiveRoundIndex(allRounds);
+  // On ne garde que les tours non terminés (et la finale est toujours montrée séparément au centre)
+  const visibleRounds = allRounds.slice(activeIdx);
   const n = visibleRounds.length;
 
   const col = (matchesArr, count, fill = true) => {
@@ -1769,15 +1768,23 @@ function BracketSlide({ matches }) {
     return arr;
   };
 
-  // Tailles de cartes croissantes à mesure qu'il reste moins de tours à afficher
-  const sizeForRound = (roundsLeftFromHere) => {
-    if (roundsLeftFromHere >= 4) return "compact";   // 16es encore visibles : beaucoup de matchs
-    if (roundsLeftFromHere === 3) return "small";    // 8es
-    if (roundsLeftFromHere === 2) return "medium";   // Quarts
-    return "large";                                   // Demi / Finale seules
-  };
+  // Taille des cartes : plus n est grand (plus de tours visibles), plus compact
+  const sizeForN = n >= 4 ? "compact" : n === 3 ? "small" : n === 2 ? "medium" : "large";
+  const finalSize = n === 0 ? "xlarge" : n === 1 ? "large" : "medium";
 
-  const headerLabel = visibleRounds.map(r => r.label).join(" · ");
+  const headerLabel = [...visibleRounds.map(r => r.label), "Finale"].join(" · ");
+
+  // Construction des colonnes en miroir : moitié gauche, demi, finale (centre), demi, moitié droite
+  const columns = [];
+  visibleRounds.forEach((round, i) => {
+    const half = Math.ceil(round.count / 2);
+    columns.push({ ...round, side: "left", slice: round.matches.slice(0, half), count: half });
+  });
+  columns.push({ key: "final", label: "Finale", isFinal: true });
+  [...visibleRounds].reverse().forEach((round) => {
+    const half = Math.floor(round.count / 2);
+    columns.push({ ...round, side: "right", slice: round.matches.slice(round.count - half), count: half || 1 });
+  });
 
   return (
     <div style={{
@@ -1804,39 +1811,39 @@ function BracketSlide({ matches }) {
         </div>
       </div>
 
-      {n === 1 ? (
+      {n === 0 ? (
         // Plus que la finale : une seule carte géante centrée
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
           <div style={{ width: "100%", maxWidth: 520 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,215,0,0.7)", letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "center", marginBottom: 14 }}>Finale</div>
-            <BracketMatch match={visibleRounds[0].matches[0]} highlight size="xlarge" />
+            <BracketMatch match={final} highlight size="xlarge" />
           </div>
         </div>
       ) : (
         <div style={{
           flex: 1, display: "grid", position: "relative", minHeight: 0,
-          gridTemplateColumns: visibleRounds.map((_, i) => {
-            // colonnes plus larges au centre (vers la finale), plus étroites sur les bords (rondes pleines de matchs)
-            const distFromFinal = n - 1 - i;
-            return distFromFinal === 0 ? "1.1fr" : distFromFinal === 1 ? "0.9fr" : "0.75fr";
+          gridTemplateColumns: columns.map(c => {
+            if (c.isFinal) return "1.1fr";
+            return n >= 4 ? "1fr" : n === 3 ? "0.9fr" : "0.85fr";
           }).join(" "),
           gap: 8,
         }}>
-          {visibleRounds.map((round, i) => {
-            const roundsLeftFromHere = n - i;
-            const size = sizeForRound(roundsLeftFromHere);
-            const isFinal = round.key === "final";
-            const expectedCount = round.matches.length > 0 ? round.matches.length : (i === 0 ? rounds[activeIdx].matches.length || 1 : 1);
+          {columns.map((c, idx) => {
+            if (c.isFinal) {
+              return (
+                <div key="final" style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,215,0,0.7)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Finale</div>
+                  <div style={{ width: "100%" }}>
+                    <BracketMatch match={final} highlight size={finalSize} />
+                  </div>
+                </div>
+              );
+            }
             return (
-              <div key={round.key} style={{ display: "flex", flexDirection: "column", justifyContent: isFinal ? "center" : "space-around", alignItems: isFinal ? "center" : "stretch", gap: size === "compact" ? 5 : size === "small" ? 7 : 10 }}>
-                {!isFinal && (
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "center", marginBottom: 2 }}>{round.label}</div>
-                )}
-                {isFinal && (
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,215,0,0.7)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 6 }}>Finale</div>
-                )}
-                {col(round.matches, expectedCount).map((m, j) => (
-                  <BracketMatch key={j} match={m} highlight={isFinal} size={size} />
+              <div key={`${c.key}-${c.side}`} style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", gap: sizeForN === "compact" ? 5 : sizeForN === "small" ? 7 : 10 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "center", marginBottom: 2 }}>{c.label}</div>
+                {col(c.slice, c.count).map((m, j) => (
+                  <BracketMatch key={j} match={m} size={sizeForN} />
                 ))}
               </div>
             );
