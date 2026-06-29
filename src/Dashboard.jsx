@@ -1839,12 +1839,25 @@ function BracketSlide({ matches }) {
                 </div>
               );
             }
+            // Position du tour dans la moitié (0 = 16es/premier tour visible, augmente vers la finale)
+            const roundPos = c.side === "left"
+              ? visibleRounds.findIndex(r => r.key === c.key)
+              : visibleRounds.length - 1 - visibleRounds.findIndex(r => r.key === c.key);
+            // Chaque tour double l'espacement entre cartes par rapport au précédent.
+            // unit = espace de base entre deux cartes du tout premier tour visible.
+            const unit = sizeForN === "compact" ? 6 : sizeForN === "small" ? 10 : sizeForN === "medium" ? 16 : 24;
+            const gapBetween = unit * Math.pow(2, roundPos);
+            const topOffset = (unit * (Math.pow(2, roundPos) - 1)) / 1; // décalage du premier élément pour centrer sur la paire précédente
             return (
-              <div key={`${c.key}-${c.side}`} style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", gap: sizeForN === "compact" ? 5 : sizeForN === "small" ? 7 : 10 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "center", marginBottom: 2 }}>{c.label}</div>
-                {col(c.slice, c.count).map((m, j) => (
-                  <BracketMatch key={j} match={m} size={sizeForN} />
-                ))}
+              <div key={`${c.key}-${c.side}`} style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "center", marginBottom: 8 }}>{c.label}</div>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  {col(c.slice, c.count).map((m, j) => (
+                    <div key={j} style={{ marginTop: j === 0 ? topOffset : gapBetween }}>
+                      <BracketMatch match={m} size={sizeForN} />
+                    </div>
+                  ))}
+                </div>
               </div>
             );
           })}
