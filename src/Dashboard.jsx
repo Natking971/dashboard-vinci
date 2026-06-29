@@ -1690,7 +1690,7 @@ function buildBracket(matches) {
   return stages;
 }
 
-function BracketMatch({ match, highlight }) {
+function BracketMatch({ match, highlight, compact }) {
   const home = match?.home || "À déterminer";
   const away = match?.away || "À déterminer";
   const hs = match?.homeScore;
@@ -1698,26 +1698,29 @@ function BracketMatch({ match, highlight }) {
   const played = match?.status === "FINISHED";
   const homeWin = played && hs > as;
   const awayWin = played && as > hs;
+  const fSize = compact ? 9.5 : 11.5;
+  const flagSize = compact ? 13 : 16;
+  const pad = compact ? "5px 9px" : "7px 12px";
   return (
     <div style={{
       background: highlight ? "rgba(255,215,0,0.08)" : "rgba(255,255,255,0.05)",
       border: highlight ? "1px solid rgba(255,215,0,0.4)" : "1px solid rgba(255,255,255,0.1)",
-      borderRadius: 8, padding: "7px 12px", display: "flex", flexDirection: "column", gap: 3,
+      borderRadius: compact ? 6 : 8, padding: pad, display: "flex", flexDirection: "column", gap: compact ? 2 : 3,
       minWidth: 0,
     }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: 1 }}>
-          <WCFlag name={home} size={16} />
-          <span style={{ fontSize: 11.5, fontWeight: homeWin ? 800 : 400, color: homeWin ? "#FFD700" : "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{home}</span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 5 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, flex: 1 }}>
+          <WCFlag name={home} size={flagSize} />
+          <span style={{ fontSize: fSize, fontWeight: homeWin ? 800 : 400, color: homeWin ? "#FFD700" : "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{home}</span>
         </div>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{hs ?? "—"}</span>
+        <span style={{ fontSize: compact ? 10 : 12, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{hs ?? "—"}</span>
       </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: 1 }}>
-          <WCFlag name={away} size={16} />
-          <span style={{ fontSize: 11.5, fontWeight: awayWin ? 800 : 400, color: awayWin ? "#FFD700" : "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{away}</span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 5 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, flex: 1 }}>
+          <WCFlag name={away} size={flagSize} />
+          <span style={{ fontSize: fSize, fontWeight: awayWin ? 800 : 400, color: awayWin ? "#FFD700" : "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{away}</span>
         </div>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{as ?? "—"}</span>
+        <span style={{ fontSize: compact ? 10 : 12, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{as ?? "—"}</span>
       </div>
     </div>
   );
@@ -1725,15 +1728,17 @@ function BracketMatch({ match, highlight }) {
 
 function BracketSlide({ matches }) {
   const stages = buildBracket(matches || []);
-  const l32 = stages.LAST_32;
-  const l16 = stages.LAST_16;
+  const r16 = stages.LAST_32;   // 16es de finale (32 → 16 équipes), 16 matchs
+  const r8 = stages.LAST_16;    // 8es de finale (16 → 8 équipes), 8 matchs
   const qf = stages.QUARTER_FINALS;
   const sf = stages.SEMI_FINALS;
   const final = stages.FINAL[0];
 
-  // Découpage gauche/droite : la première moitié des 8es à gauche, le reste à droite
-  const leftR16 = l16.slice(0, 4);
-  const rightR16 = l16.slice(4, 8);
+  // Découpage gauche/droite : moitié des matchs de chaque tour à gauche, l'autre moitié à droite
+  const leftR16 = r16.slice(0, 8);
+  const rightR16 = r16.slice(8, 16);
+  const leftR8 = r8.slice(0, 4);
+  const rightR8 = r8.slice(4, 8);
   const leftQF = qf.slice(0, 2);
   const rightQF = qf.slice(2, 4);
   const leftSF = sf.slice(0, 1);
@@ -1747,7 +1752,7 @@ function BracketSlide({ matches }) {
 
   return (
     <div style={{
-      height: "100%", display: "flex", flexDirection: "column", padding: "20px 32px",
+      height: "100%", display: "flex", flexDirection: "column", padding: "18px 26px",
       background: "radial-gradient(ellipse at 50% 0%, #3a2800 0%, #1a1200 40%, #0a0a0a 100%)",
       position: "relative", overflow: "hidden",
     }}>
@@ -1762,18 +1767,22 @@ function BracketSlide({ matches }) {
         <rect x="50" y="170" width="80" height="10" fill="#FFD700" rx="4"/>
       </svg>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14, flexShrink: 0, position: "relative" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 10, flexShrink: 0, position: "relative" }}>
         <div style={{ background: "#FFD700", color: "#0B1E3D", fontSize: 11, fontWeight: 800, padding: "6px 14px", borderRadius: 8, letterSpacing: "0.1em" }}>FIFA 2026</div>
         <div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>Phases finales</div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 3 }}>Huitièmes · Quarts · Demi-finales · Finale</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>Phases finales</div>
+          <div style={{ fontSize: 10.5, color: "rgba(255,255,255,0.45)", marginTop: 3 }}>16es · 8es · Quarts · Demi-finales · Finale</div>
         </div>
       </div>
 
-      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 0.85fr 0.7fr 1fr 0.7fr 0.85fr 1fr", gap: 10, position: "relative", minHeight: 0 }}>
+      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 0.85fr 0.7fr 0.6fr 1fr 0.6fr 0.7fr 0.85fr 1fr", gap: 7, position: "relative", minHeight: 0 }}>
+
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", gap: 4 }}>
+          {col(leftR16, 8).map((m, i) => <BracketMatch key={i} match={m} compact />)}
+        </div>
 
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", gap: 6 }}>
-          {col(leftR16, 4).map((m, i) => <BracketMatch key={i} match={m} />)}
+          {col(leftR8, 4).map((m, i) => <BracketMatch key={i} match={m} compact />)}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", gap: 6 }}>
@@ -1800,7 +1809,11 @@ function BracketSlide({ matches }) {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", gap: 6 }}>
-          {col(rightR16, 4).map((m, i) => <BracketMatch key={i} match={m} />)}
+          {col(rightR8, 4).map((m, i) => <BracketMatch key={i} match={m} compact />)}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", gap: 4 }}>
+          {col(rightR16, 8).map((m, i) => <BracketMatch key={i} match={m} compact />)}
         </div>
 
       </div>
