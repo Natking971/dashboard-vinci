@@ -1758,33 +1758,49 @@ function BracketSlide({ matches }) {
   const final = stages.FINAL[0];
 
   const activeIdx = getActiveRoundIndex(allRounds);
-  // On ne garde que les tours non terminés (et la finale est toujours montrée séparément au centre)
   const visibleRounds = allRounds.slice(activeIdx);
   const n = visibleRounds.length;
 
-  const col = (matchesArr, count, fill = true) => {
-    const arr = [...matchesArr];
-    while (fill && arr.length < count) arr.push(null);
-    return arr;
-  };
-
-  // Taille des cartes : plus n est grand (plus de tours visibles), plus compact
   const sizeForN = n >= 4 ? "compact" : n === 3 ? "small" : n === 2 ? "medium" : "large";
   const finalSize = n === 0 ? "xlarge" : n === 1 ? "large" : "medium";
+  const headerLabel = [...visibleRounds.map(r => r.label), "Finale"].join(" \u00b7 ");
 
-  const headerLabel = [...visibleRounds.map(r => r.label), "Finale"].join(" · ");
+  // Une "moitié" de bracket : un tableau de tours, chacun avec sa propre liste de matchs (déjà coupée en moitié gauche/droite)
+  function buildHalf(side) {
+    return visibleRounds.map(round => {
+      const half = Math.ceil(round.count / 2);
+      const slice = side === "left" ? round.matches.slice(0, half) : round.matches.slice(round.count - half);
+      const arr = [...slice];
+      while (arr.length < half) arr.push(null);
+      return { ...round, matches: arr };
+    });
+  }
 
-  // Construction des colonnes en miroir : moitié gauche, demi, finale (centre), demi, moitié droite
-  const columns = [];
-  visibleRounds.forEach((round, i) => {
-    const half = Math.ceil(round.count / 2);
-    columns.push({ ...round, side: "left", slice: round.matches.slice(0, half), count: half });
-  });
-  columns.push({ key: "final", label: "Finale", isFinal: true });
-  [...visibleRounds].reverse().forEach((round) => {
-    const half = Math.floor(round.count / 2);
-    columns.push({ ...round, side: "right", slice: round.matches.slice(round.count - half), count: half || 1 });
-  });
+  // Rendu récursif d'une moitié de bracket avec doublement de l'espacement vertical par tour.
+  // Le tour 0 (le plus à gauche/droite) a des slots de hauteur `unitH`.
+  // Chaque match du tour suivant est centré entre 2 matchs du tour précédent : sa hauteur de slot double.
+  function HalfBracket({ rounds, side }) {
+    const unitH = sizeForN === "compact" ? 44 : sizeForN === "small" ? 56 : sizeForN === "medium" ? 70 : 88;
+    return (
+      <div style={{ display: "flex", flexDirection: side === "left" ? "row" : "row-reverse", flex: 1, gap: 8, minWidth: 0 }}>
+        {rounds.map((round, roundIdx) => {
+          const slotH = unitH * Math.pow(2, roundIdx);
+          return (
+            <div key={round.key} style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "center", marginBottom: 6 }}>{round.label}</div>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                {round.matches.map((m, j) => (
+                  <div key={j} style={{ height: slotH, display: "flex", alignItems: "center" }}>
+                    <BracketMatch match={m} size={sizeForN} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -1803,7 +1819,7 @@ function BracketSlide({ matches }) {
         <rect x="50" y="170" width="80" height="10" fill="#FFD700" rx="4"/>
       </svg>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 10, flexShrink: 0, position: "relative" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14, flexShrink: 0, position: "relative" }}>
         <div style={{ background: "#FFD700", color: "#0B1E3D", fontSize: 11, fontWeight: 800, padding: "6px 14px", borderRadius: 8, letterSpacing: "0.1em" }}>FIFA 2026</div>
         <div>
           <div style={{ fontSize: 24, fontWeight: 800, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>Phases finales</div>
@@ -1812,74 +1828,27 @@ function BracketSlide({ matches }) {
       </div>
 
       {n === 0 ? (
-        // Plus que la finale : une seule carte géante centrée
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
           <div style={{ width: "100%", maxWidth: 520 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,215,0,0.7)", letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "center", marginBottom: 14 }}>Finale</div>
             <BracketMatch match={final} highlight size="xlarge" />
           </div>
         </div>
-      ) : (() => {
-        // Nombre total de "slots" (lignes) = nombre de matchs du tout premier tour visible
-        const baseCount = visibleRounds[0].count;
-        const cardH = sizeForN === "compact" ? 40 : sizeForN === "small" ? 52 : sizeForN === "medium" ? 66 : 84;
-        const totalRows = baseCount; // une ligne de grille = un match du 1er tour
-        const rowH = cardH;
-
-        // Pour un tour à distance `roundPos` du premier tour visible (0 = premier tour),
-        // chaque match occupe 2^roundPos lignes, centré sur son bloc.
-        function gridRowFor(matchIndex, roundPos) {
-          const span = Math.pow(2, roundPos);
-          const start = matchIndex * span + 1;
-          return { gridRowStart: start, gridRowEnd: start + span };
-        }
-
-        return (
-          <div style={{
-            flex: 1, display: "grid", position: "relative", minHeight: 0, marginTop: 26,
-            gridTemplateColumns: columns.map(c => c.isFinal ? "1.1fr" : (n >= 4 ? "1fr" : n === 3 ? "0.9fr" : "0.85fr")).join(" "),
-            gridTemplateRows: `repeat(${totalRows}, ${rowH}px)`,
-            gap: 8,
-            alignItems: "stretch",
-          }}>
-            {columns.map((c) => {
-              if (c.isFinal) {
-                return (
-                  <div key="final" style={{ gridRow: `1 / ${totalRows + 1}`, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 8 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,215,0,0.7)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Finale</div>
-                    <div style={{ width: "100%" }}>
-                      <BracketMatch match={final} highlight size={finalSize} />
-                    </div>
-                  </div>
-                );
-              }
-              const roundPos = c.side === "left"
-                ? visibleRounds.findIndex(r => r.key === c.key)
-                : visibleRounds.length - 1 - visibleRounds.findIndex(r => r.key === c.key);
-              const matchesForCol = col(c.slice, c.count);
-              return (
-                <div key={`${c.key}-${c.side}`} style={{ gridRow: `1 / ${totalRows + 1}`, display: "grid", gridTemplateRows: `repeat(${totalRows}, ${rowH}px)`, position: "relative" }}>
-                  {matchesForCol.map((m, j) => {
-                    const { gridRowStart, gridRowEnd } = gridRowFor(j, roundPos);
-                    return (
-                      <div key={j} style={{ gridRow: `${gridRowStart} / ${gridRowEnd}`, display: "flex", flexDirection: "column", justifyContent: "center", position: "relative" }}>
-                        {j === 0 && (
-                          <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "center", position: "absolute", top: -22, left: 0, right: 0 }}>{c.label}</div>
-                        )}
-                        <BracketMatch match={m} size={sizeForN} />
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
+      ) : (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 14, position: "relative", minHeight: 0 }}>
+          <HalfBracket rounds={buildHalf("left")} side="left" />
+          <div style={{ flexShrink: 0, width: n >= 3 ? 170 : 230, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,215,0,0.7)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Finale</div>
+            <div style={{ width: "100%" }}>
+              <BracketMatch match={final} highlight size={finalSize} />
+            </div>
           </div>
-        );
-      })()}
+          <HalfBracket rounds={buildHalf("right")} side="right" />
+        </div>
+      )}
     </div>
   );
 }
-
 export default function Dashboard() {
   const [time, setTime] = useState(new Date());
   const [slideIdx, setSlideIdx] = useState(0);
