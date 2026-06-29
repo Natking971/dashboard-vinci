@@ -1690,7 +1690,15 @@ function buildBracket(matches) {
   return stages;
 }
 
-function BracketMatch({ match, highlight, compact }) {
+const BRACKET_SIZES = {
+  compact: { font: 9.5, flag: 13, pad: "5px 9px", radius: 6, scoreFont: 10, gap: 2 },
+  small:   { font: 12, flag: 17, pad: "7px 13px", radius: 8, scoreFont: 13, gap: 3 },
+  medium:  { font: 15, flag: 22, pad: "10px 16px", radius: 10, scoreFont: 17, gap: 4 },
+  large:   { font: 19, flag: 28, pad: "14px 20px", radius: 12, scoreFont: 22, gap: 6 },
+  xlarge:  { font: 26, flag: 38, pad: "20px 28px", radius: 14, scoreFont: 30, gap: 8 },
+};
+
+function BracketMatch({ match, highlight, size = "small" }) {
   const home = match?.home || "À déterminer";
   const away = match?.away || "À déterminer";
   const hs = match?.homeScore;
@@ -1698,57 +1706,78 @@ function BracketMatch({ match, highlight, compact }) {
   const played = match?.status === "FINISHED";
   const homeWin = played && hs > as;
   const awayWin = played && as > hs;
-  const fSize = compact ? 9.5 : 11.5;
-  const flagSize = compact ? 13 : 16;
-  const pad = compact ? "5px 9px" : "7px 12px";
+  const s = BRACKET_SIZES[size] || BRACKET_SIZES.small;
   return (
     <div style={{
       background: highlight ? "rgba(255,215,0,0.08)" : "rgba(255,255,255,0.05)",
       border: highlight ? "1px solid rgba(255,215,0,0.4)" : "1px solid rgba(255,255,255,0.1)",
-      borderRadius: compact ? 6 : 8, padding: pad, display: "flex", flexDirection: "column", gap: compact ? 2 : 3,
+      borderRadius: s.radius, padding: s.pad, display: "flex", flexDirection: "column", gap: s.gap,
       minWidth: 0,
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 5 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, flex: 1 }}>
-          <WCFlag name={home} size={flagSize} />
-          <span style={{ fontSize: fSize, fontWeight: homeWin ? 800 : 400, color: homeWin ? "#FFD700" : "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{home}</span>
+          <WCFlag name={home} size={s.flag} />
+          <span style={{ fontSize: s.font, fontWeight: homeWin ? 800 : 400, color: homeWin ? "#FFD700" : "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{home}</span>
         </div>
-        <span style={{ fontSize: compact ? 10 : 12, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{hs ?? "—"}</span>
+        <span style={{ fontSize: s.scoreFont, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{hs ?? "—"}</span>
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 5 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, flex: 1 }}>
-          <WCFlag name={away} size={flagSize} />
-          <span style={{ fontSize: fSize, fontWeight: awayWin ? 800 : 400, color: awayWin ? "#FFD700" : "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{away}</span>
+          <WCFlag name={away} size={s.flag} />
+          <span style={{ fontSize: s.font, fontWeight: awayWin ? 800 : 400, color: awayWin ? "#FFD700" : "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{away}</span>
         </div>
-        <span style={{ fontSize: compact ? 10 : 12, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{as ?? "—"}</span>
+        <span style={{ fontSize: s.scoreFont, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{as ?? "—"}</span>
       </div>
     </div>
   );
 }
 
+// Détermine à partir de quel tour on doit afficher le bracket :
+// le premier tour qui contient encore au moins un match non terminé.
+// Si un tour est entièrement vide (pas encore généré par l'API), on le saute aussi.
+function getActiveRoundIndex(roundsArr) {
+  for (let i = 0; i < roundsArr.length; i++) {
+    const round = roundsArr[i].matches;
+    const hasMatches = round.length > 0;
+    const allFinished = hasMatches && round.every(m => m.status === "FINISHED");
+    if (hasMatches && !allFinished) return i;
+  }
+  // Si tous les tours connus sont finis (ou vides), on reste sur le dernier tour ayant des matchs
+  for (let i = roundsArr.length - 1; i >= 0; i--) {
+    if (roundsArr[i].matches.length > 0) return i;
+  }
+  return 0;
+}
+
 function BracketSlide({ matches }) {
   const stages = buildBracket(matches || []);
-  const r16 = stages.LAST_32;   // 16es de finale (32 → 16 équipes), 16 matchs
-  const r8 = stages.LAST_16;    // 8es de finale (16 → 8 équipes), 8 matchs
-  const qf = stages.QUARTER_FINALS;
-  const sf = stages.SEMI_FINALS;
-  const final = stages.FINAL[0];
+  const rounds = [
+    { key: "r16", label: "16es", matches: stages.LAST_32 },
+    { key: "r8", label: "8es", matches: stages.LAST_16 },
+    { key: "qf", label: "Quarts", matches: stages.QUARTER_FINALS },
+    { key: "sf", label: "Demi-finales", matches: stages.SEMI_FINALS },
+    { key: "final", label: "Finale", matches: stages.FINAL },
+  ];
 
-  // Découpage gauche/droite : moitié des matchs de chaque tour à gauche, l'autre moitié à droite
-  const leftR16 = r16.slice(0, 8);
-  const rightR16 = r16.slice(8, 16);
-  const leftR8 = r8.slice(0, 4);
-  const rightR8 = r8.slice(4, 8);
-  const leftQF = qf.slice(0, 2);
-  const rightQF = qf.slice(2, 4);
-  const leftSF = sf.slice(0, 1);
-  const rightSF = sf.slice(1, 2);
+  const activeIdx = getActiveRoundIndex(rounds);
+  const visibleRounds = rounds.slice(activeIdx); // on n'affiche que ce tour et les suivants
+  const n = visibleRounds.length;
 
   const col = (matchesArr, count, fill = true) => {
     const arr = [...matchesArr];
     while (fill && arr.length < count) arr.push(null);
     return arr;
   };
+
+  // Tailles de cartes croissantes à mesure qu'il reste moins de tours à afficher
+  const sizeForRound = (roundsLeftFromHere) => {
+    if (roundsLeftFromHere >= 4) return "compact";   // 16es encore visibles : beaucoup de matchs
+    if (roundsLeftFromHere === 3) return "small";    // 8es
+    if (roundsLeftFromHere === 2) return "medium";   // Quarts
+    return "large";                                   // Demi / Finale seules
+  };
+
+  const headerLabel = visibleRounds.map(r => r.label).join(" · ");
 
   return (
     <div style={{
@@ -1771,52 +1800,49 @@ function BracketSlide({ matches }) {
         <div style={{ background: "#FFD700", color: "#0B1E3D", fontSize: 11, fontWeight: 800, padding: "6px 14px", borderRadius: 8, letterSpacing: "0.1em" }}>FIFA 2026</div>
         <div>
           <div style={{ fontSize: 24, fontWeight: 800, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>Phases finales</div>
-          <div style={{ fontSize: 10.5, color: "rgba(255,255,255,0.45)", marginTop: 3 }}>16es · 8es · Quarts · Demi-finales · Finale</div>
+          <div style={{ fontSize: 10.5, color: "rgba(255,255,255,0.45)", marginTop: 3 }}>{headerLabel}</div>
         </div>
       </div>
 
-      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 0.85fr 0.7fr 0.6fr 1fr 0.6fr 0.7fr 0.85fr 1fr", gap: 7, position: "relative", minHeight: 0 }}>
-
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", gap: 4 }}>
-          {col(leftR16, 8).map((m, i) => <BracketMatch key={i} match={m} compact />)}
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", gap: 6 }}>
-          {col(leftR8, 4).map((m, i) => <BracketMatch key={i} match={m} compact />)}
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", gap: 6 }}>
-          {col(leftQF, 2).map((m, i) => <BracketMatch key={i} match={m} />)}
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 6 }}>
-          {col(leftSF, 1).map((m, i) => <BracketMatch key={i} match={m} />)}
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 8 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,215,0,0.7)", letterSpacing: "0.1em", textTransform: "uppercase" }}>Finale</div>
-          <div style={{ width: "100%" }}>
-            <BracketMatch match={final} highlight />
+      {n === 1 ? (
+        // Plus que la finale : une seule carte géante centrée
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+          <div style={{ width: "100%", maxWidth: 520 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,215,0,0.7)", letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "center", marginBottom: 14 }}>Finale</div>
+            <BracketMatch match={visibleRounds[0].matches[0]} highlight size="xlarge" />
           </div>
         </div>
-
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 6 }}>
-          {col(rightSF, 1).map((m, i) => <BracketMatch key={i} match={m} />)}
+      ) : (
+        <div style={{
+          flex: 1, display: "grid", position: "relative", minHeight: 0,
+          gridTemplateColumns: visibleRounds.map((_, i) => {
+            // colonnes plus larges au centre (vers la finale), plus étroites sur les bords (rondes pleines de matchs)
+            const distFromFinal = n - 1 - i;
+            return distFromFinal === 0 ? "1.1fr" : distFromFinal === 1 ? "0.9fr" : "0.75fr";
+          }).join(" "),
+          gap: 8,
+        }}>
+          {visibleRounds.map((round, i) => {
+            const roundsLeftFromHere = n - i;
+            const size = sizeForRound(roundsLeftFromHere);
+            const isFinal = round.key === "final";
+            const expectedCount = round.matches.length > 0 ? round.matches.length : (i === 0 ? rounds[activeIdx].matches.length || 1 : 1);
+            return (
+              <div key={round.key} style={{ display: "flex", flexDirection: "column", justifyContent: isFinal ? "center" : "space-around", alignItems: isFinal ? "center" : "stretch", gap: size === "compact" ? 5 : size === "small" ? 7 : 10 }}>
+                {!isFinal && (
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "center", marginBottom: 2 }}>{round.label}</div>
+                )}
+                {isFinal && (
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,215,0,0.7)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 6 }}>Finale</div>
+                )}
+                {col(round.matches, expectedCount).map((m, j) => (
+                  <BracketMatch key={j} match={m} highlight={isFinal} size={size} />
+                ))}
+              </div>
+            );
+          })}
         </div>
-
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", gap: 6 }}>
-          {col(rightQF, 2).map((m, i) => <BracketMatch key={i} match={m} />)}
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", gap: 6 }}>
-          {col(rightR8, 4).map((m, i) => <BracketMatch key={i} match={m} compact />)}
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", gap: 4 }}>
-          {col(rightR16, 8).map((m, i) => <BracketMatch key={i} match={m} compact />)}
-        </div>
-
-      </div>
+      )}
     </div>
   );
 }
