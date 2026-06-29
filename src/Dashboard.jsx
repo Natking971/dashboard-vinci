@@ -1823,10 +1823,10 @@ function BracketSlide({ matches }) {
 
       <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, position: "relative", minHeight: 0 }}>
         <HalfBracket rounds={buildHalf("left")} side="left" />
-        <div style={{ flexShrink: 0, width: 150, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+        <div style={{ flexShrink: 0, width: 230, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,215,0,0.7)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Finale</div>
           <div style={{ width: "100%" }}>
-            <BracketMatch match={final} highlight size="medium" />
+            <BracketMatch match={final} highlight size="large" />
           </div>
         </div>
         <HalfBracket rounds={buildHalf("right")} side="right" />
