@@ -1774,13 +1774,13 @@ function BracketSlide({ matches }) {
   // Une moitié de bracket : chaque tour double la hauteur de slot du précédent,
   // ce qui centre géométriquement chaque match sur ses deux matchs parents.
   function HalfBracket({ rounds, side }) {
-    const unitH = 42;
+    const unitH = 58;
     const isLeft = side === "left";
     return (
       <div style={{ display: "flex", flexDirection: isLeft ? "row" : "row-reverse", flex: 1, gap: 14, minWidth: 0 }}>
         {rounds.map((round, roundIdx) => {
           const slotH = unitH * Math.pow(2, roundIdx);
-          const size = "small";
+          const size = "medium";
           const isLastRoundOfHalf = roundIdx === rounds.length - 1;
           return (
             <div key={round.key} style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
@@ -1821,7 +1821,7 @@ function BracketSlide({ matches }) {
 
   return (
     <div style={{
-      height: "100%", display: "flex", flexDirection: "column", padding: "16px 22px",
+      height: "100%", display: "flex", flexDirection: "column", padding: "12px 20px",
       background: "radial-gradient(ellipse at 50% 0%, #3a2800 0%, #1a1200 40%, #0a0a0a 100%)",
       position: "relative", overflow: "hidden",
     }}>
@@ -1836,20 +1836,20 @@ function BracketSlide({ matches }) {
         <rect x="50" y="170" width="80" height="10" fill="#FFD700" rx="4"/>
       </svg>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 10, flexShrink: 0, position: "relative" }}>
-        <div style={{ background: "#FFD700", color: "#0B1E3D", fontSize: 11, fontWeight: 800, padding: "6px 14px", borderRadius: 8, letterSpacing: "0.1em" }}>FIFA 2026</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6, flexShrink: 0, position: "relative" }}>
+        <div style={{ background: "#FFD700", color: "#0B1E3D", fontSize: 10, fontWeight: 800, padding: "5px 12px", borderRadius: 8, letterSpacing: "0.1em" }}>FIFA 2026</div>
         <div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>Phases finales</div>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 3 }}>{headerLabel}</div>
+          <div style={{ fontSize: 19, fontWeight: 800, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>Phases finales</div>
+          <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{headerLabel}</div>
         </div>
       </div>
 
-      <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, position: "relative", minHeight: 0 }}>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 12, position: "relative", minHeight: 0 }}>
         <HalfBracket rounds={buildHalf("left")} side="left" />
-        <div style={{ flexShrink: 0, width: 230, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,215,0,0.7)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Finale</div>
+        <div style={{ flexShrink: 0, width: 280, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,215,0,0.7)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Finale</div>
           <div style={{ width: "100%" }}>
-            <BracketMatch match={final} highlight size="small" />
+            <BracketMatch match={final} highlight size="medium" />
           </div>
         </div>
         <HalfBracket rounds={buildHalf("right")} side="right" />
