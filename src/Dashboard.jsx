@@ -1774,7 +1774,7 @@ function BracketSlide({ matches }) {
   // Une moitié de bracket : chaque tour double la hauteur de slot du précédent,
   // ce qui centre géométriquement chaque match sur ses deux matchs parents.
   function HalfBracket({ rounds, side }) {
-    const unitH = 58;
+    const unitH = 78;
     const isLeft = side === "left";
     return (
       <div style={{ display: "flex", flexDirection: isLeft ? "row" : "row-reverse", flex: 1, gap: 14, minWidth: 0 }}>
