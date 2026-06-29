@@ -1772,20 +1772,40 @@ function BracketSlide({ matches }) {
   // ce qui centre géométriquement chaque match sur ses deux matchs parents.
   function HalfBracket({ rounds, side }) {
     const unitH = 42;
+    const isLeft = side === "left";
     return (
-      <div style={{ display: "flex", flexDirection: side === "left" ? "row" : "row-reverse", flex: 1, gap: 6, minWidth: 0 }}>
+      <div style={{ display: "flex", flexDirection: isLeft ? "row" : "row-reverse", flex: 1, gap: 14, minWidth: 0 }}>
         {rounds.map((round, roundIdx) => {
           const slotH = unitH * Math.pow(2, roundIdx);
           const size = roundIdx === 0 ? "compact" : roundIdx === 1 ? "small" : "medium";
+          const isLastRoundOfHalf = roundIdx === rounds.length - 1;
           return (
             <div key={round.key} style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "center", marginBottom: 6, flexShrink: 0 }}>{round.label}</div>
               <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                {round.matches.map((m, j) => (
-                  <div key={j} style={{ height: slotH, display: "flex", alignItems: "center", minHeight: 0 }}>
-                    <BracketMatch match={m} size={size} />
-                  </div>
-                ))}
+                {round.matches.map((m, j) => {
+                  // Trait connecteur : sort du côté "vers la finale" de la carte, vers le milieu de l'espace, puis rejoint le match suivant.
+                  // On dessine seulement un petit trait horizontal + la moitié de la ligne verticale qui relie une paire.
+                  const isTopOfPair = j % 2 === 0;
+                  return (
+                    <div key={j} style={{ height: slotH, display: "flex", alignItems: "center", minHeight: 0, position: "relative" }}>
+                      {!isLastRoundOfHalf && (
+                        <div style={{
+                          position: "absolute",
+                          [isLeft ? "right" : "left"]: -6,
+                          top: isTopOfPair ? "50%" : undefined,
+                          bottom: !isTopOfPair ? "50%" : undefined,
+                          height: slotH / 2,
+                          width: 6,
+                          borderTop: isTopOfPair ? "1px solid rgba(255,255,255,0.18)" : "none",
+                          borderBottom: !isTopOfPair ? "1px solid rgba(255,255,255,0.18)" : "none",
+                          [isLeft ? "borderRight" : "borderLeft"]: "1px solid rgba(255,255,255,0.18)",
+                        }} />
+                      )}
+                      <BracketMatch match={m} size={size} />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
