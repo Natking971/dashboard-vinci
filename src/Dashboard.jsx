@@ -1676,6 +1676,7 @@ function buildBracket(matches) {
   matches.forEach(m => {
     if (stages[m.stage]) {
       stages[m.stage].push({
+        id: m.id,
         home: m.homeTeam?.shortName || m.homeTeam?.name || null,
         away: m.awayTeam?.shortName || m.awayTeam?.name || null,
         homeScore: m.score?.fullTime?.home ?? null,
@@ -1685,8 +1686,10 @@ function buildBracket(matches) {
       });
     }
   });
-  // Tri par date pour garder un ordre stable
-  Object.keys(stages).forEach(k => stages[k].sort((a, b) => new Date(a.date) - new Date(b.date)));
+  // Tri par id de match : l'API attribue les id dans l'ordre officiel du bracket FIFA,
+  // alors que la date de coup d'envoi ne respecte pas cet ordre (les matchs sont programmés
+  // selon les disponibilités des stades, pas selon la position dans l'arbre).
+  Object.keys(stages).forEach(k => stages[k].sort((a, b) => a.id - b.id));
   return stages;
 }
 
@@ -1777,7 +1780,7 @@ function BracketSlide({ matches }) {
       <div style={{ display: "flex", flexDirection: isLeft ? "row" : "row-reverse", flex: 1, gap: 14, minWidth: 0 }}>
         {rounds.map((round, roundIdx) => {
           const slotH = unitH * Math.pow(2, roundIdx);
-          const size = roundIdx === 0 ? "compact" : roundIdx === 1 ? "small" : "medium";
+          const size = "small";
           const isLastRoundOfHalf = roundIdx === rounds.length - 1;
           return (
             <div key={round.key} style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
@@ -1846,7 +1849,7 @@ function BracketSlide({ matches }) {
         <div style={{ flexShrink: 0, width: 230, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,215,0,0.7)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Finale</div>
           <div style={{ width: "100%" }}>
-            <BracketMatch match={final} highlight size="large" />
+            <BracketMatch match={final} highlight size="small" />
           </div>
         </div>
         <HalfBracket rounds={buildHalf("right")} side="right" />
