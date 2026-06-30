@@ -1671,14 +1671,48 @@ function bracketName(m) {
   return m.shortName || m.name || "À déterminer";
 }
 
+// Structure officielle du bracket FIFA 2026 (source ESPN/FIFA) :
+// position RD32 1-16 dans l'ordre officiel du tableau (pas l'ordre chronologique de coup d'envoi).
+// Chaque position renvoie vers les groupes/équipes attendues, utilisé pour ordonner les
+// matchs LAST_32 correctement même si l'API les liste dans le désordre du calendrier.
+const BRACKET_RD32_ORDER = [
+  // [home group/desc, away group/desc] — utilisé seulement pour matcher par équipes une fois connues
+  { p: 1,  teams: ["Germany", "Paraguay"] },
+  { p: 2,  teams: ["South Africa", "Canada"] },
+  { p: 3,  teams: ["France", "Sweden"] },
+  { p: 4,  teams: ["Netherlands", "Morocco"] },
+  { p: 5,  teams: ["Ivory Coast", "Norway"] },
+  { p: 6,  teams: ["Mexico", "Ecuador"] },
+  { p: 7,  teams: ["Brazil", "Japan"] },
+  { p: 8,  teams: ["England", "Congo DR"] },
+  { p: 9,  teams: ["Belgium", "Senegal"] },
+  { p: 10, teams: ["USA", "Bosnia-H."] },
+  { p: 11, teams: ["Spain", "Austria"] },
+  { p: 12, teams: ["Switzerland", "Algeria"] },
+  { p: 13, teams: ["Portugal", "Croatia"] },
+  { p: 14, teams: ["Australia", "Egypt"] },
+  { p: 15, teams: ["Argentina", "Cape Verde"] },
+  { p: 16, teams: ["Colombia", "Ghana"] },
+];
+
+// Variantes de noms d'équipe (l'API peut renvoyer un nom légèrement différent de celui ci-dessus)
+const TEAM_ALIASES = {
+  "Korea Republic": "South Korea", "Bosnia-Herzegovina": "Bosnia-H.", "Cape Verde Islands": "Cape Verde",
+  "United States": "USA", "Congo DR": "Congo DR",
+};
+function normTeam(name) {
+  if (!name) return name;
+  return TEAM_ALIASES[name] || name;
+}
+
 function buildBracket(matches) {
   const stages = { LAST_32: [], LAST_16: [], QUARTER_FINALS: [], SEMI_FINALS: [], FINAL: [], THIRD_PLACE: [] };
   matches.forEach(m => {
     if (stages[m.stage]) {
       stages[m.stage].push({
         id: m.id,
-        home: m.homeTeam?.shortName || m.homeTeam?.name || null,
-        away: m.awayTeam?.shortName || m.awayTeam?.name || null,
+        home: normTeam(m.homeTeam?.shortName || m.homeTeam?.name || null),
+        away: normTeam(m.awayTeam?.shortName || m.awayTeam?.name || null),
         homeScore: m.score?.fullTime?.home ?? null,
         awayScore: m.score?.fullTime?.away ?? null,
         status: m.status,
@@ -1686,10 +1720,36 @@ function buildBracket(matches) {
       });
     }
   });
-  // Tri par id de match : l'API attribue les id dans l'ordre officiel du bracket FIFA,
-  // alors que la date de coup d'envoi ne respecte pas cet ordre (les matchs sont programmés
-  // selon les disponibilités des stades, pas selon la position dans l'arbre).
-  Object.keys(stages).forEach(k => stages[k].sort((a, b) => a.id - b.id));
+
+  // Réordonne LAST_32 selon la position officielle du bracket (1-16) en faisant correspondre
+  // les équipes du match aux paires attendues. Si aucune correspondance n'est trouvée
+  // (équipes encore inconnues côté API), on retombe sur l'ordre par id.
+  const ordered = new Array(16).fill(null);
+  const unmatched = [];
+  stages.LAST_32.forEach(m => {
+    const slot = BRACKET_RD32_ORDER.find(s =>
+      (s.teams.includes(m.home) || s.teams.includes(m.away))
+    );
+    if (slot && !ordered[slot.p - 1]) {
+      ordered[slot.p - 1] = m;
+    } else {
+      unmatched.push(m);
+    }
+  });
+  // Comble les trous restants (matchs pas encore identifiables) avec les non-matchés, par id
+  unmatched.sort((a, b) => a.id - b.id);
+  let u = 0;
+  for (let i = 0; i < 16; i++) {
+    if (!ordered[i] && u < unmatched.length) ordered[i] = unmatched[u++];
+  }
+  stages.LAST_32 = ordered.filter(Boolean);
+
+  // Les tours suivants : tri simple par id (ordre chronologique = ordre du bracket pour ces tours,
+  // car l'API les génère dans l'ordre officiel une fois les positions RD32 connues)
+  ["LAST_16", "QUARTER_FINALS", "SEMI_FINALS", "FINAL", "THIRD_PLACE"].forEach(k => {
+    stages[k].sort((a, b) => a.id - b.id);
+  });
+
   return stages;
 }
 
