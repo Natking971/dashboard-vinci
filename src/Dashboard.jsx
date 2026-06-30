@@ -1704,6 +1704,52 @@ function normTeam(name) {
   return TEAM_ALIASES[name] || name;
 }
 
+// Positions officielles des 8es de finale (EF1-EF8), chacune définie par les 4 équipes RD32
+// dont elle est issue (les 2 paires RD32 qui s'affrontent). Permet d'identifier le bon EF
+// même quand les noms d'équipe du 8e ne sont pas encore connus, en regardant son `id` brut
+// ou — une fois connu — en comparant les équipes effectivement présentes.
+const BRACKET_RD16_POOLS = [
+  { p: 1, rd32: [1, 2] },   // Allemagne/Paraguay/France/Suède
+  { p: 2, rd32: [3, 4] },   // Afrique du Sud/Canada/Pays-Bas/Maroc
+  { p: 3, rd32: [9, 10] },  // Brésil/Japon/Côte d'Ivoire/Norvège
+  { p: 4, rd32: [11, 12] }, // Mexique/Équateur/Angleterre/RD Congo
+  { p: 5, rd32: [5, 6] },   // Portugal/Croatie/Espagne/Autriche
+  { p: 6, rd32: [7, 8] },   // USA/Bosnie/Belgique/Sénégal
+  { p: 7, rd32: [13, 14] }, // Argentine/Cap-Vert/Australie/Égypte
+  { p: 8, rd32: [15, 16] }, // Suisse/Algérie/Colombie/Ghana
+];
+
+function teamsForRd32Positions(positions) {
+  const teams = [];
+  positions.forEach(p => {
+    const slot = BRACKET_RD32_ORDER.find(s => s.p === p);
+    if (slot) teams.push(...slot.teams);
+  });
+  return teams;
+}
+
+function orderByPools(matchesArr, pools, getTeamsForPool) {
+  const ordered = new Array(pools.length).fill(null);
+  const unmatched = [];
+  matchesArr.forEach(m => {
+    const pool = pools.find(s => {
+      const teams = getTeamsForPool(s);
+      return teams.includes(m.home) || teams.includes(m.away);
+    });
+    if (pool && !ordered[pool.p - 1]) {
+      ordered[pool.p - 1] = m;
+    } else {
+      unmatched.push(m);
+    }
+  });
+  unmatched.sort((a, b) => a.id - b.id);
+  let u = 0;
+  for (let i = 0; i < pools.length; i++) {
+    if (!ordered[i] && u < unmatched.length) ordered[i] = unmatched[u++];
+  }
+  return ordered.filter(Boolean);
+}
+
 function buildBracket(matches) {
   const stages = { LAST_32: [], LAST_16: [], QUARTER_FINALS: [], SEMI_FINALS: [], FINAL: [], THIRD_PLACE: [] };
   matches.forEach(m => {
@@ -1720,32 +1766,15 @@ function buildBracket(matches) {
     }
   });
 
-  // Réordonne LAST_32 selon la position officielle du bracket (1-16) en faisant correspondre
-  // les équipes du match aux paires attendues. Si aucune correspondance n'est trouvée
-  // (équipes encore inconnues côté API), on retombe sur l'ordre par id.
-  const ordered = new Array(16).fill(null);
-  const unmatched = [];
-  stages.LAST_32.forEach(m => {
-    const slot = BRACKET_RD32_ORDER.find(s =>
-      (s.teams.includes(m.home) || s.teams.includes(m.away))
-    );
-    if (slot && !ordered[slot.p - 1]) {
-      ordered[slot.p - 1] = m;
-    } else {
-      unmatched.push(m);
-    }
-  });
-  // Comble les trous restants (matchs pas encore identifiables) avec les non-matchés, par id
-  unmatched.sort((a, b) => a.id - b.id);
-  let u = 0;
-  for (let i = 0; i < 16; i++) {
-    if (!ordered[i] && u < unmatched.length) ordered[i] = unmatched[u++];
-  }
-  stages.LAST_32 = ordered.filter(Boolean);
+  // Réordonne LAST_32 selon la position officielle du bracket (1-16)
+  stages.LAST_32 = orderByPools(stages.LAST_32, BRACKET_RD32_ORDER, s => s.teams);
 
-  // Les tours suivants : tri simple par id (ordre chronologique = ordre du bracket pour ces tours,
-  // car l'API les génère dans l'ordre officiel une fois les positions RD32 connues)
-  ["LAST_16", "QUARTER_FINALS", "SEMI_FINALS", "FINAL", "THIRD_PLACE"].forEach(k => {
+  // Réordonne LAST_16 (8es) selon les pools RD32 dont elles dépendent (EF1-EF8)
+  stages.LAST_16 = orderByPools(stages.LAST_16, BRACKET_RD16_POOLS, s => teamsForRd32Positions(s.rd32));
+
+  // Quarts/demi/finale : tri par id, suffisant car peu de matchs et l'API les génère
+  // dans l'ordre du bracket une fois les tours précédents joués
+  ["QUARTER_FINALS", "SEMI_FINALS", "FINAL", "THIRD_PLACE"].forEach(k => {
     stages[k].sort((a, b) => a.id - b.id);
   });
 
