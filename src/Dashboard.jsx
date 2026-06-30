@@ -1949,6 +1949,7 @@ export default function Dashboard() {
   const [time, setTime] = useState(new Date());
   const [slideIdx, setSlideIdx] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [paused, setPaused] = useState(false);
   const [planning, setPlanning] = useState(FALLBACK_PLANNING);
   const [planningNext, setPlanningNext] = useState(FALLBACK_PLANNING);
   const [affairs, setAffairs] = useState(FALLBACK_AFFAIRS);
@@ -2201,6 +2202,9 @@ export default function Dashboard() {
       } else if (e.code === "ArrowLeft") {
         e.preventDefault();
         setSlideIdx(i => (i - 1 + SLIDES.length) % SLIDES.length);
+      } else if (e.code === "KeyP") {
+        e.preventDefault();
+        setPaused(p => !p);
       }
     }
     window.addEventListener("keydown", handleKey);
@@ -2237,6 +2241,10 @@ export default function Dashboard() {
     else if (SLIDES[slideIdx].type === "planning" && planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12) {
       slideDuration = PLANNING_SLIDE_DURATION;
     }
+    if (paused) {
+      // En pause : on fige la barre de progression, pas d'avancement automatique
+      return;
+    }
     const tick = setInterval(() => {
       const elapsed = Date.now() - start;
       setProgress(Math.min(100, (elapsed / slideDuration) * 100));
@@ -2245,7 +2253,7 @@ export default function Dashboard() {
       setSlideIdx(i => (i + 1) % SLIDES.length);
     }, slideDuration);
     return () => { clearInterval(tick); clearTimeout(advance); };
-  }, [slideIdx, planning, planningNext, affairs, subcontractorsCurrent, subcontractorsNext, quotes]);
+  }, [slideIdx, planning, planningNext, affairs, subcontractorsCurrent, subcontractorsNext, quotes, paused]);
 
   const timeStr = time.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const dateStr = time.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -2308,8 +2316,8 @@ export default function Dashboard() {
           }} />
           <div>
             <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.5px" }}>TABLEAU DE BORD</div>
-            <div style={{ fontSize: 13, color: "#9CA3AF", fontWeight: 500, marginTop: 3 }}>
-              Slide {slideIdx + 1} / {SLIDES.length} · rotation auto 30s
+            <div style={{ fontSize: 13, color: paused ? "#FBBF24" : "#9CA3AF", fontWeight: 500, marginTop: 3 }}>
+              Slide {slideIdx + 1} / {SLIDES.length} · {paused ? "⏸ PAUSE (touche P pour reprendre)" : "rotation auto 30s"}
             </div>
           </div>
           <div style={{
