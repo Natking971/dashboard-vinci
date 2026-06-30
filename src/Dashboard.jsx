@@ -1709,14 +1709,14 @@ function normTeam(name) {
 // même quand les noms d'équipe du 8e ne sont pas encore connus, en regardant son `id` brut
 // ou — une fois connu — en comparant les équipes effectivement présentes.
 const BRACKET_RD16_POOLS = [
-  { p: 1, rd32: [1, 2] },   // Allemagne/Paraguay/France/Suède
-  { p: 2, rd32: [3, 4] },   // Afrique du Sud/Canada/Pays-Bas/Maroc
-  { p: 3, rd32: [9, 10] },  // Brésil/Japon/Côte d'Ivoire/Norvège
-  { p: 4, rd32: [11, 12] }, // Mexique/Équateur/Angleterre/RD Congo
-  { p: 5, rd32: [5, 6] },   // Portugal/Croatie/Espagne/Autriche
-  { p: 6, rd32: [7, 8] },   // USA/Bosnie/Belgique/Sénégal
-  { p: 7, rd32: [13, 14] }, // Argentine/Cap-Vert/Australie/Égypte
-  { p: 8, rd32: [15, 16] }, // Suisse/Algérie/Colombie/Ghana
+  { p: 1, rd32: [1, 2] },   // gauche : Allemagne/Paraguay/France/Suède
+  { p: 2, rd32: [3, 4] },   // gauche : Afrique du Sud/Canada/Pays-Bas/Maroc
+  { p: 3, rd32: [5, 6] },   // gauche : Portugal/Croatie/Espagne/Autriche
+  { p: 4, rd32: [7, 8] },   // gauche : USA/Bosnie/Belgique/Sénégal
+  { p: 5, rd32: [9, 10] },  // droite : Brésil/Japon/Côte d'Ivoire/Norvège
+  { p: 6, rd32: [11, 12] }, // droite : Mexique/Équateur/Angleterre/RD Congo
+  { p: 7, rd32: [13, 14] }, // droite : Argentine/Cap-Vert/Australie/Égypte
+  { p: 8, rd32: [15, 16] }, // droite : Suisse/Algérie/Colombie/Ghana
 ];
 
 function teamsForRd32Positions(positions) {
