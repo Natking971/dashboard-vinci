@@ -1676,22 +1676,21 @@ function bracketName(m) {
 // Chaque position renvoie vers les groupes/équipes attendues, utilisé pour ordonner les
 // matchs LAST_32 correctement même si l'API les liste dans le désordre du calendrier.
 const BRACKET_RD32_ORDER = [
-  // [home group/desc, away group/desc] — utilisé seulement pour matcher par équipes une fois connues
   { p: 1,  teams: ["Germany", "Paraguay"] },
-  { p: 2,  teams: ["South Africa", "Canada"] },
-  { p: 3,  teams: ["France", "Sweden"] },
+  { p: 2,  teams: ["France", "Sweden"] },
+  { p: 3,  teams: ["South Africa", "Canada"] },
   { p: 4,  teams: ["Netherlands", "Morocco"] },
-  { p: 5,  teams: ["Ivory Coast", "Norway"] },
-  { p: 6,  teams: ["Mexico", "Ecuador"] },
-  { p: 7,  teams: ["Brazil", "Japan"] },
-  { p: 8,  teams: ["England", "Congo DR"] },
-  { p: 9,  teams: ["Belgium", "Senegal"] },
-  { p: 10, teams: ["USA", "Bosnia-H."] },
-  { p: 11, teams: ["Spain", "Austria"] },
-  { p: 12, teams: ["Switzerland", "Algeria"] },
-  { p: 13, teams: ["Portugal", "Croatia"] },
+  { p: 5,  teams: ["Portugal", "Croatia"] },
+  { p: 6,  teams: ["Spain", "Austria"] },
+  { p: 7,  teams: ["USA", "Bosnia-H."] },
+  { p: 8,  teams: ["Belgium", "Senegal"] },
+  { p: 9,  teams: ["Brazil", "Japan"] },
+  { p: 10, teams: ["Ivory Coast", "Norway"] },
+  { p: 11, teams: ["Mexico", "Ecuador"] },
+  { p: 12, teams: ["England", "Congo DR"] },
+  { p: 13, teams: ["Argentina", "Cape Verde"] },
   { p: 14, teams: ["Australia", "Egypt"] },
-  { p: 15, teams: ["Argentina", "Cape Verde"] },
+  { p: 15, teams: ["Switzerland", "Algeria"] },
   { p: 16, teams: ["Colombia", "Ghana"] },
 ];
 
