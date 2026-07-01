@@ -1750,6 +1750,14 @@ function orderByPools(matchesArr, pools, getTeamsForPool) {
   return ordered.filter(Boolean);
 }
 
+// Retourne le vainqueur d'un match de bracket (null si non terminé)
+function getWinner(m) {
+  if (!m || m.status !== "FINISHED") return null;
+  if (m.homeScore > m.awayScore) return m.home;
+  if (m.awayScore > m.homeScore) return m.away;
+  return null;
+}
+
 function buildBracket(matches) {
   const stages = { LAST_32: [], LAST_16: [], QUARTER_FINALS: [], SEMI_FINALS: [], FINAL: [], THIRD_PLACE: [] };
   matches.forEach(m => {
@@ -1771,6 +1779,41 @@ function buildBracket(matches) {
 
   // Réordonne LAST_16 (8es) selon les pools RD32 dont elles dépendent (EF1-EF8)
   stages.LAST_16 = orderByPools(stages.LAST_16, BRACKET_RD16_POOLS, s => teamsForRd32Positions(s.rd32));
+
+  // Complète les slots de 8es non encore générés par l'API :
+  // si un vainqueur de 16es est connu alors que l'API n'a pas encore créé le match de 8es,
+  // on affiche quand même ce vainqueur avec l'adversaire à null ("À déterminer").
+  if (stages.LAST_16.length < BRACKET_RD16_POOLS.length) {
+    const filled = new Array(BRACKET_RD16_POOLS.length).fill(null);
+    // Place les vrais matchs déjà présents dans l'API
+    stages.LAST_16.forEach(m => {
+      const pool = BRACKET_RD16_POOLS.find(p => {
+        const t = teamsForRd32Positions(p.rd32);
+        return t.includes(m.home) || t.includes(m.away);
+      });
+      if (pool) filled[pool.p - 1] = m;
+    });
+    // Pour les slots vides, déduit les vainqueurs connus des 16es
+    BRACKET_RD16_POOLS.forEach((pool, idx) => {
+      if (filled[idx]) return;
+      const m1 = stages.LAST_32[pool.rd32[0] - 1];
+      const m2 = stages.LAST_32[pool.rd32[1] - 1];
+      const w1 = getWinner(m1);
+      const w2 = getWinner(m2);
+      if (w1 || w2) {
+        filled[idx] = {
+          id: null,
+          home: w1 || null,
+          away: w2 || null,
+          homeScore: null,
+          awayScore: null,
+          status: "SCHEDULED",
+          date: null,
+        };
+      }
+    });
+    stages.LAST_16 = filled.filter(Boolean);
+  }
 
   // Quarts/demi/finale : tri par id, suffisant car peu de matchs et l'API les génère
   // dans l'ordre du bracket une fois les tours précédents joués
