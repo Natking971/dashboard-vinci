@@ -1780,40 +1780,40 @@ function buildBracket(matches) {
   // Réordonne LAST_16 (8es) selon les pools RD32 dont elles dépendent (EF1-EF8)
   stages.LAST_16 = orderByPools(stages.LAST_16, BRACKET_RD16_POOLS, s => teamsForRd32Positions(s.rd32));
 
-  // Complète les slots de 8es non encore générés par l'API :
-  // si un vainqueur de 16es est connu alors que l'API n'a pas encore créé le match de 8es,
-  // on affiche quand même ce vainqueur avec l'adversaire à null ("À déterminer").
-  if (stages.LAST_16.length < BRACKET_RD16_POOLS.length) {
-    const filled = new Array(BRACKET_RD16_POOLS.length).fill(null);
-    // Place les vrais matchs déjà présents dans l'API
-    stages.LAST_16.forEach(m => {
-      const pool = BRACKET_RD16_POOLS.find(p => {
-        const t = teamsForRd32Positions(p.rd32);
-        return t.includes(m.home) || t.includes(m.away);
-      });
-      if (pool) filled[pool.p - 1] = m;
+  // Pour chaque slot de 8es : si l'API a déjà le match mais avec des équipes null/TBD,
+  // ou si le slot n'existe pas encore, on injecte les vainqueurs connus des 16es correspondantes.
+  // L'API football-data.org crée parfois les slots dès le début avec home/away null,
+  // ou ne les crée qu'une fois les deux 16es terminés — on gère les deux cas.
+  const rd16Filled = new Array(BRACKET_RD16_POOLS.length).fill(null);
+  // 1) Place les matchs API qui ont déjà de vraies équipes renseignées
+  stages.LAST_16.forEach(m => {
+    if (!m.home && !m.away) return; // slot vide API, ignoré ici
+    const pool = BRACKET_RD16_POOLS.find(p => {
+      const t = teamsForRd32Positions(p.rd32);
+      return t.includes(m.home) || t.includes(m.away);
     });
-    // Pour les slots vides, déduit les vainqueurs connus des 16es
-    BRACKET_RD16_POOLS.forEach((pool, idx) => {
-      if (filled[idx]) return;
-      const m1 = stages.LAST_32[pool.rd32[0] - 1];
-      const m2 = stages.LAST_32[pool.rd32[1] - 1];
-      const w1 = getWinner(m1);
-      const w2 = getWinner(m2);
-      if (w1 || w2) {
-        filled[idx] = {
-          id: null,
-          home: w1 || null,
-          away: w2 || null,
-          homeScore: null,
-          awayScore: null,
-          status: "SCHEDULED",
-          date: null,
-        };
-      }
-    });
-    stages.LAST_16 = filled.filter(Boolean);
-  }
+    if (pool && !rd16Filled[pool.p - 1]) rd16Filled[pool.p - 1] = m;
+  });
+  // 2) Pour chaque slot encore vide, calcule les vainqueurs connus des 16es
+  BRACKET_RD16_POOLS.forEach((pool, idx) => {
+    if (rd16Filled[idx]) return;
+    const m1 = stages.LAST_32[pool.rd32[0] - 1];
+    const m2 = stages.LAST_32[pool.rd32[1] - 1];
+    const w1 = getWinner(m1);
+    const w2 = getWinner(m2);
+    // Cherche le slot API existant (même avec équipes null) pour garder son id/date
+    const apiSlot = stages.LAST_16.find(m => !m.home && !m.away);
+    rd16Filled[idx] = {
+      id: apiSlot?.id || null,
+      home: w1 || null,
+      away: w2 || null,
+      homeScore: null,
+      awayScore: null,
+      status: "SCHEDULED",
+      date: apiSlot?.date || null,
+    };
+  });
+  stages.LAST_16 = rd16Filled.filter(Boolean);
 
   // Quarts/demi/finale : tri par id, suffisant car peu de matchs et l'API les génère
   // dans l'ordre du bracket une fois les tours précédents joués
