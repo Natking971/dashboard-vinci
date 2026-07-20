@@ -293,8 +293,6 @@ const SLIDES = [
   { id: "subcontractorsNext", type: "subcontractors", week: "next" },
   { id: "planningNext", type: "planning", week: "next" },
   { id: "onesite", type: "onesite" },
-  { id: "worldcup", type: "worldcup" },
-  { id: "worldcupStandings", type: "worldcupStandings" },
 ];
 
 // ─── UTILITAIRES ────────────────────────────────────────────────────────────
@@ -1359,640 +1357,10 @@ function GoldenRulesSlide() {
 
 // ─── SLIDE COUPE DU MONDE ────────────────────────────────────────────────────
 
-const WC_FLAGS = {
-  // Noms anglais de l'API football-data.org
-  "Mexico":"mx","South Africa":"za","Korea Republic":"kr","Czechia":"cz",
-  "Canada":"ca","Bosnia-Herzegovina":"ba","Bosnia-H.":"ba",
-  "USA":"us","United States":"us","Paraguay":"py",
-  "Qatar":"qa","Switzerland":"ch","Brazil":"br","Morocco":"ma",
-  "Haiti":"ht","Scotland":"gb-sct","Australia":"au","Turkey":"tr",
-  "Germany":"de","Curaçao":"cw","Netherlands":"nl","Japan":"jp",
-  "Ivory Coast":"ci","Ecuador":"ec","Sweden":"se","Tunisia":"tn",
-  "Spain":"es","Cape Verde":"cv","Cape Verde Islands":"cv",
-  "Belgium":"be","Egypt":"eg","Saudi Arabia":"sa","Uruguay":"uy",
-  "Iran":"ir","New Zealand":"nz","France":"fr","Senegal":"sn",
-  "Iraq":"iq","Norway":"no","Argentina":"ar","Algeria":"dz",
-  "Austria":"at","Jordan":"jo","Portugal":"pt","Congo DR":"cd",
-  "England":"gb-eng","Croatia":"hr","Ghana":"gh","Panama":"pa",
-  "Uzbekistan":"uz","Colombia":"co","South Korea":"kr",
-  // Noms français (fallback)
-  "Mexique":"mx","Afrique du Sud":"za","Corée du Sud":"kr",
-  "Tchéquie":"cz","Rép. Tchèque":"cz","Bosnie-Herzégovine":"ba",
-  "États-Unis":"us","Suisse":"ch","Brésil":"br","Maroc":"ma",
-  "Haïti":"ht","Écosse":"gb-sct","Australie":"au","Turquie":"tr",
-  "Allemagne":"de","Pays-Bas":"nl","Japon":"jp",
-  "Côte d'Ivoire":"ci","Équateur":"ec","Suède":"se","Tunisie":"tn",
-  "Espagne":"es","Cap-Vert":"cv","Belgique":"be","Égypte":"eg",
-  "Arabie Saoudite":"sa","Norvège":"no","Argentine":"ar","Algérie":"dz",
-  "Autriche":"at","Jordanie":"jo","Angleterre":"gb-eng","Croatie":"hr",
-  "Sénégal":"sn","Irak":"iq","Colombie":"co","Ouzbékistan":"uz",
-};
-
-function WCFlag({ name, size = 24 }) {
-  const code = WC_FLAGS[name];
-  if (!code) return <span style={{ fontSize: size * 0.7, color: "rgba(255,255,255,0.4)" }}>?</span>;
-  return (
-    <img
-      src={`https://flagcdn.com/w40/${code}.png`}
-      alt={name}
-      style={{ width: size, height: size * 0.67, objectFit: "cover", borderRadius: 3, flexShrink: 0 }}
-      onError={e => { e.target.style.display = "none"; }}
-    />
-  );
-}
-
-function WorldCupSlide({ liveMatches = [], nextMatches = [], lastUpdate = null }) {
-  const [countdown, setCountdown] = useState(60);
-
-  useEffect(() => {
-    const tick = setInterval(() => setCountdown(c => c > 0 ? c - 1 : 60), 1000);
-    return () => clearInterval(tick);
-  }, []);
-
-  useEffect(() => { setCountdown(60); }, [lastUpdate]);
-
-  const loading = liveMatches.length === 0 && nextMatches.length === 0;
-
-  function formatDate(d) {
-    if (!d) return "";
-    const dt = new Date(d);
-    if (isNaN(dt)) return d;
-    return dt.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
-  }
-
-  function formatTime(d) {
-    if (!d) return "";
-    const dt = new Date(d);
-    if (isNaN(dt)) return "";
-    return dt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-  }
-
-  const cardStyle = (isLive) => ({
-    background: isLive ? "rgba(34,197,94,0.08)" : "rgba(255,200,50,0.06)",
-    borderRadius: 12, padding: "12px 20px",
-    border: `1px solid ${isLive ? "rgba(34,197,94,0.45)" : "rgba(255,200,50,0.2)"}`,
-    height: 78, flexShrink: 0, display: "flex", flexDirection: "column", justifyContent: "center",
-  });
-
-  return (
-    <div style={{
-      height: "100%", display: "flex", flexDirection: "column", padding: "28px 40px",
-      background: "radial-gradient(ellipse at 50% 0%, #3a2800 0%, #1a1200 40%, #0a0a0a 100%)",
-      position: "relative", overflow: "hidden",
-    }}>
-      {/* Halo doré en haut */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "55%", background: "radial-gradient(ellipse at 50% -20%, rgba(255,200,50,0.22) 0%, transparent 65%)", pointerEvents: "none" }} />
-
-      {/* Trophée SVG centré en filigrane */}
-      <svg style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", opacity: 0.1, pointerEvents: "none" }} width="320" height="390" viewBox="0 0 180 220" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M55 20 L125 20 L115 90 Q90 130 90 130 Q90 130 65 90 Z" fill="#FFD700"/>
-        <path d="M55 30 Q20 35 22 65 Q24 90 55 85" stroke="#FFD700" strokeWidth="10" fill="none" strokeLinecap="round"/>
-        <path d="M125 30 Q160 35 158 65 Q156 90 125 85" stroke="#FFD700" strokeWidth="10" fill="none" strokeLinecap="round"/>
-        <rect x="78" y="130" width="24" height="30" fill="#FFD700" rx="3"/>
-        <rect x="60" y="158" width="60" height="14" fill="#FFD700" rx="4"/>
-        <rect x="50" y="170" width="80" height="10" fill="#FFD700" rx="4"/>
-        <path d="M70 30 Q75 70 78 95" stroke="rgba(255,255,255,0.3)" strokeWidth="4" fill="none" strokeLinecap="round"/>
-        <path d="M80 25 Q83 50 84 75" stroke="rgba(255,255,255,0.15)" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-        <text x="20" y="20" fontSize="18" fill="#FFD700">★</text>
-        <text x="148" y="20" fontSize="18" fill="#FFD700">★</text>
-        <text x="8" y="105" fontSize="13" fill="#FFD700">★</text>
-        <text x="158" y="105" fontSize="13" fill="#FFD700">★</text>
-        <text x="83" y="11" fontSize="11" fill="#FFD700">★</text>
-      </svg>
-
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22, flexShrink: 0, position: "relative" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ background: "#FFD700", color: "#0B1E3D", fontSize: 12, fontWeight: 800, padding: "7px 16px", borderRadius: 10, letterSpacing: "0.1em" }}>FIFA 2026</div>
-          <div>
-            <div style={{ fontSize: 36, fontWeight: 800, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>Coupe du Monde</div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>États-Unis · Canada · Mexique &nbsp;·&nbsp; 11 juin – 19 juillet 2026</div>
-          </div>
-        </div>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", textAlign: "right" }}>
-          <div>Actualisation dans <span style={{ color: "rgba(255,255,255,0.6)", fontWeight: 700 }}>{countdown}s</span></div>
-          {lastUpdate && <div style={{ marginTop: 3 }}>Mis à jour {lastUpdate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</div>}
-        </div>
-      </div>
-
-      {/* Colonnes */}
-      <div style={{ flex: 1, display: "flex", gap: 18, overflow: "hidden", position: "relative" }}>
-
-        {/* Colonne gauche : résultats */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,200,50,0.55)", textTransform: "uppercase", letterSpacing: "0.12em", paddingBottom: 10, borderBottom: "1px solid rgba(255,200,50,0.15)" }}>
-            {liveMatches.some(m => m.live) ? "🟢 En direct" : "Derniers résultats"}
-          </div>
-          {loading ? (
-            <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, paddingTop: 20, textAlign: "center" }}>Chargement...</div>
-          ) : liveMatches.map((m, i) => (
-            <div key={i} style={cardStyle(m.live)}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.08)", padding: "3px 10px", borderRadius: 6 }}>{m.group}</span>
-                {m.live && <span style={{ fontSize: 11, color: "#22C55E", display: "flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ width: 7, height: 7, background: "#22C55E", borderRadius: "50%", display: "inline-block", animation: "blink 1s infinite" }} />EN DIRECT
-                </span>}
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 9 }}>
-                  <WCFlag name={m.home} size={32} />
-                  <span style={{ fontSize: 18, fontWeight: 700, color: "white" }}>{m.home}</span>
-                </div>
-                <div style={{ background: "rgba(0,0,0,0.35)", borderRadius: 9, padding: "6px 18px", fontSize: 26, fontWeight: 800, color: "white", minWidth: 76, textAlign: "center" }}>
-                  {m.homeScore} – {m.awayScore}
-                </div>
-                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 9, flexDirection: "row-reverse" }}>
-                  <WCFlag name={m.away} size={32} />
-                  <span style={{ fontSize: 18, fontWeight: 700, color: "white" }}>{m.away}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Colonne droite : prochains matchs */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,200,50,0.55)", textTransform: "uppercase", letterSpacing: "0.12em", paddingBottom: 10, borderBottom: "1px solid rgba(255,200,50,0.15)" }}>5 prochains matchs</div>
-          {loading ? (
-            <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, paddingTop: 20, textAlign: "center" }}>Chargement...</div>
-          ) : nextMatches.map((m, i) => (
-            <div key={i} style={cardStyle(false)}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.08)", padding: "3px 10px", borderRadius: 6 }}>{m.group}</span>
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{formatDate(m.date)} · {formatTime(m.date)}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 9 }}>
-                  <WCFlag name={m.home} size={32} />
-                  <span style={{ fontSize: 18, fontWeight: 700, color: "white" }}>{m.home}</span>
-                </div>
-                <div style={{ background: "rgba(0,0,0,0.35)", borderRadius: 9, padding: "6px 16px", fontSize: 15, color: "rgba(255,255,255,0.55)", minWidth: 68, textAlign: "center" }}>vs</div>
-                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 9, flexDirection: "row-reverse" }}>
-                  <WCFlag name={m.away} size={32} />
-                  <span style={{ fontSize: 18, fontWeight: 700, color: "white" }}>{m.away}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
-// ─── SLIDE CLASSEMENT DES POULES ─────────────────────────────────────────────
-
-function computeStandings(matches) {
-  // matches : tableau brut de l'API football-data.org
-  const groups = {};
-  matches.forEach(m => {
-    if (!m.group || !m.homeTeam?.name || !m.awayTeam?.name) return;
-    const g = m.group.replace("GROUP_", "");
-    if (!groups[g]) groups[g] = {};
-    const home = m.homeTeam.shortName || m.homeTeam.name;
-    const away = m.awayTeam.shortName || m.awayTeam.name;
-    if (!groups[g][home]) groups[g][home] = { name: home, played: 0, win: 0, draw: 0, loss: 0, gf: 0, ga: 0, pts: 0 };
-    if (!groups[g][away]) groups[g][away] = { name: away, played: 0, win: 0, draw: 0, loss: 0, gf: 0, ga: 0, pts: 0 };
-
-    if (m.status !== "FINISHED") return;
-    const hs = m.score?.fullTime?.home;
-    const as = m.score?.fullTime?.away;
-    if (hs === null || as === null || hs === undefined || as === undefined) return;
-
-    const h = groups[g][home], a = groups[g][away];
-    h.played++; a.played++;
-    h.gf += hs; h.ga += as;
-    a.gf += as; a.ga += hs;
-    if (hs > as) { h.win++; h.pts += 3; a.loss++; }
-    else if (hs < as) { a.win++; a.pts += 3; h.loss++; }
-    else { h.draw++; a.draw++; h.pts += 1; a.pts += 1; }
-  });
-
-  // Trie chaque groupe par points puis différence de buts
-  const result = {};
-  Object.keys(groups).sort().forEach(g => {
-    result[g] = Object.values(groups[g]).sort((a, b) => {
-      if (b.pts !== a.pts) return b.pts - a.pts;
-      return (b.gf - b.ga) - (a.gf - a.ga);
-    });
-  });
-  return result;
-}
-
-function isGroupStageComplete(matches) {
-  const groupMatches = matches.filter(m => m.stage === "GROUP_STAGE");
-  if (groupMatches.length === 0) return false;
-  return groupMatches.every(m => m.status === "FINISHED");
-}
-
-function StandingsSlide({ standings }) {
-  const groupKeys = Object.keys(standings);
-
-  function GroupTable({ groupKey, teams }) {
-    return (
-      <div style={{
-        background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-        borderRadius: 12, padding: "14px 18px", display: "flex", flexDirection: "column",
-        justifyContent: "center", overflow: "hidden", minHeight: 0,
-      }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#FFD700", marginBottom: 10, letterSpacing: "0.05em", flexShrink: 0 }}>
-          GROUPE {groupKey}
-        </div>
-        <table style={{ width: "100%", fontSize: 14, color: "white", borderCollapse: "collapse" }}>
-          <tr style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>
-            <td style={{ padding: "3px 0" }}>Équipe</td>
-            <td style={{ textAlign: "center", width: 22 }}>J</td>
-            <td style={{ textAlign: "center", width: 22 }}>G</td>
-            <td style={{ textAlign: "center", width: 22 }}>N</td>
-            <td style={{ textAlign: "center", width: 22 }}>P</td>
-            <td style={{ textAlign: "center", width: 26 }}>DB</td>
-            <td style={{ textAlign: "center", width: 28 }}>Pts</td>
-          </tr>
-          {teams.map((t, i) => (
-            <tr key={i}>
-              <td style={{ padding: "5px 0", display: "flex", alignItems: "center", gap: 8 }}>
-                <WCFlag name={t.name} size={22} />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
-              </td>
-              <td style={{ textAlign: "center" }}>{t.played}</td>
-              <td style={{ textAlign: "center" }}>{t.win}</td>
-              <td style={{ textAlign: "center" }}>{t.draw}</td>
-              <td style={{ textAlign: "center" }}>{t.loss}</td>
-              <td style={{ textAlign: "center" }}>{t.gf - t.ga > 0 ? `+${t.gf - t.ga}` : t.gf - t.ga}</td>
-              <td style={{ textAlign: "center", fontWeight: i < 2 ? 800 : 400, color: i < 2 ? "#FFD700" : "white" }}>{t.pts}</td>
-            </tr>
-          ))}
-        </table>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{
-      height: "100%", display: "flex", flexDirection: "column", padding: "28px 40px",
-      background: "radial-gradient(ellipse at 50% 0%, #3a2800 0%, #1a1200 40%, #0a0a0a 100%)",
-      position: "relative", overflow: "hidden",
-    }}>
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "55%", background: "radial-gradient(ellipse at 50% -20%, rgba(255,200,50,0.22) 0%, transparent 65%)", pointerEvents: "none" }} />
-
-      <svg style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", opacity: 0.06, pointerEvents: "none" }} width="320" height="390" viewBox="0 0 180 220" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M55 20 L125 20 L115 90 Q90 130 90 130 Q90 130 65 90 Z" fill="#FFD700"/>
-        <path d="M55 30 Q20 35 22 65 Q24 90 55 85" stroke="#FFD700" strokeWidth="10" fill="none" strokeLinecap="round"/>
-        <path d="M125 30 Q160 35 158 65 Q156 90 125 85" stroke="#FFD700" strokeWidth="10" fill="none" strokeLinecap="round"/>
-        <rect x="78" y="130" width="24" height="30" fill="#FFD700" rx="3"/>
-        <rect x="60" y="158" width="60" height="14" fill="#FFD700" rx="4"/>
-        <rect x="50" y="170" width="80" height="10" fill="#FFD700" rx="4"/>
-      </svg>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16, flexShrink: 0, position: "relative" }}>
-        <div style={{ background: "#FFD700", color: "#0B1E3D", fontSize: 12, fontWeight: 800, padding: "7px 16px", borderRadius: 10, letterSpacing: "0.1em" }}>FIFA 2026</div>
-        <div>
-          <div style={{ fontSize: 36, fontWeight: 800, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>Classement des poules</div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>{groupKeys.length} groupes · Phase de groupes</div>
-        </div>
-      </div>
-
-      <div style={{
-        flex: 1, position: "relative", minHeight: 0,
-        display: "grid",
-        gridTemplateColumns: "repeat(4, 1fr)",
-        gridTemplateRows: "repeat(3, minmax(0, 1fr))",
-        gap: 16,
-      }}>
-        {groupKeys.map(g => <GroupTable key={g} groupKey={g} teams={standings[g]} />)}
-      </div>
-    </div>
-  );
-}
-
-function bracketName(m) {
-  if (!m) return "À déterminer";
-  return m.shortName || m.name || "À déterminer";
-}
-
-// Structure officielle du bracket FIFA 2026 (source ESPN/FIFA) :
-// position RD32 1-16 dans l'ordre officiel du tableau (pas l'ordre chronologique de coup d'envoi).
-// Chaque position renvoie vers les groupes/équipes attendues, utilisé pour ordonner les
-// matchs LAST_32 correctement même si l'API les liste dans le désordre du calendrier.
-const BRACKET_RD32_ORDER = [
-  { p: 1,  teams: ["Germany", "Paraguay"] },
-  { p: 2,  teams: ["France", "Sweden"] },
-  { p: 3,  teams: ["South Africa", "Canada"] },
-  { p: 4,  teams: ["Netherlands", "Morocco"] },
-  { p: 5,  teams: ["Portugal", "Croatia"] },
-  { p: 6,  teams: ["Spain", "Austria"] },
-  { p: 7,  teams: ["USA", "Bosnia-H."] },
-  { p: 8,  teams: ["Belgium", "Senegal"] },
-  { p: 9,  teams: ["Brazil", "Japan"] },
-  { p: 10, teams: ["Ivory Coast", "Norway"] },
-  { p: 11, teams: ["Mexico", "Ecuador"] },
-  { p: 12, teams: ["England", "Congo DR"] },
-  { p: 13, teams: ["Argentina", "Cape Verde"] },
-  { p: 14, teams: ["Australia", "Egypt"] },
-  { p: 15, teams: ["Switzerland", "Algeria"] },
-  { p: 16, teams: ["Colombia", "Ghana"] },
-];
-
-// Variantes de noms d'équipe (l'API peut renvoyer un nom légèrement différent de celui ci-dessus)
-const TEAM_ALIASES = {
-  "Korea Republic": "South Korea", "Bosnia-Herzegovina": "Bosnia-H.", "Cape Verde Islands": "Cape Verde",
-  "United States": "USA", "Congo DR": "Congo DR",
-};
-function normTeam(name) {
-  if (!name) return name;
-  return TEAM_ALIASES[name] || name;
-}
-
-// Positions officielles des 8es de finale (EF1-EF8), chacune définie par les 4 équipes RD32
-// dont elle est issue (les 2 paires RD32 qui s'affrontent). Permet d'identifier le bon EF
-// même quand les noms d'équipe du 8e ne sont pas encore connus, en regardant son `id` brut
-// ou — une fois connu — en comparant les équipes effectivement présentes.
-const BRACKET_RD16_POOLS = [
-  { p: 1, rd32: [1, 2] },   // gauche : Allemagne/Paraguay/France/Suède
-  { p: 2, rd32: [3, 4] },   // gauche : Afrique du Sud/Canada/Pays-Bas/Maroc
-  { p: 3, rd32: [5, 6] },   // gauche : Portugal/Croatie/Espagne/Autriche
-  { p: 4, rd32: [7, 8] },   // gauche : USA/Bosnie/Belgique/Sénégal
-  { p: 5, rd32: [9, 10] },  // droite : Brésil/Japon/Côte d'Ivoire/Norvège
-  { p: 6, rd32: [11, 12] }, // droite : Mexique/Équateur/Angleterre/RD Congo
-  { p: 7, rd32: [13, 14] }, // droite : Argentine/Cap-Vert/Australie/Égypte
-  { p: 8, rd32: [15, 16] }, // droite : Suisse/Algérie/Colombie/Ghana
-];
-
-function teamsForRd32Positions(positions) {
-  const teams = [];
-  positions.forEach(p => {
-    const slot = BRACKET_RD32_ORDER.find(s => s.p === p);
-    if (slot) teams.push(...slot.teams);
-  });
-  return teams;
-}
-
-function orderByPools(matchesArr, pools, getTeamsForPool) {
-  const ordered = new Array(pools.length).fill(null);
-  const unmatched = [];
-  matchesArr.forEach(m => {
-    const pool = pools.find(s => {
-      const teams = getTeamsForPool(s);
-      return teams.includes(m.home) || teams.includes(m.away);
-    });
-    if (pool && !ordered[pool.p - 1]) {
-      ordered[pool.p - 1] = m;
-    } else {
-      unmatched.push(m);
-    }
-  });
-  unmatched.sort((a, b) => a.id - b.id);
-  let u = 0;
-  for (let i = 0; i < pools.length; i++) {
-    if (!ordered[i] && u < unmatched.length) ordered[i] = unmatched[u++];
-  }
-  return ordered.filter(Boolean);
-}
-
-// Retourne le vainqueur d'un match de bracket (null si non terminé)
-function getWinner(m) {
-  if (!m || m.status !== "FINISHED") return null;
-  if (m.homeScore > m.awayScore) return m.home;
-  if (m.awayScore > m.homeScore) return m.away;
-  return null;
-}
-
-function buildBracket(matches) {
-  const stages = { LAST_32: [], LAST_16: [], QUARTER_FINALS: [], SEMI_FINALS: [], FINAL: [], THIRD_PLACE: [] };
-  matches.forEach(m => {
-    if (stages[m.stage]) {
-      stages[m.stage].push({
-        id: m.id,
-        home: normTeam(m.homeTeam?.shortName || m.homeTeam?.name || null),
-        away: normTeam(m.awayTeam?.shortName || m.awayTeam?.name || null),
-        homeScore: m.score?.fullTime?.home ?? null,
-        awayScore: m.score?.fullTime?.away ?? null,
-        status: m.status,
-        date: m.utcDate,
-      });
-    }
-  });
-
-  // Réordonne LAST_32 selon la position officielle du bracket (1-16)
-  stages.LAST_32 = orderByPools(stages.LAST_32, BRACKET_RD32_ORDER, s => s.teams);
-
-  // Réordonne LAST_16 (8es) selon les pools RD32 dont elles dépendent (EF1-EF8)
-  stages.LAST_16 = orderByPools(stages.LAST_16, BRACKET_RD16_POOLS, s => teamsForRd32Positions(s.rd32));
-
-  // Pour chaque slot de 8es : si l'API a déjà le match mais avec des équipes null/TBD,
-  // ou si le slot n'existe pas encore, on injecte les vainqueurs connus des 16es correspondantes.
-  // L'API football-data.org crée parfois les slots dès le début avec home/away null,
-  // ou ne les crée qu'une fois les deux 16es terminés — on gère les deux cas.
-  const rd16Filled = new Array(BRACKET_RD16_POOLS.length).fill(null);
-  // 1) Place les matchs API qui ont déjà de vraies équipes renseignées
-  stages.LAST_16.forEach(m => {
-    if (!m.home && !m.away) return; // slot vide API, ignoré ici
-    const pool = BRACKET_RD16_POOLS.find(p => {
-      const t = teamsForRd32Positions(p.rd32);
-      return t.includes(m.home) || t.includes(m.away);
-    });
-    if (pool && !rd16Filled[pool.p - 1]) rd16Filled[pool.p - 1] = m;
-  });
-  // 2) Pour chaque slot encore vide, calcule les vainqueurs connus des 16es
-  BRACKET_RD16_POOLS.forEach((pool, idx) => {
-    if (rd16Filled[idx]) return;
-    const m1 = stages.LAST_32[pool.rd32[0] - 1];
-    const m2 = stages.LAST_32[pool.rd32[1] - 1];
-    const w1 = getWinner(m1);
-    const w2 = getWinner(m2);
-    // Cherche le slot API existant (même avec équipes null) pour garder son id/date
-    const apiSlot = stages.LAST_16.find(m => !m.home && !m.away);
-    rd16Filled[idx] = {
-      id: apiSlot?.id || null,
-      home: w1 || null,
-      away: w2 || null,
-      homeScore: null,
-      awayScore: null,
-      status: "SCHEDULED",
-      date: apiSlot?.date || null,
-    };
-  });
-  stages.LAST_16 = rd16Filled.filter(Boolean);
-
-  // Quarts/demi/finale : tri par id, suffisant car peu de matchs et l'API les génère
-  // dans l'ordre du bracket une fois les tours précédents joués
-  ["QUARTER_FINALS", "SEMI_FINALS", "FINAL", "THIRD_PLACE"].forEach(k => {
-    stages[k].sort((a, b) => a.id - b.id);
-  });
-
-  return stages;
-}
-
-const BRACKET_SIZES = {
-  compact: { font: 9.5, flag: 13, pad: "5px 9px", radius: 6, scoreFont: 10, gap: 2 },
-  small:   { font: 12, flag: 17, pad: "7px 13px", radius: 8, scoreFont: 13, gap: 3 },
-  medium:  { font: 15, flag: 22, pad: "10px 16px", radius: 10, scoreFont: 17, gap: 4 },
-  large:   { font: 19, flag: 28, pad: "14px 20px", radius: 12, scoreFont: 22, gap: 6 },
-  xlarge:  { font: 26, flag: 38, pad: "20px 28px", radius: 14, scoreFont: 30, gap: 8 },
-};
-
-function BracketMatch({ match, highlight, size = "small" }) {
-  const home = match?.home || "À déterminer";
-  const away = match?.away || "À déterminer";
-  const hs = match?.homeScore;
-  const as = match?.awayScore;
-  const played = match?.status === "FINISHED";
-  const homeWin = played && hs > as;
-  const awayWin = played && as > hs;
-  const s = BRACKET_SIZES[size] || BRACKET_SIZES.small;
-  return (
-    <div style={{
-      background: highlight ? "rgba(255,215,0,0.08)" : "rgba(255,255,255,0.05)",
-      border: highlight ? "1px solid rgba(255,215,0,0.4)" : "1px solid rgba(255,255,255,0.1)",
-      borderRadius: s.radius, padding: s.pad, display: "flex", flexDirection: "column", gap: s.gap,
-      minWidth: 0,
-    }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 5 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, flex: 1 }}>
-          <WCFlag name={home} size={s.flag} />
-          <span style={{ fontSize: s.font, fontWeight: homeWin ? 800 : 400, color: homeWin ? "#FFD700" : "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{home}</span>
-        </div>
-        <span style={{ fontSize: s.scoreFont, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{hs ?? "—"}</span>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 5 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, flex: 1 }}>
-          <WCFlag name={away} size={s.flag} />
-          <span style={{ fontSize: s.font, fontWeight: awayWin ? 800 : 400, color: awayWin ? "#FFD700" : "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{away}</span>
-        </div>
-        <span style={{ fontSize: s.scoreFont, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{as ?? "—"}</span>
-      </div>
-    </div>
-  );
-}
-
-// Détermine à partir de quel tour on doit afficher le bracket :
-// le premier tour qui contient encore au moins un match non terminé.
-// Si un tour est entièrement vide (pas encore généré par l'API), on le saute aussi.
-function getActiveRoundIndex(roundsArr) {
-  for (let i = 0; i < roundsArr.length; i++) {
-    const round = roundsArr[i].matches;
-    const hasMatches = round.length > 0;
-    const allFinished = hasMatches && round.every(m => m.status === "FINISHED");
-    if (hasMatches && !allFinished) return i;
-    if (!hasMatches) return i; // tour pas encore généré par l'API → on le considère comme "à venir", on l'affiche
-  }
-  // Tous les tours sont finis : il ne reste que la finale
-  return roundsArr.length;
-}
-
-function BracketSlide({ matches }) {
-  const stages = buildBracket(matches || []);
-  const allRounds = [
-    { key: "r16", label: "16es", matches: stages.LAST_32, count: 16 },
-    { key: "r8", label: "8es", matches: stages.LAST_16, count: 8 },
-    { key: "qf", label: "Quarts", matches: stages.QUARTER_FINALS, count: 4 },
-    { key: "sf", label: "Demi-finales", matches: stages.SEMI_FINALS, count: 2 },
-  ];
-  const final = stages.FINAL[0];
-
-  // Construit une moitié (gauche ou droite) : tableau de tours, chacun avec sa moitié de matchs
-  function buildHalf(side) {
-    return allRounds.map(round => {
-      const half = Math.ceil(round.count / 2);
-      const slice = side === "left" ? round.matches.slice(0, half) : round.matches.slice(round.count - half);
-      const arr = [...slice];
-      while (arr.length < half) arr.push(null);
-      return { ...round, matches: arr };
-    });
-  }
-
-  // Une moitié de bracket : chaque tour double la hauteur de slot du précédent,
-  // ce qui centre géométriquement chaque match sur ses deux matchs parents.
-  function HalfBracket({ rounds, side }) {
-    const unitH = 78;
-    const isLeft = side === "left";
-    return (
-      <div style={{ display: "flex", flexDirection: isLeft ? "row" : "row-reverse", flex: 1, gap: 14, minWidth: 0 }}>
-        {rounds.map((round, roundIdx) => {
-          const slotH = unitH * Math.pow(2, roundIdx);
-          const size = "medium";
-          const isLastRoundOfHalf = roundIdx === rounds.length - 1;
-          return (
-            <div key={round.key} style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "center", marginBottom: 6, flexShrink: 0 }}>{round.label}</div>
-              <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                {round.matches.map((m, j) => {
-                  // Trait connecteur : sort du côté "vers la finale" de la carte, vers le milieu de l'espace, puis rejoint le match suivant.
-                  // On dessine seulement un petit trait horizontal + la moitié de la ligne verticale qui relie une paire.
-                  const isTopOfPair = j % 2 === 0;
-                  return (
-                    <div key={j} style={{ height: slotH, display: "flex", alignItems: "center", minHeight: 0, position: "relative" }}>
-                      {!isLastRoundOfHalf && (
-                        <div style={{
-                          position: "absolute",
-                          [isLeft ? "right" : "left"]: -6,
-                          top: isTopOfPair ? "50%" : undefined,
-                          bottom: !isTopOfPair ? "50%" : undefined,
-                          height: slotH / 2,
-                          width: 6,
-                          borderTop: isTopOfPair ? "1px solid rgba(255,255,255,0.18)" : "none",
-                          borderBottom: !isTopOfPair ? "1px solid rgba(255,255,255,0.18)" : "none",
-                          [isLeft ? "borderRight" : "borderLeft"]: "1px solid rgba(255,255,255,0.18)",
-                        }} />
-                      )}
-                      <BracketMatch match={m} size={size} />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  const headerLabel = "16es \u00b7 8es \u00b7 Quarts \u00b7 Demi-finales \u00b7 Finale";
-
-  return (
-    <div style={{
-      height: "100%", display: "flex", flexDirection: "column", padding: "12px 20px",
-      background: "radial-gradient(ellipse at 50% 0%, #3a2800 0%, #1a1200 40%, #0a0a0a 100%)",
-      position: "relative", overflow: "hidden",
-    }}>
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "55%", background: "radial-gradient(ellipse at 50% -20%, rgba(255,200,50,0.22) 0%, transparent 65%)", pointerEvents: "none" }} />
-
-      <svg style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", opacity: 0.06, pointerEvents: "none" }} width="320" height="390" viewBox="0 0 180 220" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M55 20 L125 20 L115 90 Q90 130 90 130 Q90 130 65 90 Z" fill="#FFD700"/>
-        <path d="M55 30 Q20 35 22 65 Q24 90 55 85" stroke="#FFD700" strokeWidth="10" fill="none" strokeLinecap="round"/>
-        <path d="M125 30 Q160 35 158 65 Q156 90 125 85" stroke="#FFD700" strokeWidth="10" fill="none" strokeLinecap="round"/>
-        <rect x="78" y="130" width="24" height="30" fill="#FFD700" rx="3"/>
-        <rect x="60" y="158" width="60" height="14" fill="#FFD700" rx="4"/>
-        <rect x="50" y="170" width="80" height="10" fill="#FFD700" rx="4"/>
-      </svg>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6, flexShrink: 0, position: "relative" }}>
-        <div style={{ background: "#FFD700", color: "#0B1E3D", fontSize: 10, fontWeight: 800, padding: "5px 12px", borderRadius: 8, letterSpacing: "0.1em" }}>FIFA 2026</div>
-        <div>
-          <div style={{ fontSize: 19, fontWeight: 800, color: "white", letterSpacing: "-1px", lineHeight: 1 }}>Phases finales</div>
-          <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{headerLabel}</div>
-        </div>
-      </div>
-
-      <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 12, position: "relative", minHeight: 0 }}>
-        <HalfBracket rounds={buildHalf("left")} side="left" />
-        <div style={{ flexShrink: 0, width: 280, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,215,0,0.7)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Finale</div>
-          <div style={{ width: "100%" }}>
-            <BracketMatch match={final} highlight size="medium" />
-          </div>
-        </div>
-        <HalfBracket rounds={buildHalf("right")} side="right" />
-      </div>
-    </div>
-  );
-}
 export default function Dashboard() {
   const [time, setTime] = useState(new Date());
   const [slideIdx, setSlideIdx] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [paused, setPaused] = useState(false);
   const [planning, setPlanning] = useState(FALLBACK_PLANNING);
   const [planningNext, setPlanningNext] = useState(FALLBACK_PLANNING);
   const [affairs, setAffairs] = useState(FALLBACK_AFFAIRS);
@@ -2000,11 +1368,6 @@ export default function Dashboard() {
   const [subcontractorsNext, setSubcontractorsNext] = useState(FALLBACK_SUBCONTRACTORS);
   const [quotes, setQuotes] = useState(FALLBACK_QUOTES);
   const [onesite, setOnesite] = useState(FALLBACK_ONESITE);
-  const [wcLive, setWcLive] = useState([]);
-  const [wcNext, setWcNext] = useState([]);
-  const [wcLastUpdate, setWcLastUpdate] = useState(null);
-  const [wcStandings, setWcStandings] = useState({});
-  const [wcRawMatches, setWcRawMatches] = useState([]);
   const [dataStatus, setDataStatus] = useState("loading"); // "loading" | "ok" | "error"
   const [lastUpdate, setLastUpdate] = useState(null);
 
@@ -2195,40 +1558,8 @@ export default function Dashboard() {
     fetchAllData();
     const interval = setInterval(fetchAllData, REFRESH_INTERVAL);
 
-    // Fetch Coupe du Monde séparément toutes les 60s
-    async function fetchWC() {
-      try {
-        const res = await fetch("/api/football");
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        const matches = data.matches || [];
-        const live = matches.filter(m => m.status === "IN_PLAY" || m.status === "PAUSED");
-        const finished = matches.filter(m => m.status === "FINISHED");
-        const upcoming = matches.filter(m =>
-          (m.status === "TIMED" || m.status === "SCHEDULED") &&
-          m.homeTeam?.name && m.awayTeam?.name
-        );
-        const toCard = (m, isLive) => ({
-          home: m.homeTeam?.shortName || m.homeTeam?.name || "?",
-          away: m.awayTeam?.shortName || m.awayTeam?.name || "?",
-          homeScore: m.score?.fullTime?.home ?? null,
-          awayScore: m.score?.fullTime?.away ?? null,
-          group: m.group ? m.group.replace("GROUP_", "Groupe ") : (m.stage || ""),
-          date: m.utcDate,
-          live: isLive,
-        });
-        const displayed = live.length > 0 ? live : finished.slice(-5);
-        setWcLive(displayed.map(m => toCard(m, live.includes(m))));
-        setWcNext(upcoming.slice(0, 5).map(m => toCard(m, false)));
-        setWcStandings(computeStandings(matches));
-        setWcRawMatches(matches);
-        setWcLastUpdate(new Date());
-      } catch {}
-    }
-    fetchWC();
-    const wcInterval = setInterval(fetchWC, 60000);
 
-    return () => { cancelled = true; clearInterval(interval); clearInterval(wcInterval); };
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   useEffect(() => {
@@ -2245,9 +1576,6 @@ export default function Dashboard() {
       } else if (e.code === "ArrowLeft") {
         e.preventDefault();
         setSlideIdx(i => (i - 1 + SLIDES.length) % SLIDES.length);
-      } else if (e.code === "KeyP") {
-        e.preventDefault();
-        setPaused(p => !p);
       }
     }
     window.addEventListener("keydown", handleKey);
@@ -2284,10 +1612,6 @@ export default function Dashboard() {
     else if (SLIDES[slideIdx].type === "planning" && planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12) {
       slideDuration = PLANNING_SLIDE_DURATION;
     }
-    if (paused) {
-      // En pause : on fige la barre de progression, pas d'avancement automatique
-      return;
-    }
     const tick = setInterval(() => {
       const elapsed = Date.now() - start;
       setProgress(Math.min(100, (elapsed / slideDuration) * 100));
@@ -2296,7 +1620,7 @@ export default function Dashboard() {
       setSlideIdx(i => (i + 1) % SLIDES.length);
     }, slideDuration);
     return () => { clearInterval(tick); clearTimeout(advance); };
-  }, [slideIdx, planning, planningNext, affairs, subcontractorsCurrent, subcontractorsNext, quotes, paused]);
+  }, [slideIdx, planning, planningNext, affairs, subcontractorsCurrent, subcontractorsNext, quotes]);
 
   const timeStr = time.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const dateStr = time.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -2309,8 +1633,6 @@ export default function Dashboard() {
     ? "#00A091"
     : currentSlide.type === "onesite"
     ? ONESITE_ACCENT
-    : currentSlide.type === "worldcup" || currentSlide.type === "worldcupStandings"
-    ? "#FFD700"
     : currentTenant
     ? currentTenant.accent
     : isSubcontractors ? SUBCONTRACTORS_ACCENT
@@ -2359,8 +1681,8 @@ export default function Dashboard() {
           }} />
           <div>
             <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.5px" }}>TABLEAU DE BORD</div>
-            <div style={{ fontSize: 13, color: paused ? "#FBBF24" : "#9CA3AF", fontWeight: 500, marginTop: 3 }}>
-              Slide {slideIdx + 1} / {SLIDES.length} · {paused ? "⏸ PAUSE (touche P pour reprendre)" : "rotation auto 30s"}
+            <div style={{ fontSize: 13, color: "#9CA3AF", fontWeight: 500, marginTop: 3 }}>
+              Slide {slideIdx + 1} / {SLIDES.length} · rotation auto 30s
             </div>
           </div>
           <div style={{
@@ -2442,12 +1764,6 @@ export default function Dashboard() {
           } else if (s.type === "onesite") {
             label = "ONESITE";
             accentColor = ONESITE_ACCENT;
-          } else if (s.type === "worldcup") {
-            label = "FIFA 2026";
-            accentColor = "#FFD700";
-          } else if (s.type === "worldcupStandings") {
-            label = "CLASSEMENT / PHASES";
-            accentColor = "#FFD700";
           } else if (s.type === "planning") {
             label = s.week === "next" ? "PLAN. PROCH." : "ÉQUIPE";
             accentColor = s.week === "next" ? "#0E7490" : "#3B82F6";
@@ -2479,12 +1795,6 @@ export default function Dashboard() {
       }}>
         {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
         {currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
-        {currentSlide.type === "worldcup" && <WorldCupSlide liveMatches={wcLive} nextMatches={wcNext} lastUpdate={wcLastUpdate} />}
-        {currentSlide.type === "worldcupStandings" && (
-          isGroupStageComplete(wcRawMatches)
-            ? <BracketSlide matches={wcRawMatches} />
-            : <StandingsSlide standings={wcStandings} />
-        )}
         {currentSlide.type === "planning" && (
           <PlanningSlide
             planning={currentSlide.week === "next" ? planningNext : planning}
