@@ -1429,87 +1429,116 @@ function GoldenRulesSlide() {
 }
 
 // ─── SLIDE MÉTÉO ─────────────────────────────────────────────────────────────
-// Icones SVG météo (pas d'emoji = compatible Raspberry Pi)
-function WeatherIcon({ code, size = 80 }) {
+function getWeatherPhrase(code, hour) {
   const n = Number(code);
-  const S = { width: size, height: size, display: "block" };
-  const SUN = "#FBBF24", CLD = "#94A3B8", RAIN = "#60A5FA", SNOW = "#BAE6FD", BOLT = "#FDE047";
-  const rays = (cx, cy, r1, r2, col) => [0,45,90,135,180,225,270,315].map((a, i) => {
-    const rad = a * Math.PI / 180;
-    return <line key={i} x1={cx+r1*Math.cos(rad)} y1={cy+r1*Math.sin(rad)} x2={cx+r2*Math.cos(rad)} y2={cy+r2*Math.sin(rad)} stroke={col} strokeWidth="5" strokeLinecap="round"/>;
-  });
-  const cloud = (cx, cy, r, col) => (
-    <g>
-      <ellipse cx={cx-r*0.55} cy={cy+r*0.1} rx={r*0.7} ry={r*0.55} fill={col}/>
-      <ellipse cx={cx+r*0.1} cy={cy-r*0.28} rx={r*0.65} ry={r*0.55} fill={col}/>
-      <ellipse cx={cx+r*0.75} cy={cy+r*0.1} rx={r*0.55} ry={r*0.48} fill={col}/>
-      <rect x={cx-r*0.6} y={cy-r*0.05} width={r*1.4} height={r*0.65} fill={col}/>
-    </g>
-  );
-  if (n <= 1) return <svg style={S} viewBox="0 0 100 100">{rays(50,50,27,40,SUN)}<circle cx="50" cy="50" r="22" fill={SUN}/></svg>;
-  if (n === 2) return <svg style={S} viewBox="0 0 100 100">{rays(33,36,17,27,SUN)}<circle cx="33" cy="36" r="13" fill={SUN}/>{cloud(55,60,22,CLD)}</svg>;
-  if (n === 3) return <svg style={S} viewBox="0 0 100 100">{cloud(50,52,28,CLD)}</svg>;
-  if (n === 45 || n === 48) return <svg style={S} viewBox="0 0 100 100">{[22,38,54,70].map((y,i)=><line key={i} x1="10" y1={y} x2="90" y2={y} stroke={CLD} strokeWidth="7" strokeLinecap="round" opacity={0.4+i*0.15}/>)}</svg>;
-  const isRain = [51,53,55,61,63,65,80,81,82].includes(n);
-  const isSnow = [71,73,75,77,85,86].includes(n);
-  const isStorm = [95,96,99].includes(n);
-  const dropPts = [[30,62],[42,68],[54,62],[36,75],[60,68]];
-  const snowPts = [[30,64],[46,72],[62,64],[38,77],[54,77]];
+  if ([95,96,99].includes(n)) return "Restez à l'abri, orages prévus ⚡";
+  if ([71,73,75,77,85,86].includes(n)) return "Attention à la neige sur les routes";
+  if ([61,63,65,80,81,82].includes(n)) return "Prenez un parapluie en sortant";
+  if ([51,53,55].includes(n)) return "Légère bruine, vêtement imperméable conseillé";
+  if ([45,48].includes(n)) return "Brouillard ce matin, prudence sur la route";
+  if (n <= 1) {
+    if (hour < 10) return "Belle matinée ensoleillée, bonne journée !";
+    if (hour < 18) return "Grand soleil aujourd'hui, pensez à vous hydrater";
+    return "Soirée dégagée et agréable";
+  }
+  if (n === 2) return "Quelques nuages mais pas de pluie prévue";
+  if (n === 3) return "Ciel couvert, mais le temps reste sec";
+  return "Conditions météo acceptables aujourd'hui";
+}
+
+function getTimeGradient(hour) {
+  if (hour >= 5 && hour < 8)   return "linear-gradient(160deg, #1a1035 0%, #3d2060 30%, #c2410c 70%, #f97316 100%)";
+  if (hour >= 8 && hour < 12)  return "linear-gradient(160deg, #0c2a5e 0%, #1e40af 40%, #3b82f6 80%, #93c5fd 100%)";
+  if (hour >= 12 && hour < 17) return "linear-gradient(160deg, #1e3a8a 0%, #1d4ed8 50%, #2563eb 100%)";
+  if (hour >= 17 && hour < 20) return "linear-gradient(160deg, #1e1b4b 0%, #7c3aed 30%, #dc2626 60%, #f97316 100%)";
+  if (hour >= 20 && hour < 22) return "linear-gradient(160deg, #0f0a2e 0%, #1e1b4b 40%, #4c1d95 100%)";
+  return "linear-gradient(160deg, #050510 0%, #0f0a2e 50%, #1e1b4b 100%)";
+}
+
+function UVBadge({ uv }) {
+  if (uv == null) return null;
+  const level = uv <= 2 ? { label: "Faible", color: "#4ADE80" }
+              : uv <= 5 ? { label: "Modéré", color: "#FACC15" }
+              : uv <= 7 ? { label: "Élevé", color: "#F97316" }
+              : uv <= 10 ? { label: "Très élevé", color: "#EF4444" }
+              : { label: "Extrême", color: "#A855F7" };
   return (
-    <svg style={S} viewBox="0 0 100 100">
-      {cloud(50,46,24, isStorm ? "#475569" : CLD)}
-      {isRain && dropPts.map(([x,y],i)=><line key={i} x1={x} y1={y} x2={x-4} y2={y+12} stroke={RAIN} strokeWidth="3.5" strokeLinecap="round"/>)}
-      {isSnow && snowPts.map(([x,y],i)=><g key={i} stroke={SNOW} strokeWidth="3" strokeLinecap="round"><line x1={x-6} y1={y} x2={x+6} y2={y}/><line x1={x} y1={y-6} x2={x} y2={y+6}/></g>)}
-      {isStorm && <polyline points="54,59 44,73 52,73 42,89" fill="none" stroke={BOLT} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>}
-    </svg>
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ width: 10, height: 10, borderRadius: "50%", background: level.color }}/>
+      <span style={{ color: level.color, fontWeight: 700 }}>UV {Math.round(uv)} — {level.label}</span>
+    </div>
   );
 }
 
 function WeatherSlide({ weather }) {
+  const hour = new Date().getHours();
   if (!weather) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "#0B1F3A", color: "white", fontSize: 20 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: getTimeGradient(hour), color: "white", fontSize: 20 }}>
       Chargement météo…
     </div>
   );
   const { current, daily } = weather;
-  const wmo = WMO[current.weather_code] || { fr: "—" };
+  const wmo     = WMO[current.weather_code] || { fr: "—" };
+  const phrase  = getWeatherPhrase(current.weather_code, hour);
   const sunrise = daily.sunrise?.[0] ? new Date(daily.sunrise[0]).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "--:--";
   const sunset  = daily.sunset?.[0]  ? new Date(daily.sunset[0]).toLocaleTimeString("fr-FR",  { hour: "2-digit", minute: "2-digit" }) : "--:--";
+  const uvToday = daily.uv_index_max?.[0];
+  const bg      = getTimeGradient(hour);
+
   return (
-    <div style={{ height: "100%", background: "linear-gradient(135deg, #0B1F3A 0%, #1a3a5c 60%, #0B1F3A 100%)", color: "white", display: "flex", flexDirection: "column", padding: "24px 36px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-        <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.05em", color: "#90CAF9" }}>METEO</span>
-        <span style={{ color: "#60A5FA", fontSize: 18 }}>· Paris</span>
+    <div style={{ height: "100%", background: bg, color: "white", display: "flex", flexDirection: "column", padding: "20px 32px" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+        <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.05em", color: "rgba(255,255,255,0.9)" }}>METEO</span>
+        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 18 }}>· Paris</span>
+        <div style={{ marginLeft: "auto" }}><UVBadge uv={uvToday}/></div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 28, marginBottom: 18 }}>
-        <WeatherIcon code={current.weather_code} size={110}/>
+
+      {/* Température principale */}
+      <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 10 }}>
+        <WeatherIcon code={current.weather_code} size={100}/>
         <div>
-          <div style={{ fontSize: 80, fontWeight: 800, lineHeight: 1 }}>{Math.round(current.temperature_2m)}°C</div>
-          <div style={{ fontSize: 18, color: "#90CAF9", marginTop: 6 }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
-          <div style={{ fontSize: 22, fontWeight: 600, marginTop: 4 }}>{wmo.fr}</div>
+          <div style={{ fontSize: 86, fontWeight: 900, lineHeight: 1, letterSpacing: "-2px" }}>{Math.round(current.temperature_2m)}°C</div>
+          <div style={{ fontSize: 18, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
+          <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{wmo.fr}</div>
         </div>
       </div>
-      <div style={{ display: "flex", gap: 32, marginBottom: 20, fontSize: 16, color: "#B0BEC5" }}>
+
+      {/* Phrase du jour */}
+      <div style={{ background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: "10px 16px", marginBottom: 14, fontSize: 16, fontStyle: "italic", color: "rgba(255,255,255,0.9)", borderLeft: "3px solid rgba(255,255,255,0.4)" }}>
+        {phrase}
+      </div>
+
+      {/* Détails */}
+      <div style={{ display: "flex", gap: 28, marginBottom: 16, fontSize: 15, color: "rgba(255,255,255,0.7)" }}>
         <span>Hum. {current.relative_humidity_2m}%</span>
         <span>Vent {Math.round(current.wind_speed_10m)} km/h</span>
         <span>Lever {sunrise}</span>
         <span>Coucher {sunset}</span>
       </div>
-      <div style={{ display: "flex", gap: 16, flex: 1 }}>
+
+      {/* Prévisions 3 jours */}
+      <div style={{ display: "flex", gap: 12, flex: 1 }}>
         {(daily.time || []).slice(1, 4).map((date, i) => {
-          const d = new Date(date);
-          const dWmo = WMO[daily.weather_code[i + 1]] || { fr: "" };
-          const wind = daily.wind_speed_10m_max?.[i + 1];
+          const d     = new Date(date);
+          const dWmo  = WMO[daily.weather_code[i + 1]] || { fr: "" };
+          const wind  = daily.wind_speed_10m_max?.[i + 1];
+          const rain  = daily.precipitation_probability_max?.[i + 1];
+          const uv    = daily.uv_index_max?.[i + 1];
           return (
-            <div key={i} style={{ flex: 1, background: "rgba(255,255,255,0.08)", borderRadius: 16, padding: "16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-              <div style={{ fontSize: 16, color: "#90CAF9", fontWeight: 700 }}>{DAYS_FR[d.getDay()]}</div>
-              <WeatherIcon code={daily.weather_code[i + 1]} size={60}/>
-              <div style={{ fontSize: 13, color: "#B0BEC5", textAlign: "center" }}>{dWmo.fr}</div>
-              <div style={{ display: "flex", gap: 12, fontSize: 24, fontWeight: 800 }}>
-                <span style={{ color: "#EF5350" }}>{Math.round(daily.temperature_2m_max[i + 1])}°</span>
-                <span style={{ color: "#90CAF9" }}>{Math.round(daily.temperature_2m_min[i + 1])}°</span>
+            <div key={i} style={{ flex: 1, background: "rgba(255,255,255,0.1)", backdropFilter: "blur(4px)", borderRadius: 16, padding: "14px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 7, border: "1px solid rgba(255,255,255,0.15)" }}>
+              <div style={{ fontSize: 15, color: "rgba(255,255,255,0.8)", fontWeight: 700 }}>{DAYS_FR[d.getDay()]}</div>
+              <WeatherIcon code={daily.weather_code[i + 1]} size={56}/>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", textAlign: "center" }}>{dWmo.fr}</div>
+              <div style={{ display: "flex", gap: 10, fontSize: 22, fontWeight: 800 }}>
+                <span style={{ color: "#FCA5A5" }}>{Math.round(daily.temperature_2m_max[i + 1])}°</span>
+                <span style={{ color: "rgba(255,255,255,0.5)" }}>{Math.round(daily.temperature_2m_min[i + 1])}°</span>
               </div>
-              {wind != null && <div style={{ fontSize: 12, color: "#64748B" }}>Vent {Math.round(wind)} km/h</div>}
+              <div style={{ display: "flex", gap: 12, fontSize: 12, color: "rgba(255,255,255,0.6)", flexWrap: "wrap", justifyContent: "center" }}>
+                {rain != null && <span style={{ color: rain > 50 ? "#60A5FA" : "rgba(255,255,255,0.55)" }}>Pluie {rain}%</span>}
+                {wind != null && <span>Vent {Math.round(wind)} km/h</span>}
+                {uv  != null && <span style={{ color: uv > 5 ? "#FACC15" : "rgba(255,255,255,0.55)" }}>UV {Math.round(uv)}</span>}
+              </div>
             </div>
           );
         })}
@@ -1549,28 +1578,28 @@ function TransportSlide({ lines, lastUpdate }) {
   const LineCard = ({ code, color, disrupted, severity, message, type }) => (
     <div style={{
       background: disrupted ? "rgba(239,83,80,0.14)" : "rgba(255,255,255,0.05)",
-      border: `2px solid ${disrupted ? "#EF5350" : "rgba(255,255,255,0.10)"}`,
-      borderRadius: 12,
-      padding: "12px 14px",
+      border: `1.5px solid ${disrupted ? "#EF5350" : "rgba(255,255,255,0.10)"}`,
+      borderRadius: 10,
+      padding: "8px 10px",
       display: "flex",
       alignItems: "flex-start",
-      gap: 12,
-      minHeight: 64,
+      gap: 8,
+      minHeight: 52,
     }}>
       <div style={{
-        width: 42, height: 42, flexShrink: 0,
+        width: 36, height: 36, flexShrink: 0,
         borderRadius: "50%",
         background: color,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontWeight: 900, fontSize: code.length > 2 ? 11 : 15,
+        fontWeight: 900, fontSize: code.length > 2 ? 10 : 13,
         color: "white", textShadow: "0 1px 3px rgba(0,0,0,0.6)",
       }}>{code}</div>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 13, color: disrupted ? "#F87171" : "#4ADE80", fontWeight: 800, marginBottom: 3 }}>
+        <div style={{ fontSize: 12, color: disrupted ? "#F87171" : "#4ADE80", fontWeight: 800, marginBottom: 2 }}>
           {disrupted ? (severity || "Perturbe") : "Normal"}
         </div>
         {disrupted && message && (
-          <div style={{ fontSize: 12, color: "#D1D5DB", lineHeight: 1.4, wordBreak: "break-word" }}>
+          <div style={{ fontSize: 11, color: "#D1D5DB", lineHeight: 1.3, wordBreak: "break-word" }}>
             {message}
           </div>
         )}
@@ -1581,9 +1610,9 @@ function TransportSlide({ lines, lastUpdate }) {
   const updStr = lastUpdate ? new Date(lastUpdate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : null;
 
   const Section = ({ label, items, cols }) => (
-    <div style={{ marginBottom: 14, flexShrink: 0 }}>
-      <div style={{ fontSize: 11, color: "#6B7280", fontWeight: 700, letterSpacing: "0.14em", marginBottom: 8 }}>{label}</div>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 9 }}>
+    <div style={{ marginBottom: 10, flexShrink: 0 }}>
+      <div style={{ fontSize: 10, color: "#6B7280", fontWeight: 700, letterSpacing: "0.14em", marginBottom: 6 }}>{label}</div>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>
         {items.map(l => <LineCard key={l.code} {...l} />)}
       </div>
     </div>
@@ -1624,11 +1653,8 @@ function TransportSlide({ lines, lastUpdate }) {
         <span style={{ color: "#6B7280", fontSize: 14 }}>· Ile-de-France</span>
         {updStr && <span style={{ marginLeft: "auto", fontSize: 11, color: "#4B5563" }}>Mis a jour {updStr}</span>}
       </div>
-      <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-        <div style={{ animation: "scrollTransport 22s linear infinite", willChange: "transform", backfaceVisibility: "hidden", transform: "translate3d(0,0,0)" }}>
-          {allSections}
-          {allSections}
-        </div>
+      <div style={{ flex: 1, overflow: "hidden" }}>
+        {allSections}
       </div>
       {(!lines || lines.length === 0) && (
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#4B5563", fontSize: 14 }}>
@@ -1860,7 +1886,7 @@ export default function Dashboard() {
         const res = await fetch(
           "https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522" +
           "&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m" +
-          "&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,wind_speed_10m_max" +
+          "&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,wind_speed_10m_max,uv_index_max,precipitation_probability_max" +
           "&timezone=Europe/Paris&forecast_days=4"
         );
         const data = await res.json();
