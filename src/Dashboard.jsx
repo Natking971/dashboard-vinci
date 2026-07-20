@@ -1577,13 +1577,13 @@ function WeatherSlide({ weather }) {
 
       <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "12px", display: "flex", flexDirection: "column", gap: 8, justifyContent: "flex-start" }}>
         <div style={{ fontSize: 18, fontWeight: 700, textAlign: "center" }}>Prévisions horaires</div>
-        <div style={{ display: "flex", gap: 8, overflowX: "auto", justifyContent: "center" }}>
+        <div style={{ display: "flex", gap: 10, overflowX: "auto", justifyContent: "center" }}>
           {[0, 1, 2, 3, 4, 5, 6].map((i) => {
             const h = new Date(Date.now() + i * 60 * 60000);
             const hStr = h.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
             const tempEstimate = Math.round(current.temperature_2m - (i * 0.5));
             return (
-              <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.13)", border: "1px solid rgba(255,255,255,0.17)", borderRadius: 10, padding: "10px 8px", textAlign: "center", minWidth: 80, display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
+              <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.13)", border: "1px solid rgba(255,255,255,0.17)", borderRadius: 10, padding: "12px 10px", textAlign: "center", minWidth: 100, display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
                 <div style={{ fontSize: 14, fontWeight: 500 }}>{hStr}</div>
                 <WeatherIcon code={current.weather_code} size={24} />
                 <div style={{ fontSize: 16, fontWeight: 700 }}>{tempEstimate}°</div>
