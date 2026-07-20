@@ -1304,7 +1304,7 @@ function OneSiteSlide({ onesite }) {
 
         {/* Colonne PAT */}
         <div style={{
-          flex: 1, backgroundColor: "rgba(255,255,255,0.13)", borderRadius: 18,
+          flex: 1, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 18,
           border: "1px solid rgba(255,255,255,0.14)", padding: "24px 28px",
           display: "flex", flexDirection: "column", gap: 20,
         }}>
@@ -1331,7 +1331,7 @@ function OneSiteSlide({ onesite }) {
 
         {/* Colonne QHS */}
         <div style={{
-          flex: 1, backgroundColor: "rgba(255,255,255,0.13)", borderRadius: 18,
+          flex: 1, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 18,
           border: "1px solid rgba(255,255,255,0.14)", padding: "24px 28px",
           display: "flex", flexDirection: "column", gap: 20,
         }}>
@@ -1405,7 +1405,7 @@ function GoldenRulesSlide() {
           <div key={rule.num} style={{
             display: "flex", alignItems: "center", gap: 20,
             backgroundColor: "rgba(255,255,255,0.07)",
-            border: "1px solid rgba(255,255,255,0.17)",
+            border: "1px solid rgba(255,255,255,0.12)",
             borderLeft: `5px solid ${idx % 2 === 0 ? "#00A091" : "#3BB5E8"}`,
             borderRadius: "0 14px 14px 0",
             padding: "16px 22px",
@@ -1470,7 +1470,6 @@ function UVBadge({ uv }) {
   );
 }
 
-
 function getWeatherBackground(code, hour) {
   const n = Number(code);
   const isNight = hour < 6 || hour >= 20;
@@ -1486,7 +1485,6 @@ function getWeatherBackground(code, hour) {
 
 function WeatherIcon({ code, size = 80 }) {
   const n = Number(code);
-  
   if (n <= 1) return <svg width={size} height={size} viewBox="0 0 100 100"><circle cx="50" cy="50" r="35" fill="#FFD700"/><line x1="50" y1="5" x2="50" y2="20" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/><line x1="50" y1="80" x2="50" y2="95" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/><line x1="5" y1="50" x2="20" y2="50" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/><line x1="80" y1="50" x2="95" y2="50" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/></svg>;
   if (n === 2) return <svg width={size} height={size} viewBox="0 0 100 100"><path d="M 30 70 Q 20 70 15 60 Q 10 50 20 45 Q 25 35 35 35 Q 45 25 55 30 Q 65 28 70 40 Q 80 45 75 60 Q 70 70 60 70 Z" fill="rgba(255,255,255,0.9)"/></svg>;
   if (n === 3) return <svg width={size} height={size} viewBox="0 0 100 100"><path d="M 25 65 Q 15 65 10 55 Q 8 45 15 40 Q 20 32 30 32 Q 38 22 48 27 Q 58 25 65 35 Q 75 40 70 55 Q 65 65 55 65 Z" fill="rgba(255,255,255,0.7)"/></svg>;
@@ -1515,81 +1513,80 @@ function WeatherSlide({ weather }) {
   const bg = getWeatherBackground(current.weather_code, hour);
 
   return (
-    <div style={{ height: "100%", background: bg, color: "white", padding: "20px 28px", display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 16, overflow: "hidden" }}>
+    <div style={{ height: "100%", background: bg, color: "white", padding: "16px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 14, overflow: "hidden" }}>
       
-      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 20, padding: "20px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
-        <div style={{ fontSize: 16, fontWeight: 500, color: "rgba(255,255,255,0.7)", marginBottom: 10 }}>MA POSITION</div>
-        <div style={{ fontSize: 36, fontWeight: 700, marginBottom: 16 }}>Paris</div>
-        <div style={{ fontSize: 72, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px", marginBottom: 10 }}>{timeStr}</div>
-        <div style={{ fontSize: 18, color: "rgba(255,255,255,0.8)" }}>{dayName}, {dateStr}</div>
+      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "16px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
+        <div style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.7)", marginBottom: 8 }}>MA POSITION</div>
+        <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 12 }}>Paris</div>
+        <div style={{ fontSize: 64, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px", marginBottom: 8 }}>{timeStr}</div>
+        <div style={{ fontSize: 16, color: "rgba(255,255,255,0.8)" }}>{dayName}, {dateStr}</div>
       </div>
 
-      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 20, padding: "20px", display: "flex", flexDirection: "column", gap: 16, alignItems: "center", justifyContent: "center" }}>
-        
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "16px", display: "flex", flexDirection: "column", gap: 12, alignItems: "center", justifyContent: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 72, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px", marginBottom: 6 }}>{Math.round(current.temperature_2m)}°C</div>
-            <div style={{ fontSize: 16, color: "rgba(255,255,255,0.7)" }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
+            <div style={{ fontSize: 60, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px", marginBottom: 4 }}>{Math.round(current.temperature_2m)}°C</div>
+            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
           </div>
-          <WeatherIcon code={current.weather_code} size={80} />
+          <WeatherIcon code={current.weather_code} size={70} />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, width: "100%", marginTop: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, width: "100%" }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 6 }}>Humidité</div>
-            <div style={{ fontSize: 26, fontWeight: 600 }}>{humidity}%</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Humidité</div>
+            <div style={{ fontSize: 20, fontWeight: 600 }}>{humidity}%</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 6 }}>Vent</div>
-            <div style={{ fontSize: 26, fontWeight: 600 }}>{wind} km/h</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Vent</div>
+            <div style={{ fontSize: 20, fontWeight: 600 }}>{wind} km/h</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 6 }}>Pression</div>
-            <div style={{ fontSize: 26, fontWeight: 600 }}>997hPa</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Pression</div>
+            <div style={{ fontSize: 20, fontWeight: 600 }}>997hPa</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 6 }}>UV</div>
-            <div style={{ fontSize: 26, fontWeight: 600 }}>{Math.round(uvToday || 0)}</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>UV</div>
+            <div style={{ fontSize: 20, fontWeight: 600 }}>{Math.round(uvToday || 0)}</div>
           </div>
         </div>
 
-        <div style={{ textAlign: "center", marginTop: 8 }}>
-          <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>{wmo.fr}</div>
-          <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>↑ Lever {sunrise} · ↓ Coucher {sunset}</div>
+        <div style={{ textAlign: "center", marginTop: 6 }}>
+          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{wmo.fr}</div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>↑ {sunrise} · ↓ {sunset}</div>
         </div>
       </div>
 
-      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 20, padding: "20px", display: "flex", flexDirection: "column", gap: 8, justifyContent: "center" }}>
-        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 10, textAlign: "center" }}>Prévisions 5 jours</div>
-        {(daily.time || []).slice(0, 5).map((date, i) => {
+      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "12px", display: "flex", flexDirection: "column", gap: 6, justifyContent: "flex-start" }}>
+        <div style={{ fontSize: 16, fontWeight: 700, textAlign: "center", color: "white" }}>Prévisions 5 jours</div>
+        {(daily.time || []).slice(0, 4).map((date, i) => {
           const d = new Date(date);
           const dWmo = WMO[daily.weather_code[i]] || { fr: "" };
           const maxTemp = Math.round(daily.temperature_2m_max[i]);
           const minTemp = Math.round(daily.temperature_2m_min[i]);
           const dayLabel = i === 0 ? "Auj." : DAYS_FR[d.getDay()];
           return (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 10, borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.1)" : "none", justifyContent: "space-between" }}>
-              <WeatherIcon code={daily.weather_code[i]} size={32} />
-              <div style={{ fontSize: 20, fontWeight: 600, minWidth: 70, textAlign: "right" }}>{maxTemp}°C</div>
-              <div style={{ fontSize: 16, color: "rgba(255,255,255,0.6)", minWidth: 50, textAlign: "right" }}>{minTemp}°C</div>
-              <div style={{ fontSize: 16, color: "rgba(255,255,255,0.7)", minWidth: 50, textAlign: "right" }}>{dayLabel}</div>
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 6, borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.1)" : "none", justifyContent: "space-between" }}>
+              <WeatherIcon code={daily.weather_code[i]} size={24} />
+              <div style={{ fontSize: 16, fontWeight: 600, minWidth: 50, textAlign: "right" }}>{maxTemp}°</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", minWidth: 40, textAlign: "right" }}>{minTemp}°</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", minWidth: 40, textAlign: "right" }}>{dayLabel}</div>
             </div>
           );
         })}
       </div>
 
-      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 20, padding: "20px", display: "flex", flexDirection: "column", gap: 12, justifyContent: "center" }}>
-        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, textAlign: "center" }}>Prévisions horaires</div>
-        <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 10, justifyContent: "center" }}>
-          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
+      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "12px", display: "flex", flexDirection: "column", gap: 8, justifyContent: "flex-start" }}>
+        <div style={{ fontSize: 16, fontWeight: 700, textAlign: "center" }}>Prévisions horaires</div>
+        <div style={{ display: "flex", gap: 8, overflowX: "auto", justifyContent: "center" }}>
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => {
             const h = new Date(Date.now() + i * 60 * 60000);
             const hStr = h.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
             const tempEstimate = Math.round(current.temperature_2m - (i * 0.5));
             return (
-              <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.13)", border: "1px solid rgba(255,255,255,0.17)", borderRadius: 12, padding: "12px 10px", textAlign: "center", minWidth: 90, display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>{hStr}</div>
-                <WeatherIcon code={current.weather_code} size={28} />
-                <div style={{ fontSize: 16, fontWeight: 700 }}>{tempEstimate}°</div>
+              <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.13)", border: "1px solid rgba(255,255,255,0.17)", borderRadius: 10, padding: "10px 8px", textAlign: "center", minWidth: 80, display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
+                <div style={{ fontSize: 12, fontWeight: 500 }}>{hStr}</div>
+                <WeatherIcon code={current.weather_code} size={20} />
+                <div style={{ fontSize: 14, fontWeight: 700 }}>{tempEstimate}°</div>
               </div>
             );
           })}
@@ -1599,7 +1596,6 @@ function WeatherSlide({ weather }) {
   );
 }
 
-// ─── SLIDE CITATION ──────────────────────────────────────────────────────────
 function QuoteSlide({ quote }) {
   return (
     <div style={{ height: "100%", background: "linear-gradient(135deg, #1A1A2E 0%, #16213E 60%, #0F3460 100%)", color: "white", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 80px" }}>
@@ -1615,7 +1611,6 @@ function QuoteSlide({ quote }) {
 }
 
 // ─── SLIDE TRANSPORT ─────────────────────────────────────────────────────────
-
 function TransportSlide({ lines, lastUpdate }) {
   const grouped = { M: [], RER: [], TER: [] };
   METRO_CONFIG.forEach(cfg => {
@@ -1627,40 +1622,93 @@ function TransportSlide({ lines, lastUpdate }) {
     else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, severity, message });
     else grouped.TER.push({ ...cfg, disrupted, severity, message });
   });
-  const LineCard = ({ code, color, disrupted, severity, message }) => (
-    <div style={{ background: disrupted ? "rgba(239,83,80,0.14)" : "rgba(255,255,255,0.05)", border: `1.5px solid ${disrupted ? "#EF5350" : "rgba(255,255,255,0.10)"}`, borderRadius: 10, padding: "8px 10px", display: "flex", alignItems: "flex-start", gap: 8, minHeight: 52 }}>
-      <div style={{ width: 36, height: 36, flexShrink: 0, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: code.length > 2 ? 10 : 13, color: "white", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{code}</div>
+
+  const LineCard = ({ code, color, disrupted, severity, message, type }) => (
+    <div style={{
+      background: disrupted ? "rgba(239,83,80,0.14)" : "rgba(255,255,255,0.05)",
+      border: `1.5px solid ${disrupted ? "#EF5350" : "rgba(255,255,255,0.10)"}`,
+      borderRadius: 10,
+      padding: "8px 10px",
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 8,
+      minHeight: 52,
+    }}>
+      <div style={{
+        width: 36, height: 36, flexShrink: 0,
+        borderRadius: "50%",
+        background: color,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontWeight: 900, fontSize: code.length > 2 ? 10 : 13,
+        color: "white", textShadow: "0 1px 3px rgba(0,0,0,0.6)",
+      }}>{code}</div>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 12, color: disrupted ? "#F87171" : "#4ADE80", fontWeight: 800, marginBottom: 2 }}>{disrupted ? (severity || "Perturbé") : "Normal"}</div>
-        {disrupted && message && <div style={{ fontSize: 11, color: "#D1D5DB", lineHeight: 1.3, wordBreak: "break-word" }}>{message}</div>}
+        <div style={{ fontSize: 12, color: disrupted ? "#F87171" : "#4ADE80", fontWeight: 800, marginBottom: 2 }}>
+          {disrupted ? (severity || "Perturbe") : "Normal"}
+        </div>
+        {disrupted && message && (
+          <div style={{ fontSize: 11, color: "#D1D5DB", lineHeight: 1.3, wordBreak: "break-word" }}>
+            {message}
+          </div>
+        )}
       </div>
     </div>
   );
+
   const updStr = lastUpdate ? new Date(lastUpdate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : null;
+
   const Section = ({ label, items, cols }) => (
     <div style={{ marginBottom: 10, flexShrink: 0 }}>
-      <div style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 700, letterSpacing: "0.14em", marginBottom: 6, textTransform: "uppercase" }}>{label}</div>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>{items.map(l => <LineCard key={l.code} {...l} />)}</div>
+      <div style={{ fontSize: 10, color: "#6B7280", fontWeight: 700, letterSpacing: "0.14em", marginBottom: 6 }}>{label}</div>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>
+        {items.map(l => <LineCard key={l.code} {...l} />)}
+      </div>
     </div>
   );
+
+  const allSections = (
+    <div>
+      <Section label="METRO" items={grouped.M} cols={4}/>
+      <Section label="RER" items={grouped.RER} cols={5}/>
+      <Section label="TRANSILIEN" items={grouped.TER} cols={5}/>
+    </div>
+  );
+
   return (
     <div style={{ height: "100%", background: "linear-gradient(135deg, #111827 0%, #1F2937 100%)", color: "white", display: "flex", flexDirection: "column", padding: "18px 28px", overflow: "hidden", position: "relative" }}>
+
+      {/* Fond carte Île-de-France */}
       <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0.12, pointerEvents: "none" }} viewBox="0 0 680 400" preserveAspectRatio="xMidYMid slice">
         <path d="M200,60 L240,45 L290,50 L340,38 L400,55 L445,48 L480,70 L495,110 L510,150 L500,190 L490,230 L470,260 L450,290 L420,315 L390,330 L360,340 L320,345 L280,340 L250,325 L220,305 L195,280 L175,250 L165,215 L160,180 L165,145 L175,110 L185,80 Z" fill="#1E40AF" stroke="#3B82F6" strokeWidth="1.5"/>
         <line x1="160" y1="195" x2="505" y2="195" stroke="#E2231A" strokeWidth="3"/>
         <line x1="335" y1="40" x2="335" y2="345" stroke="#5190BF" strokeWidth="3"/>
+        <path d="M175,290 Q280,230 390,150" stroke="#FFCD00" strokeWidth="2" fill="none"/>
+        <path d="M310,40 Q340,195 360,345" stroke="#00814F" strokeWidth="2" fill="none"/>
+        <line x1="195" y1="165" x2="460" y2="165" stroke="#F2A900" strokeWidth="1.5"/>
+        <line x1="200" y1="220" x2="470" y2="220" stroke="#003CA6" strokeWidth="1.5"/>
+        <path d="M220,140 Q335,160 450,140" stroke="#CF009E" strokeWidth="1.5" fill="none"/>
+        <path d="M210,250 Q335,235 460,250" stroke="#FF7E2E" strokeWidth="1.5" fill="none"/>
+        <circle cx="335" cy="195" r="6" fill="white"/>
+        <circle cx="280" cy="195" r="3.5" fill="white"/>
+        <circle cx="390" cy="195" r="3.5" fill="white"/>
+        <circle cx="335" cy="165" r="3.5" fill="white"/>
+        <circle cx="335" cy="220" r="3.5" fill="white"/>
+        <circle cx="250" cy="165" r="3" fill="white" opacity="0.7"/>
+        <circle cx="420" cy="220" r="3" fill="white" opacity="0.7"/>
       </svg>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexShrink: 0, position: "relative", zIndex: 1 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexShrink: 0 }}>
         <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.05em" }}>TRANSPORTS</span>
-        <span style={{ color: "#6B7280", fontSize: 14 }}>Île-de-France</span>
-        {updStr && <span style={{ marginLeft: "auto", fontSize: 11, color: "#4B5563" }}>Mise à jour {updStr}</span>}
+        <span style={{ color: "#6B7280", fontSize: 14 }}>· Ile-de-France</span>
+        {updStr && <span style={{ marginLeft: "auto", fontSize: 11, color: "#4B5563" }}>Mis a jour {updStr}</span>}
       </div>
-      <div style={{ flex: 1, overflow: "auto", position: "relative", zIndex: 1 }}>
-        <Section label="Métro" items={grouped.M} cols={4}/>
-        <Section label="RER" items={grouped.RER} cols={5}/>
-        <Section label="Transilien" items={grouped.TER} cols={5}/>
+      <div style={{ flex: 1, overflow: "hidden" }}>
+        {allSections}
       </div>
-      {(!lines || lines.length === 0) && <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#4B5563", fontSize: 14, position: "relative", zIndex: 1 }}>Données indisponibles — vérifiez la clé API IDFM dans Vercel</div>}
+      {(!lines || lines.length === 0) && (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#4B5563", fontSize: 14 }}>
+          Donnees indisponibles — verifiez la cle API IDFM dans Vercel
+        </div>
+      )}
     </div>
   );
 }
@@ -2179,4 +2227,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
