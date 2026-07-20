@@ -1581,7 +1581,7 @@ function TransportSlide({ lines, lastUpdate }) {
   const updStr = lastUpdate ? new Date(lastUpdate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : null;
 
   const Section = ({ label, items, cols }) => (
-    <div style={{ marginBottom: 14 }}>
+    <div style={{ marginBottom: 14, flexShrink: 0 }}>
       <div style={{ fontSize: 11, color: "#6B7280", fontWeight: 700, letterSpacing: "0.14em", marginBottom: 8 }}>{label}</div>
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 9 }}>
         {items.map(l => <LineCard key={l.code} {...l} />)}
@@ -1589,16 +1589,27 @@ function TransportSlide({ lines, lastUpdate }) {
     </div>
   );
 
+  const allSections = (
+    <div>
+      <Section label="METRO" items={grouped.M} cols={4}/>
+      <Section label="RER" items={grouped.RER} cols={5}/>
+      <Section label="TRANSILIEN" items={grouped.TER} cols={5}/>
+    </div>
+  );
+
   return (
     <div style={{ height: "100%", background: "linear-gradient(135deg, #111827 0%, #1F2937 100%)", color: "white", display: "flex", flexDirection: "column", padding: "18px 28px", overflow: "hidden" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexShrink: 0 }}>
         <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.05em" }}>TRANSPORTS</span>
         <span style={{ color: "#6B7280", fontSize: 14 }}>· Ile-de-France</span>
         {updStr && <span style={{ marginLeft: "auto", fontSize: 11, color: "#4B5563" }}>Mis a jour {updStr}</span>}
       </div>
-      <Section label="METRO" items={grouped.M} cols={4}/>
-      <Section label="RER" items={grouped.RER} cols={5}/>
-      <Section label="TRANSILIEN" items={grouped.TER} cols={5}/>
+      <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+        <div style={{ animation: "scrollTransport 22s linear infinite" }}>
+          {allSections}
+          {allSections}
+        </div>
+      </div>
       {(!lines || lines.length === 0) && (
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#4B5563", fontSize: 14 }}>
           Donnees indisponibles — verifiez la cle API IDFM dans Vercel
@@ -1951,6 +1962,7 @@ export default function Dashboard() {
         @keyframes scrollPlanning { from { transform: translateY(0); } to { transform: translateY(-50%); } }
         @keyframes scrollTenant { from { transform: translateY(0); } to { transform: translateY(-50%); } }
         @keyframes scrollStandings { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+        @keyframes scrollTransport { from { transform: translateY(0); } to { transform: translateY(-50%); } }
       `}</style>
 
       {/* HEADER */}
