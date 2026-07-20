@@ -1579,7 +1579,7 @@ function WeatherIcon({ code, size = 80 }) {
   return <svg width={size} height={size} viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2"/></svg>;
 }
 
-// ─── SLIDE MÉTÉO GRILLE 2x2 ────────────────────────────────────────────────
+// ─── SLIDE MÉTÉO GRILLE 2x2 - OPTIMISÉE (INFOS AGRANDIES) ────────────────────
 
 function WeatherSlide({ weather }) {
   const hour = new Date().getHours();
@@ -1606,70 +1606,93 @@ function WeatherSlide({ weather }) {
   return (
     <div style={{ height: "100%", background: bg, color: "white", padding: "24px 32px", display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 20, overflow: "hidden" }}>
       
-      {/* TOP LEFT */}
-      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 24, padding: "24px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-        <div style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.7)", marginBottom: 8 }}>MA POSITION</div>
-        <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 16 }}>Paris</div>
-        <div style={{ fontSize: 60, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px", marginBottom: 8 }}>{timeStr}</div>
-        <div style={{ fontSize: 14, color: "rgba(255,255,255,0.8)" }}>{dayName}, {dateStr}</div>
+      {/* TOP LEFT - Heure & Date AGRANDI & CENTRÉ */}
+      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 24, padding: "24px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
+        <div style={{ fontSize: 18, fontWeight: 500, color: "rgba(255,255,255,0.7)", marginBottom: 12 }}>MA POSITION</div>
+        <div style={{ fontSize: 40, fontWeight: 700, marginBottom: 20 }}>Paris</div>
+        <div style={{ fontSize: 90, fontWeight: 300, lineHeight: 1, letterSpacing: "-3px", marginBottom: 12 }}>{timeStr}</div>
+        <div style={{ fontSize: 22, color: "rgba(255,255,255,0.8)" }}>{dayName}, {dateStr}</div>
       </div>
 
-      {/* TOP RIGHT */}
-      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 24, padding: "24px", display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <div>
-            <div style={{ fontSize: 56, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px", marginBottom: 6 }}>{Math.round(current.temperature_2m)}°C</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
+      {/* TOP RIGHT - Température + Indicateurs AGRANDI */}
+      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 24, padding: "24px", display: "flex", flexDirection: "column", gap: 20, alignItems: "center", justifyContent: "center" }}>
+        
+        {/* Température et icône */}
+        <div style={{ display: "flex", alignItems: "center", gap: 30 }}>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 88, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px", marginBottom: 8 }}>{Math.round(current.temperature_2m)}°C</div>
+            <div style={{ fontSize: 20, color: "rgba(255,255,255,0.7)" }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
           </div>
-          <WeatherIcon code={current.weather_code} size={60} />
+          <WeatherIcon code={current.weather_code} size={100} />
         </div>
-        <div style={{ display: "flex", gap: 16, justifyContent: "space-between" }}>
-          <div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Humidité</div><div style={{ fontSize: 18, fontWeight: 600 }}>{humidity}%</div></div>
-          <div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Vent</div><div style={{ fontSize: 18, fontWeight: 600 }}>{wind} km/h</div></div>
-          <div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Pression</div><div style={{ fontSize: 18, fontWeight: 600 }}>997hPa</div></div>
-          <div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>UV</div><div style={{ fontSize: 18, fontWeight: 600 }}>{Math.round(uvToday || 0)}</div></div>
+
+        {/* Indicateurs en grille */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, width: "100%", marginTop: 12 }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 16, color: "rgba(255,255,255,0.6)", marginBottom: 8 }}>Humidité</div>
+            <div style={{ fontSize: 32, fontWeight: 600 }}>{humidity}%</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 16, color: "rgba(255,255,255,0.6)", marginBottom: 8 }}>Vent</div>
+            <div style={{ fontSize: 32, fontWeight: 600 }}>{wind} km/h</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 16, color: "rgba(255,255,255,0.6)", marginBottom: 8 }}>Pression</div>
+            <div style={{ fontSize: 32, fontWeight: 600 }}>997hPa</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 16, color: "rgba(255,255,255,0.6)", marginBottom: 8 }}>UV</div>
+            <div style={{ fontSize: 32, fontWeight: 600 }}>{Math.round(uvToday || 0)}</div>
+          </div>
         </div>
-        <div style={{ marginTop: 8 }}><div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{wmo.fr}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>↑ Lever {sunrise} · ↓ Coucher {sunset}</div></div>
+
+        {/* Condition */}
+        <div style={{ textAlign: "center", marginTop: 12 }}>
+          <div style={{ fontSize: 26, fontWeight: 700, marginBottom: 8 }}>{wmo.fr}</div>
+          <div style={{ fontSize: 18, color: "rgba(255,255,255,0.7)" }}>
+            ↑ Lever {sunrise} · ↓ Coucher {sunset}
+          </div>
+        </div>
       </div>
 
-      {/* BOTTOM LEFT */}
-      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 24, padding: "24px", display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }}>
-        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Prévisions 5 jours</div>
+      {/* BOTTOM LEFT - Prévisions 5 jours AGRANDI */}
+      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 24, padding: "24px", display: "flex", flexDirection: "column", gap: 16, overflowY: "auto", justifyContent: "center" }}>
+        <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 12, textAlign: "center" }}>Prévisions 5 jours</div>
         {(daily.time || []).slice(0, 5).map((date, i) => {
           const d = new Date(date);
           const dWmo = WMO[daily.weather_code[i]] || { fr: "" };
           const maxTemp = Math.round(daily.temperature_2m_max[i]);
           const minTemp = Math.round(daily.temperature_2m_min[i]);
-          const dayLabel = i === 0 ? "Auj." : DAYS_FR[d.getDay()].substring(0, 3);
+          const dayLabel = i === 0 ? "Auj." : DAYS_FR[d.getDay()];
           return (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 10, borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.1)" : "none" }}>
-              <WeatherIcon code={daily.weather_code[i]} size={24} />
-              <div style={{ fontSize: 13, fontWeight: 600, minWidth: 40 }}>{maxTemp}°C</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", minWidth: 40 }}>{minTemp}°C</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", flex: 1 }}>{dayLabel}</div>
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 16, paddingBottom: 12, borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.1)" : "none", justifyContent: "space-between" }}>
+              <WeatherIcon code={daily.weather_code[i]} size={40} />
+              <div style={{ fontSize: 24, fontWeight: 600, minWidth: 80, textAlign: "right" }}>{maxTemp}°C</div>
+              <div style={{ fontSize: 20, color: "rgba(255,255,255,0.6)", minWidth: 60, textAlign: "right" }}>{minTemp}°C</div>
+              <div style={{ fontSize: 20, color: "rgba(255,255,255,0.7)", minWidth: 60, textAlign: "right" }}>{dayLabel}</div>
             </div>
           );
         })}
       </div>
 
-      {/* BOTTOM RIGHT */}
-      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 24, padding: "24px", display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Prévisions horaires</div>
-        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8 }}>
+      {/* BOTTOM RIGHT - Prévisions Horaires AGRANDI */}
+      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 24, padding: "24px", display: "flex", flexDirection: "column", gap: 16, justifyContent: "center" }}>
+        <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 8, textAlign: "center" }}>Prévisions horaires</div>
+        <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 12, justifyContent: "center" }}>
           {[0, 1, 2, 3, 4].map((i) => {
             const h = new Date(Date.now() + i * 60 * 60000);
             const hStr = h.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
             const tempEstimate = Math.round(current.temperature_2m - (i * 0.5));
             return (
-              <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: "10px 8px", textAlign: "center", minWidth: 70, display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
-                <div style={{ fontSize: 11, fontWeight: 500 }}>{hStr}</div>
-                <WeatherIcon code={current.weather_code} size={24} />
-                <div style={{ fontSize: 14, fontWeight: 700 }}>{tempEstimate}°</div>
+              <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: "16px 12px", textAlign: "center", minWidth: 100, display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+                <div style={{ fontSize: 18, fontWeight: 500 }}>{hStr}</div>
+                <WeatherIcon code={current.weather_code} size={36} />
+                <div style={{ fontSize: 20, fontWeight: 700 }}>{tempEstimate}°</div>
               </div>
             );
           })}
         </div>
-        <div style={{ marginTop: "auto", fontSize: 11, color: "rgba(255,255,255,0.6)", textAlign: "center" }}>Mise à jour toutes les 30 min</div>
+        <div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", textAlign: "center", marginTop: 8 }}>Mise à jour toutes les 30 min</div>
       </div>
     </div>
   );
