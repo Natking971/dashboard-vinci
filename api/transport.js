@@ -1,5 +1,3 @@
-// api/transport.js — Proxy Vercel pour l'API IDF Mobilités
-
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Content-Type", "application/json");
@@ -34,60 +32,109 @@ export default async function handler(req, res) {
     "MAJEURE":"Perturbation majeure",
   };
 
+  const MOIS_FR = {
+    january:"janvier",february:"février",march:"mars",april:"avril",
+    may:"mai",june:"juin",july:"juillet",august:"août",
+    september:"septembre",october:"octobre",november:"novembre",december:"décembre",
+    jan:"jan.",feb:"fév.",mar:"mars",apr:"avr.",jun:"juin",jul:"juil.",
+    aug:"août",sep:"sep.",oct:"oct.",nov:"nov.",dec:"déc.",
+  };
+
+  const JOURS_FR = {
+    monday:"lundi",tuesday:"mardi",wednesday:"mercredi",thursday:"jeudi",
+    friday:"vendredi",saturday:"samedi",sunday:"dimanche",
+    mon:"lun.",tue:"mar.",wed:"mer.",thu:"jeu.",fri:"ven.",sat:"sam.",sun:"dim.",
+  };
+
   function nettoyer(texte = "") {
     return texte
-      .replace(/<[^>]*>/g, " ")          // balises HTML
-      .replace(/&nbsp;/gi, " ")
-      .replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&amp;/gi, "&")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&nbsp;/gi, " ").replace(/&lt;/gi,"<").replace(/&gt;/gi,">").replace(/&amp;/gi,"&")
       .replace(/&#[0-9]+;/g, " ")
-      // Supprimer les emoji (plages Unicode emoji)
-      .replace(/[\u{1F300}-\u{1FFFF}\u{2600}-\u{27FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FEFF}]/gu, "")
-      .replace(/[\u{1F000}-\u{1F9FF}]/gu, "")
-      .replace(/⚠|🚇|🚆|🚊|🚋|🚌|🚍|🚎|🚏|🚐|🚑|🚒|🚓|🚔|🚕|🚖|🚗|🚘|🚙|⛽|🛣|🛤/g, "")
+      .replace(/[\u{1F000}-\u{1FFFF}]/gu, "")
+      .replace(/[⚠⚡🚇🚆🚊🚋🚌🚍🚎🚐🚑🚒🔴🟠🟡]/g, "")
+      .replace(/#\w+/g, "")
       .replace(/\s+/g, " ")
       .trim();
   }
 
   function traduire(texte = "") {
     let t = nettoyer(texte);
+
+    // Jours
+    Object.entries(JOURS_FR).forEach(([en, fr]) => {
+      t = t.replace(new RegExp("\\b" + en + "\\b", "gi"), fr);
+    });
+    // Mois
+    Object.entries(MOIS_FR).forEach(([en, fr]) => {
+      t = t.replace(new RegExp("\\b" + en + "\\b", "gi"), fr);
+    });
+
     const remplacements = [
-      [/traffic is interrupted between (.+?) and (.+?)(\.|$)/gi, "Trafic interrompu entre $1 et $2"],
-      [/traffic is interrupted on (.+?)(\.|$)/gi, "Trafic interrompu sur $1"],
+      // Interruptions
+      [/traffic is interrupted between (.+?) and (.+?)(?:\.|,|<|$)/gi, "Trafic interrompu entre $1 et $2"],
+      [/traffic is interrupted on (.+?)(?:\.|<|$)/gi, "Trafic interrompu sur $1"],
       [/traffic disrupted/gi, "Trafic perturbé"],
       [/traffic interrupted/gi, "Trafic interrompu"],
       [/traffic is disrupted/gi, "Trafic perturbé"],
       [/train parked/gi, "Train en stationnement"],
       [/train stalled/gi, "Train en panne"],
-      [/stop[s]? not served[:\s]*(.*?)(\.|$)/gi, "Arrêt(s) non desservi(s) : $1"],
+      // Annulations
+      [/the following departures are cancelled[:\s]*/gi, "Départs supprimés : "],
+      [/departures? (?:are )?cancelled/gi, "Départs supprimés"],
+      [/races? cancelled/gi, "Courses annulées"],
+      [/cancelled/gi, "supprimé(s)"],
+      [/cancell?ation/gi, "suppression"],
+      // Arrêts
+      [/stop[s]? not served[:\s]*(.*?)(?:\.|$)/gi, "Arrêt(s) non desservi(s) : $1"],
       [/stop[s]? not served/gi, "Arrêt(s) non desservi(s)"],
-      [/a replacement bus service is provided/gi, "Bus de remplacement mis en place"],
-      [/bus de remplacement/gi, "Bus de remplacement"],
-      [/due to construction/gi, "En raison de travaux"],
-      [/due to works?/gi, "En raison de travaux"],
-      [/due to engineering works?/gi, "En raison de travaux techniques"],
-      [/due to a breakdown/gi, "En raison d'une panne"],
-      [/due to an incident/gi, "En raison d'un incident"],
-      [/due to a strike/gi, "En raison d'une grève"],
+      [/station[s]? not served/gi, "Station(s) non desservie(s)"],
       [/will not be served/gi, "ne sera pas desservi"],
       [/will be served/gi, "sera desservi"],
-      [/will be moved to/gi, "sera déplacé vers"],
-      [/in both directions/gi, "dans les deux sens"],
-      [/last departure from/gi, "Dernier départ depuis"],
-      [/last departure at/gi, "Dernier départ à"],
-      [/period[:\s]*evenings?/gi, "Période : soirées"],
-      [/thanks for your understanding/gi, "Merci de votre compréhension"],
-      [/engineering works? on the rail network/gi, "travaux sur le réseau ferroviaire"],
-      [/between (.+?) and (.+?)(\.|,|$)/gi, "entre $1 et $2"],
+      // Bus de remplacement
+      [/a replacement bus service is provided/gi, "Bus de remplacement mis en place"],
+      [/replacement bus/gi, "bus de remplacement"],
+      // Travaux
+      [/due to construction/gi, "en raison de travaux"],
+      [/due to works?/gi, "en raison de travaux"],
+      [/due to engineering works?/gi, "en raison de travaux techniques"],
+      [/due to a breakdown/gi, "en raison d'une panne"],
+      [/due to an incident/gi, "en raison d'un incident"],
+      [/due to a strike/gi, "en raison d'une grève"],
+      [/due to operational constraints?/gi, "en raison de contraintes opérationnelles"],
+      [/engineering works?/gi, "travaux techniques"],
+      // Dates
+      [/until further notice/gi, "jusqu'à nouvel ordre"],
+      [/from ([a-z]+ \d+) to ([a-z]+ \d+)/gi, "du $1 au $2"],
+      [/from ([a-z]+day),?\s*/gi, "à partir du $1"],
       [/inclusive/gi, "inclus"],
-      [/#infotrafic/gi, "Info Trafic"],
+      // Divers
+      [/in both directions?/gi, "dans les deux sens"],
+      [/last departure from/gi, "dernier départ depuis"],
+      [/last departure at/gi, "dernier départ à"],
+      [/between (.+?) and (.+?)(?:\.|,|$)/gi, "entre $1 et $2"],
+      [/period[:\s]*evenings?/gi, "Période : soirées"],
       [/line ([0-9]{1,2}[ab]?)/gi, "Ligne $1"],
       [/line ([a-e])\b/gi, "Ligne $1"],
-      [/\bdetails? of\b/gi, "Détails"],
-      [/\bdetails?\b/gi, "Détails"],
+      [/details? of/gi, "Détails"],
+      [/thanks for your understanding\.?/gi, "Merci de votre compréhension."],
+      [/a detour has been set up/gi, "Un itinéraire de substitution est mis en place"],
+      [/the line will be diverted/gi, "La ligne sera déviée"],
+      [/will be diverted/gi, "sera déviée"],
+      [/diverted/gi, "déviée"],
+      [/\bvia\b/gi, "via"],
+      [/platform/gi, "quai"],
     ];
+
     for (const [pattern, remplacement] of remplacements) {
       t = t.replace(pattern, remplacement);
     }
+
+    // Nettoyage final
+    t = t.replace(/\s+/g, " ").trim();
+    // Majuscule en début
+    if (t.length > 0) t = t[0].toUpperCase() + t.slice(1);
+
     return t.substring(0, 150);
   }
 
@@ -105,7 +152,7 @@ export default async function handler(req, res) {
       const num = metroMatch[1].replace(/b$/i, "B");
       if (ALL_CODES.includes(num)) return num;
     }
-    const lineMatch = n.match(/\bline\s+([a-e]|\d{1,2}[ab]?)\b/i);
+    const lineMatch = n.match(/\bline[s]?\s+([a-e]|\d{1,2}[ab]?)\b/i);
     if (lineMatch) {
       const code = lineMatch[1].toUpperCase().replace(/B$/i, "B");
       if (ALL_CODES.includes(code)) return code;
@@ -122,8 +169,7 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (req.query.debug === "1") {
-      const sample = (data.disruptions || data || []).slice(0, 2);
-      return res.status(200).json({ sample, keys: Object.keys(data) });
+      return res.status(200).json({ sample: (data.disruptions || data || []).slice(0, 2), keys: Object.keys(data) });
     }
 
     const lineMap = {};
