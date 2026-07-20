@@ -1598,14 +1598,34 @@ function TransportSlide({ lines, lastUpdate }) {
   );
 
   return (
-    <div style={{ height: "100%", background: "linear-gradient(135deg, #111827 0%, #1F2937 100%)", color: "white", display: "flex", flexDirection: "column", padding: "18px 28px", overflow: "hidden" }}>
+    <div style={{ height: "100%", background: "linear-gradient(135deg, #111827 0%, #1F2937 100%)", color: "white", display: "flex", flexDirection: "column", padding: "18px 28px", overflow: "hidden", position: "relative" }}>
+
+      {/* Fond carte Île-de-France */}
+      <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0.12, pointerEvents: "none" }} viewBox="0 0 680 400" preserveAspectRatio="xMidYMid slice">
+        <path d="M200,60 L240,45 L290,50 L340,38 L400,55 L445,48 L480,70 L495,110 L510,150 L500,190 L490,230 L470,260 L450,290 L420,315 L390,330 L360,340 L320,345 L280,340 L250,325 L220,305 L195,280 L175,250 L165,215 L160,180 L165,145 L175,110 L185,80 Z" fill="#1E40AF" stroke="#3B82F6" strokeWidth="1.5"/>
+        <line x1="160" y1="195" x2="505" y2="195" stroke="#E2231A" strokeWidth="3"/>
+        <line x1="335" y1="40" x2="335" y2="345" stroke="#5190BF" strokeWidth="3"/>
+        <path d="M175,290 Q280,230 390,150" stroke="#FFCD00" strokeWidth="2" fill="none"/>
+        <path d="M310,40 Q340,195 360,345" stroke="#00814F" strokeWidth="2" fill="none"/>
+        <line x1="195" y1="165" x2="460" y2="165" stroke="#F2A900" strokeWidth="1.5"/>
+        <line x1="200" y1="220" x2="470" y2="220" stroke="#003CA6" strokeWidth="1.5"/>
+        <path d="M220,140 Q335,160 450,140" stroke="#CF009E" strokeWidth="1.5" fill="none"/>
+        <path d="M210,250 Q335,235 460,250" stroke="#FF7E2E" strokeWidth="1.5" fill="none"/>
+        <circle cx="335" cy="195" r="6" fill="white"/>
+        <circle cx="280" cy="195" r="3.5" fill="white"/>
+        <circle cx="390" cy="195" r="3.5" fill="white"/>
+        <circle cx="335" cy="165" r="3.5" fill="white"/>
+        <circle cx="335" cy="220" r="3.5" fill="white"/>
+        <circle cx="250" cy="165" r="3" fill="white" opacity="0.7"/>
+        <circle cx="420" cy="220" r="3" fill="white" opacity="0.7"/>
+      </svg>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexShrink: 0 }}>
         <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.05em" }}>TRANSPORTS</span>
         <span style={{ color: "#6B7280", fontSize: 14 }}>· Ile-de-France</span>
         {updStr && <span style={{ marginLeft: "auto", fontSize: 11, color: "#4B5563" }}>Mis a jour {updStr}</span>}
       </div>
       <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-        <div style={{ animation: "scrollTransport 22s linear infinite" }}>
+        <div style={{ animation: "scrollTransport 22s linear infinite", willChange: "transform", backfaceVisibility: "hidden", transform: "translate3d(0,0,0)" }}>
           {allSections}
           {allSections}
         </div>
@@ -1962,7 +1982,7 @@ export default function Dashboard() {
         @keyframes scrollPlanning { from { transform: translateY(0); } to { transform: translateY(-50%); } }
         @keyframes scrollTenant { from { transform: translateY(0); } to { transform: translateY(-50%); } }
         @keyframes scrollStandings { from { transform: translateY(0); } to { transform: translateY(-50%); } }
-        @keyframes scrollTransport { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+        @keyframes scrollTransport { from { transform: translate3d(0,0,0); } to { transform: translate3d(0,-50%,0); } }
       `}</style>
 
       {/* HEADER */}
