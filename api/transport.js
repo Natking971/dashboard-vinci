@@ -40,6 +40,10 @@ export default async function handler(req, res) {
       .replace(/&nbsp;/gi, " ")
       .replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&amp;/gi, "&")
       .replace(/&#[0-9]+;/g, " ")
+      // Supprimer les emoji (plages Unicode emoji)
+      .replace(/[\u{1F300}-\u{1FFFF}\u{2600}-\u{27FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FEFF}]/gu, "")
+      .replace(/[\u{1F000}-\u{1F9FF}]/gu, "")
+      .replace(/⚠|🚇|🚆|🚊|🚋|🚌|🚍|🚎|🚏|🚐|🚑|🚒|🚓|🚔|🚕|🚖|🚗|🚘|🚙|⛽|🛣|🛤/g, "")
       .replace(/\s+/g, " ")
       .trim();
   }
