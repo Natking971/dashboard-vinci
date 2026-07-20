@@ -1539,32 +1539,59 @@ function TransportSlide({ lines, lastUpdate }) {
   METRO_CONFIG.forEach(cfg => {
     const data = (lines || []).find(l => l.code === cfg.code);
     const disrupted = data ? data.disruptions.length > 0 : false;
-    const message = disrupted ? (data.disruptions[0]?.message || "") : "";
-    if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, message });
-    else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, message });
-    else grouped.TER.push({ ...cfg, disrupted, message });
+    const severity  = disrupted ? (data.disruptions[0]?.severity || "Perturbation") : "";
+    const message   = disrupted ? (data.disruptions[0]?.message || "") : "";
+    if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, severity, message });
+    else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, severity, message });
+    else grouped.TER.push({ ...cfg, disrupted, severity, message });
   });
-  const LineCard = ({ code, color, disrupted, message, type }) => (
-    <div style={{ background: disrupted ? "rgba(239,83,80,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${disrupted ? "#EF5350" : "rgba(255,255,255,0.10)"}`, borderRadius: 10, padding: "7px 10px", display: "flex", alignItems: "center", gap: 8 }}>
-      <div style={{ width: 34, height: 34, borderRadius: type === "T" ? "7px" : "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: code.length > 2 ? 10 : 12, color: "white", flexShrink: 0, textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}>{code}</div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 11, color: disrupted ? "#EF5350" : "#4ADE80", fontWeight: 700 }}>{disrupted ? "Perturbe" : "Normal"}</div>
-        {disrupted && message && <div style={{ fontSize: 10, color: "#9CA3AF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 130 }}>{message}</div>}
+
+  const LineCard = ({ code, color, disrupted, severity, message, type }) => (
+    <div style={{
+      background: disrupted ? "rgba(239,83,80,0.14)" : "rgba(255,255,255,0.05)",
+      border: `2px solid ${disrupted ? "#EF5350" : "rgba(255,255,255,0.10)"}`,
+      borderRadius: 12,
+      padding: "12px 14px",
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 12,
+      minHeight: 64,
+    }}>
+      <div style={{
+        width: 42, height: 42, flexShrink: 0,
+        borderRadius: "50%",
+        background: color,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontWeight: 900, fontSize: code.length > 2 ? 11 : 15,
+        color: "white", textShadow: "0 1px 3px rgba(0,0,0,0.6)",
+      }}>{code}</div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 13, color: disrupted ? "#F87171" : "#4ADE80", fontWeight: 800, marginBottom: 3 }}>
+          {disrupted ? (severity || "Perturbe") : "Normal"}
+        </div>
+        {disrupted && message && (
+          <div style={{ fontSize: 12, color: "#D1D5DB", lineHeight: 1.4, wordBreak: "break-word" }}>
+            {message}
+          </div>
+        )}
       </div>
     </div>
   );
+
   const updStr = lastUpdate ? new Date(lastUpdate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : null;
+
   const Section = ({ label, items, cols }) => (
     <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: 10, color: "#6B7280", fontWeight: 700, letterSpacing: "0.12em", marginBottom: 8 }}>{label}</div>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 7 }}>
+      <div style={{ fontSize: 11, color: "#6B7280", fontWeight: 700, letterSpacing: "0.14em", marginBottom: 8 }}>{label}</div>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 9 }}>
         {items.map(l => <LineCard key={l.code} {...l} />)}
       </div>
     </div>
   );
+
   return (
-    <div style={{ height: "100%", background: "linear-gradient(135deg, #111827 0%, #1F2937 100%)", color: "white", display: "flex", flexDirection: "column", padding: "18px 30px", overflow: "hidden" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+    <div style={{ height: "100%", background: "linear-gradient(135deg, #111827 0%, #1F2937 100%)", color: "white", display: "flex", flexDirection: "column", padding: "18px 28px", overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
         <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.05em" }}>TRANSPORTS</span>
         <span style={{ color: "#6B7280", fontSize: 14 }}>· Ile-de-France</span>
         {updStr && <span style={{ marginLeft: "auto", fontSize: 11, color: "#4B5563" }}>Mis a jour {updStr}</span>}
