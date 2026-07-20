@@ -1471,125 +1471,36 @@ function UVBadge({ uv }) {
 }
 
 
-// ─── FOND DYNAMIQUE RÉALISTE SELON MÉTÉO ─────────────────────────────────────
-
 function getWeatherBackground(code, hour) {
   const n = Number(code);
   const isNight = hour < 6 || hour >= 20;
   
-  if ([95, 96, 99].includes(n)) {
-    return "linear-gradient(180deg, #0a0a1a 0%, #1a1a2e 50%, #0f1419 100%)";
-  }
-  
-  if ([45, 48, 51, 53, 55, 61, 63, 65, 80, 81, 82].includes(n)) {
-    return isNight 
-      ? "linear-gradient(180deg, #0d1b3a 0%, #1a2f4a 50%, #0f1a28 100%)"
-      : "linear-gradient(180deg, #3b5998 0%, #5a7db8 50%, #4a6fa8 100%)";
-  }
-  
-  if ([71, 73, 75, 77, 85, 86].includes(n)) {
-    return "linear-gradient(180deg, #c0d5e8 0%, #d8e5f0 50%, #b0c8e0 100%)";
-  }
-  
-  if ([2, 3].includes(n)) {
-    return isNight
-      ? "linear-gradient(180deg, #1a1f3a 0%, #2a3550 50%, #151f35 100%)"
-      : "linear-gradient(180deg, #6b8cae 0%, #8aabce 50%, #7a9bbe 100%)";
-  }
-  
-  if (n === 1) {
-    return isNight
-      ? "linear-gradient(180deg, #0f1d3f 0%, #1a3050 50%, #0d1628 100%)"
-      : "linear-gradient(180deg, #5b9fd9 0%, #87ceeb 50%, #6eb5e0 100%)";
-  }
-  
-  if (n <= 0) {
-    return isNight
-      ? "linear-gradient(180deg, #0a0e1f 0%, #15203a 50%, #0a0f18 100%)"
-      : "linear-gradient(180deg, #4da6ff 0%, #87ceeb 50%, #5eb8f5 100%)";
-  }
-  
+  if ([95, 96, 99].includes(n)) return "linear-gradient(180deg, #0a0a1a 0%, #1a1a2e 50%, #0f1419 100%)";
+  if ([45, 48, 51, 53, 55, 61, 63, 65, 80, 81, 82].includes(n)) return isNight ? "linear-gradient(180deg, #0d1b3a 0%, #1a2f4a 50%, #0f1a28 100%)" : "linear-gradient(180deg, #3b5998 0%, #5a7db8 50%, #4a6fa8 100%)";
+  if ([71, 73, 75, 77, 85, 86].includes(n)) return "linear-gradient(180deg, #c0d5e8 0%, #d8e5f0 50%, #b0c8e0 100%)";
+  if ([2, 3].includes(n)) return isNight ? "linear-gradient(180deg, #1a1f3a 0%, #2a3550 50%, #151f35 100%)" : "linear-gradient(180deg, #6b8cae 0%, #8aabce 50%, #7a9bbe 100%)";
+  if (n === 1) return isNight ? "linear-gradient(180deg, #0f1d3f 0%, #1a3050 50%, #0d1628 100%)" : "linear-gradient(180deg, #5b9fd9 0%, #87ceeb 50%, #6eb5e0 100%)";
+  if (n <= 0) return isNight ? "linear-gradient(180deg, #0a0e1f 0%, #15203a 50%, #0a0f18 100%)" : "linear-gradient(180deg, #4da6ff 0%, #87ceeb 50%, #5eb8f5 100%)";
   return "linear-gradient(180deg, #5b9fd9 0%, #87ceeb 50%, #6eb5e0 100%)";
 }
-
-// ─── ICÔNE MÉTÉO SVG ────────────────────────────────────────────────────────
 
 function WeatherIcon({ code, size = 80 }) {
   const n = Number(code);
   
-  if (n <= 1) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="35" fill="#FFD700"/>
-        <line x1="50" y1="5" x2="50" y2="20" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
-        <line x1="50" y1="80" x2="50" y2="95" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
-        <line x1="5" y1="50" x2="20" y2="50" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
-        <line x1="80" y1="50" x2="95" y2="50" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
-      </svg>
-    );
-  }
-  
-  if (n === 2) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 100 100">
-        <path d="M 30 70 Q 20 70 15 60 Q 10 50 20 45 Q 25 35 35 35 Q 45 25 55 30 Q 65 28 70 40 Q 80 45 75 60 Q 70 70 60 70 Z" fill="rgba(255,255,255,0.9)"/>
-      </svg>
-    );
-  }
-  
-  if (n === 3) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 100 100">
-        <path d="M 25 65 Q 15 65 10 55 Q 8 45 15 40 Q 20 32 30 32 Q 38 22 48 27 Q 58 25 65 35 Q 75 40 70 55 Q 65 65 55 65 Z" fill="rgba(255,255,255,0.7)"/>
-      </svg>
-    );
-  }
-  
-  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(n)) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 100 100">
-        <path d="M 25 55 Q 15 55 10 45 Q 8 35 15 30 Q 20 22 30 22 Q 38 12 48 17 Q 58 15 65 25 Q 75 30 70 45 Q 65 55 55 55 Z" fill="rgba(255,255,255,0.8)"/>
-        <line x1="20" y1="65" x2="15" y2="80" stroke="rgba(255,255,255,0.9)" strokeWidth="2.5" strokeLinecap="round"/>
-        <line x1="40" y1="65" x2="35" y2="80" stroke="rgba(255,255,255,0.9)" strokeWidth="2.5" strokeLinecap="round"/>
-        <line x1="60" y1="65" x2="55" y2="80" stroke="rgba(255,255,255,0.9)" strokeWidth="2.5" strokeLinecap="round"/>
-      </svg>
-    );
-  }
-  
-  if ([71, 73, 75, 77, 85, 86].includes(n)) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 100 100">
-        <path d="M 25 55 Q 15 55 10 45 Q 8 35 15 30 Q 20 22 30 22 Q 38 12 48 17 Q 58 15 65 25 Q 75 30 70 45 Q 65 55 55 55 Z" fill="rgba(255,255,255,0.85)"/>
-        <circle cx="20" cy="70" r="3" fill="rgba(255,255,255,1)"/>
-        <circle cx="40" cy="75" r="3" fill="rgba(255,255,255,1)"/>
-        <circle cx="60" cy="70" r="3" fill="rgba(255,255,255,1)"/>
-      </svg>
-    );
-  }
-  
-  if ([95, 96, 99].includes(n)) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 100 100">
-        <path d="M 20 60 Q 10 60 5 50 Q 3 40 10 35 Q 15 27 25 27 Q 33 17 43 22 Q 53 20 60 30 Q 70 35 65 50 Q 60 60 50 60 Z" fill="rgba(255,255,255,0.6)"/>
-        <polygon points="45,65 40,80 48,80 35,100 50,85 42,85" fill="#FFFF00" opacity="0.8"/>
-      </svg>
-    );
-  }
-  
+  if (n <= 1) return <svg width={size} height={size} viewBox="0 0 100 100"><circle cx="50" cy="50" r="35" fill="#FFD700"/><line x1="50" y1="5" x2="50" y2="20" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/><line x1="50" y1="80" x2="50" y2="95" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/><line x1="5" y1="50" x2="20" y2="50" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/><line x1="80" y1="50" x2="95" y2="50" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/></svg>;
+  if (n === 2) return <svg width={size} height={size} viewBox="0 0 100 100"><path d="M 30 70 Q 20 70 15 60 Q 10 50 20 45 Q 25 35 35 35 Q 45 25 55 30 Q 65 28 70 40 Q 80 45 75 60 Q 70 70 60 70 Z" fill="rgba(255,255,255,0.9)"/></svg>;
+  if (n === 3) return <svg width={size} height={size} viewBox="0 0 100 100"><path d="M 25 65 Q 15 65 10 55 Q 8 45 15 40 Q 20 32 30 32 Q 38 22 48 27 Q 58 25 65 35 Q 75 40 70 55 Q 65 65 55 65 Z" fill="rgba(255,255,255,0.7)"/></svg>;
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(n)) return <svg width={size} height={size} viewBox="0 0 100 100"><path d="M 25 55 Q 15 55 10 45 Q 8 35 15 30 Q 20 22 30 22 Q 38 12 48 17 Q 58 15 65 25 Q 75 30 70 45 Q 65 55 55 55 Z" fill="rgba(255,255,255,0.8)"/><line x1="20" y1="65" x2="15" y2="80" stroke="rgba(255,255,255,0.9)" strokeWidth="2.5" strokeLinecap="round"/><line x1="40" y1="65" x2="35" y2="80" stroke="rgba(255,255,255,0.9)" strokeWidth="2.5" strokeLinecap="round"/><line x1="60" y1="65" x2="55" y2="80" stroke="rgba(255,255,255,0.9)" strokeWidth="2.5" strokeLinecap="round"/></svg>;
+  if ([71, 73, 75, 77, 85, 86].includes(n)) return <svg width={size} height={size} viewBox="0 0 100 100"><path d="M 25 55 Q 15 55 10 45 Q 8 35 15 30 Q 20 22 30 22 Q 38 12 48 17 Q 58 15 65 25 Q 75 30 70 45 Q 65 55 55 55 Z" fill="rgba(255,255,255,0.85)"/><circle cx="20" cy="70" r="3" fill="rgba(255,255,255,1)"/><circle cx="40" cy="75" r="3" fill="rgba(255,255,255,1)"/><circle cx="60" cy="70" r="3" fill="rgba(255,255,255,1)"/></svg>;
+  if ([95, 96, 99].includes(n)) return <svg width={size} height={size} viewBox="0 0 100 100"><path d="M 20 60 Q 10 60 5 50 Q 3 40 10 35 Q 15 27 25 27 Q 33 17 43 22 Q 53 20 60 30 Q 70 35 65 50 Q 60 60 50 60 Z" fill="rgba(255,255,255,0.6)"/><polygon points="45,65 40,80 48,80 35,100 50,85 42,85" fill="#FFFF00" opacity="0.8"/></svg>;
   return <svg width={size} height={size} viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2"/></svg>;
 }
-
-// ─── SLIDE MÉTÉO GRILLE 2x2 - OPTIMISÉE (INFOS AGRANDIES) ────────────────────
 
 function WeatherSlide({ weather }) {
   const hour = new Date().getHours();
   const day = new Date();
   
-  if (!weather) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: getWeatherBackground(0, hour), color: "white", fontSize: 20 }}>
-      Chargement météo…
-    </div>
-  );
+  if (!weather) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: getWeatherBackground(0, hour), color: "white", fontSize: 20 }}>Chargement météo…</div>;
   
   const { current, daily } = weather;
   const wmo = WMO[current.weather_code] || { fr: "—" };
@@ -1604,60 +1515,52 @@ function WeatherSlide({ weather }) {
   const bg = getWeatherBackground(current.weather_code, hour);
 
   return (
-    <div style={{ height: "100%", background: bg, color: "white", padding: "24px 32px", display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 20, overflow: "hidden" }}>
+    <div style={{ height: "100%", background: bg, color: "white", padding: "20px 28px", display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 16, overflow: "hidden" }}>
       
-      {/* TOP LEFT - Heure & Date AGRANDI & CENTRÉ */}
-      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 24, padding: "24px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
-        <div style={{ fontSize: 18, fontWeight: 500, color: "rgba(255,255,255,0.7)", marginBottom: 12 }}>MA POSITION</div>
-        <div style={{ fontSize: 40, fontWeight: 700, marginBottom: 20 }}>Paris</div>
-        <div style={{ fontSize: 90, fontWeight: 300, lineHeight: 1, letterSpacing: "-3px", marginBottom: 12 }}>{timeStr}</div>
-        <div style={{ fontSize: 22, color: "rgba(255,255,255,0.8)" }}>{dayName}, {dateStr}</div>
+      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 20, padding: "20px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
+        <div style={{ fontSize: 16, fontWeight: 500, color: "rgba(255,255,255,0.7)", marginBottom: 10 }}>MA POSITION</div>
+        <div style={{ fontSize: 36, fontWeight: 700, marginBottom: 16 }}>Paris</div>
+        <div style={{ fontSize: 72, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px", marginBottom: 10 }}>{timeStr}</div>
+        <div style={{ fontSize: 18, color: "rgba(255,255,255,0.8)" }}>{dayName}, {dateStr}</div>
       </div>
 
-      {/* TOP RIGHT - Température + Indicateurs AGRANDI */}
-      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 24, padding: "24px", display: "flex", flexDirection: "column", gap: 20, alignItems: "center", justifyContent: "center" }}>
+      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 20, padding: "20px", display: "flex", flexDirection: "column", gap: 16, alignItems: "center", justifyContent: "center" }}>
         
-        {/* Température et icône */}
-        <div style={{ display: "flex", alignItems: "center", gap: 30 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 88, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px", marginBottom: 8 }}>{Math.round(current.temperature_2m)}°C</div>
-            <div style={{ fontSize: 20, color: "rgba(255,255,255,0.7)" }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
+            <div style={{ fontSize: 72, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px", marginBottom: 6 }}>{Math.round(current.temperature_2m)}°C</div>
+            <div style={{ fontSize: 16, color: "rgba(255,255,255,0.7)" }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
           </div>
-          <WeatherIcon code={current.weather_code} size={100} />
+          <WeatherIcon code={current.weather_code} size={80} />
         </div>
 
-        {/* Indicateurs en grille */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, width: "100%", marginTop: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, width: "100%", marginTop: 8 }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 16, color: "rgba(255,255,255,0.6)", marginBottom: 8 }}>Humidité</div>
-            <div style={{ fontSize: 32, fontWeight: 600 }}>{humidity}%</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 6 }}>Humidité</div>
+            <div style={{ fontSize: 26, fontWeight: 600 }}>{humidity}%</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 16, color: "rgba(255,255,255,0.6)", marginBottom: 8 }}>Vent</div>
-            <div style={{ fontSize: 32, fontWeight: 600 }}>{wind} km/h</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 6 }}>Vent</div>
+            <div style={{ fontSize: 26, fontWeight: 600 }}>{wind} km/h</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 16, color: "rgba(255,255,255,0.6)", marginBottom: 8 }}>Pression</div>
-            <div style={{ fontSize: 32, fontWeight: 600 }}>997hPa</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 6 }}>Pression</div>
+            <div style={{ fontSize: 26, fontWeight: 600 }}>997hPa</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 16, color: "rgba(255,255,255,0.6)", marginBottom: 8 }}>UV</div>
-            <div style={{ fontSize: 32, fontWeight: 600 }}>{Math.round(uvToday || 0)}</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 6 }}>UV</div>
+            <div style={{ fontSize: 26, fontWeight: 600 }}>{Math.round(uvToday || 0)}</div>
           </div>
         </div>
 
-        {/* Condition */}
-        <div style={{ textAlign: "center", marginTop: 12 }}>
-          <div style={{ fontSize: 26, fontWeight: 700, marginBottom: 8 }}>{wmo.fr}</div>
-          <div style={{ fontSize: 18, color: "rgba(255,255,255,0.7)" }}>
-            ↑ Lever {sunrise} · ↓ Coucher {sunset}
-          </div>
+        <div style={{ textAlign: "center", marginTop: 8 }}>
+          <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>{wmo.fr}</div>
+          <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>↑ Lever {sunrise} · ↓ Coucher {sunset}</div>
         </div>
       </div>
 
-      {/* BOTTOM LEFT - Prévisions 5 jours AGRANDI */}
-      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 24, padding: "24px", display: "flex", flexDirection: "column", gap: 16, overflowY: "auto", justifyContent: "center" }}>
-        <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 12, textAlign: "center" }}>Prévisions 5 jours</div>
+      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 20, padding: "20px", display: "flex", flexDirection: "column", gap: 12, overflowY: "auto", justifyContent: "center" }}>
+        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 10, textAlign: "center" }}>Prévisions 5 jours</div>
         {(daily.time || []).slice(0, 5).map((date, i) => {
           const d = new Date(date);
           const dWmo = WMO[daily.weather_code[i]] || { fr: "" };
@@ -1665,34 +1568,32 @@ function WeatherSlide({ weather }) {
           const minTemp = Math.round(daily.temperature_2m_min[i]);
           const dayLabel = i === 0 ? "Auj." : DAYS_FR[d.getDay()];
           return (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 16, paddingBottom: 12, borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.1)" : "none", justifyContent: "space-between" }}>
-              <WeatherIcon code={daily.weather_code[i]} size={40} />
-              <div style={{ fontSize: 24, fontWeight: 600, minWidth: 80, textAlign: "right" }}>{maxTemp}°C</div>
-              <div style={{ fontSize: 20, color: "rgba(255,255,255,0.6)", minWidth: 60, textAlign: "right" }}>{minTemp}°C</div>
-              <div style={{ fontSize: 20, color: "rgba(255,255,255,0.7)", minWidth: 60, textAlign: "right" }}>{dayLabel}</div>
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 10, borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.1)" : "none", justifyContent: "space-between" }}>
+              <WeatherIcon code={daily.weather_code[i]} size={32} />
+              <div style={{ fontSize: 20, fontWeight: 600, minWidth: 70, textAlign: "right" }}>{maxTemp}°C</div>
+              <div style={{ fontSize: 16, color: "rgba(255,255,255,0.6)", minWidth: 50, textAlign: "right" }}>{minTemp}°C</div>
+              <div style={{ fontSize: 16, color: "rgba(255,255,255,0.7)", minWidth: 50, textAlign: "right" }}>{dayLabel}</div>
             </div>
           );
         })}
       </div>
 
-      {/* BOTTOM RIGHT - Prévisions Horaires AGRANDI */}
-      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 24, padding: "24px", display: "flex", flexDirection: "column", gap: 16, justifyContent: "center" }}>
-        <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 8, textAlign: "center" }}>Prévisions horaires</div>
-        <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 12, justifyContent: "center" }}>
-          {[0, 1, 2, 3, 4].map((i) => {
+      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 20, padding: "20px", display: "flex", flexDirection: "column", gap: 12, justifyContent: "center" }}>
+        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, textAlign: "center" }}>Prévisions horaires</div>
+        <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 10, justifyContent: "center" }}>
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
             const h = new Date(Date.now() + i * 60 * 60000);
             const hStr = h.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
             const tempEstimate = Math.round(current.temperature_2m - (i * 0.5));
             return (
-              <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: "16px 12px", textAlign: "center", minWidth: 100, display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
-                <div style={{ fontSize: 18, fontWeight: 500 }}>{hStr}</div>
-                <WeatherIcon code={current.weather_code} size={36} />
-                <div style={{ fontSize: 20, fontWeight: 700 }}>{tempEstimate}°</div>
+              <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: "12px 10px", textAlign: "center", minWidth: 90, display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>{hStr}</div>
+                <WeatherIcon code={current.weather_code} size={28} />
+                <div style={{ fontSize: 16, fontWeight: 700 }}>{tempEstimate}°</div>
               </div>
             );
           })}
         </div>
-        <div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", textAlign: "center", marginTop: 8 }}>Mise à jour toutes les 30 min</div>
       </div>
     </div>
   );
@@ -1715,22 +1616,17 @@ function QuoteSlide({ quote }) {
 
 // ─── SLIDE TRANSPORT ─────────────────────────────────────────────────────────
 
-// ─── SLIDE TRANSPORT EN FRANÇAIS ────────────────────────────────────────────
-
 function TransportSlide({ lines, lastUpdate }) {
   const grouped = { M: [], RER: [], TER: [] };
-  
   METRO_CONFIG.forEach(cfg => {
     const data = (lines || []).find(l => l.code === cfg.code);
     const disrupted = data ? data.disruptions.length > 0 : false;
     const severity  = disrupted ? (data.disruptions[0]?.severity || "Perturbation") : "";
     const message   = disrupted ? (data.disruptions[0]?.message || "") : "";
-    
     if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, severity, message });
     else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, severity, message });
     else grouped.TER.push({ ...cfg, disrupted, severity, message });
   });
-
   const LineCard = ({ code, color, disrupted, severity, message }) => (
     <div style={{ background: disrupted ? "rgba(239,83,80,0.14)" : "rgba(255,255,255,0.05)", border: `1.5px solid ${disrupted ? "#EF5350" : "rgba(255,255,255,0.10)"}`, borderRadius: 10, padding: "8px 10px", display: "flex", alignItems: "flex-start", gap: 8, minHeight: 52 }}>
       <div style={{ width: 36, height: 36, flexShrink: 0, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: code.length > 2 ? 10 : 13, color: "white", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{code}</div>
@@ -1740,16 +1636,13 @@ function TransportSlide({ lines, lastUpdate }) {
       </div>
     </div>
   );
-
   const updStr = lastUpdate ? new Date(lastUpdate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : null;
-
   const Section = ({ label, items, cols }) => (
     <div style={{ marginBottom: 10, flexShrink: 0 }}>
       <div style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 700, letterSpacing: "0.14em", marginBottom: 6, textTransform: "uppercase" }}>{label}</div>
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>{items.map(l => <LineCard key={l.code} {...l} />)}</div>
     </div>
   );
-
   return (
     <div style={{ height: "100%", background: "linear-gradient(135deg, #111827 0%, #1F2937 100%)", color: "white", display: "flex", flexDirection: "column", padding: "18px 28px", overflow: "hidden", position: "relative" }}>
       <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0.12, pointerEvents: "none" }} viewBox="0 0 680 400" preserveAspectRatio="xMidYMid slice">
