@@ -1557,7 +1557,7 @@ function WeatherSlide({ weather }) {
       </div>
 
       <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "12px", display: "flex", flexDirection: "column", gap: 6, justifyContent: "center", alignItems: "center" }}>
-        <div style={{ fontSize: 18, fontWeight: 700, textAlign: "center", color: "white" }}>Prévisions 5 jours</div>
+        <div style={{ fontSize: 22, fontWeight: 700, textAlign: "center", color: "white", marginBottom: 12 }}>Prévisions 5 jours</div>
         {(daily.time || []).slice(0, 4).map((date, i) => {
           const d = new Date(date);
           const dWmo = WMO[daily.weather_code[i]] || { fr: "" };
@@ -1565,11 +1565,11 @@ function WeatherSlide({ weather }) {
           const minTemp = Math.round(daily.temperature_2m_min[i]);
           const dayLabel = i === 0 ? "Auj." : DAYS_FR[d.getDay()];
           return (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 6, borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.1)" : "none", justifyContent: "space-between" }}>
-              <WeatherIcon code={daily.weather_code[i]} size={28} />
-              <div style={{ fontSize: 18, fontWeight: 600, minWidth: 50, textAlign: "right" }}>{maxTemp}°</div>
-              <div style={{ fontSize: 15, color: "rgba(255,255,255,0.6)", minWidth: 40, textAlign: "right" }}>{minTemp}°</div>
-              <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", minWidth: 40, textAlign: "right" }}>{dayLabel}</div>
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 10, borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.1)" : "none", justifyContent: "space-between" }}>
+              <WeatherIcon code={daily.weather_code[i]} size={36} />
+              <div style={{ fontSize: 26, fontWeight: 600, minWidth: 50, textAlign: "right" }}>{maxTemp}°</div>
+              <div style={{ fontSize: 20, color: "rgba(255,255,255,0.6)", minWidth: 40, textAlign: "right" }}>{minTemp}°</div>
+              <div style={{ fontSize: 18, color: "rgba(255,255,255,0.7)", minWidth: 40, textAlign: "right" }}>{dayLabel}</div>
             </div>
           );
         })}
