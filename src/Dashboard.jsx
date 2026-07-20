@@ -302,32 +302,37 @@ const SLIDES = [
 // ─── MÉTÉO / TRANSPORT / CITATIONS ──────────────────────────────────────────
 
 const WMO = {
-  0: { fr: "Ciel dégagé", emoji: "☀️" }, 1: { fr: "Principalement dégagé", emoji: "🌤️" },
-  2: { fr: "Partiellement nuageux", emoji: "⛅" }, 3: { fr: "Couvert", emoji: "☁️" },
-  45: { fr: "Brouillard", emoji: "🌫️" }, 48: { fr: "Brouillard givrant", emoji: "🌫️" },
-  51: { fr: "Bruine légère", emoji: "🌦️" }, 53: { fr: "Bruine modérée", emoji: "🌦️" },
-  55: { fr: "Bruine dense", emoji: "🌧️" }, 61: { fr: "Pluie légère", emoji: "🌧️" },
-  63: { fr: "Pluie modérée", emoji: "🌧️" }, 65: { fr: "Pluie forte", emoji: "🌧️" },
-  71: { fr: "Neige légère", emoji: "🌨️" }, 73: { fr: "Neige modérée", emoji: "❄️" },
-  75: { fr: "Neige forte", emoji: "❄️" }, 80: { fr: "Averses légères", emoji: "🌦️" },
-  81: { fr: "Averses modérées", emoji: "🌧️" }, 82: { fr: "Averses violentes", emoji: "⛈️" },
-  95: { fr: "Orage", emoji: "⛈️" }, 96: { fr: "Orage avec grêle", emoji: "⛈️" },
-  99: { fr: "Orage avec forte grêle", emoji: "⛈️" },
+  0: { fr: "Ciel dégagé" }, 1: { fr: "Principalement dégagé" },
+  2: { fr: "Partiellement nuageux" }, 3: { fr: "Couvert" },
+  45: { fr: "Brouillard" }, 48: { fr: "Brouillard givrant" },
+  51: { fr: "Bruine légère" }, 53: { fr: "Bruine modérée" },
+  55: { fr: "Bruine dense" }, 61: { fr: "Pluie légère" },
+  63: { fr: "Pluie modérée" }, 65: { fr: "Pluie forte" },
+  71: { fr: "Neige légère" }, 73: { fr: "Neige modérée" },
+  75: { fr: "Neige forte" }, 80: { fr: "Averses légères" },
+  81: { fr: "Averses modérées" }, 82: { fr: "Averses violentes" },
+  95: { fr: "Orage" }, 96: { fr: "Orage avec grêle" },
+  99: { fr: "Orage avec forte grêle" },
 };
 const DAYS_FR = ["Dim.", "Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam."];
 
 const METRO_CONFIG = [
-  { code: "1",  color: "#F2A900", type: "M" }, { code: "2",  color: "#003CA6", type: "M" },
-  { code: "3",  color: "#837902", type: "M" }, { code: "3B", color: "#6EC4E8", type: "M" },
-  { code: "4",  color: "#CF009E", type: "M" }, { code: "5",  color: "#FF7E2E", type: "M" },
-  { code: "6",  color: "#6ECA97", type: "M" }, { code: "7",  color: "#FA9ABA", type: "M" },
-  { code: "7B", color: "#6ECA97", type: "M" }, { code: "8",  color: "#E19BDF", type: "M" },
-  { code: "9",  color: "#B6BD00", type: "M" }, { code: "10", color: "#C9910D", type: "M" },
-  { code: "11", color: "#704B1C", type: "M" }, { code: "12", color: "#007852", type: "M" },
-  { code: "13", color: "#6EC4E8", type: "M" }, { code: "14", color: "#62259D", type: "M" },
-  { code: "A",  color: "#E2231A", type: "RER" }, { code: "B", color: "#5190BF", type: "RER" },
-  { code: "C",  color: "#FFCD00", type: "RER" }, { code: "D", color: "#00814F", type: "RER" },
-  { code: "E",  color: "#BD76A1", type: "RER" },
+  { code: "1",   color: "#F2A900", type: "M" }, { code: "2",   color: "#003CA6", type: "M" },
+  { code: "3",   color: "#837902", type: "M" }, { code: "3B",  color: "#6EC4E8", type: "M" },
+  { code: "4",   color: "#CF009E", type: "M" }, { code: "5",   color: "#FF7E2E", type: "M" },
+  { code: "6",   color: "#6ECA97", type: "M" }, { code: "7",   color: "#FA9ABA", type: "M" },
+  { code: "7B",  color: "#6ECA97", type: "M" }, { code: "8",   color: "#E19BDF", type: "M" },
+  { code: "9",   color: "#B6BD00", type: "M" }, { code: "10",  color: "#C9910D", type: "M" },
+  { code: "11",  color: "#704B1C", type: "M" }, { code: "12",  color: "#007852", type: "M" },
+  { code: "13",  color: "#6EC4E8", type: "M" }, { code: "14",  color: "#62259D", type: "M" },
+  { code: "A",   color: "#E2231A", type: "RER" }, { code: "B",  color: "#5190BF", type: "RER" },
+  { code: "C",   color: "#FFCD00", type: "RER" }, { code: "D",  color: "#00814F", type: "RER" },
+  { code: "E",   color: "#BD76A1", type: "RER" },
+  { code: "H",  color: "#7B4F9E", type: "TER" }, { code: "J",  color: "#CC6600", type: "TER" },
+  { code: "K",  color: "#6E6E00", type: "TER" }, { code: "L",  color: "#7B4F9E", type: "TER" },
+  { code: "N",  color: "#009640", type: "TER" }, { code: "P",  color: "#F39200", type: "TER" },
+  { code: "R",  color: "#E2001A", type: "TER" }, { code: "U",  color: "#CC0000", type: "TER" },
+  { code: "V",  color: "#80C342", type: "TER" },
 ];
 
 const FRENCH_QUOTES = [
@@ -1424,6 +1429,42 @@ function GoldenRulesSlide() {
 }
 
 // ─── SLIDE MÉTÉO ─────────────────────────────────────────────────────────────
+// Icones SVG météo (pas d'emoji = compatible Raspberry Pi)
+function WeatherIcon({ code, size = 80 }) {
+  const n = Number(code);
+  const S = { width: size, height: size, display: "block" };
+  const SUN = "#FBBF24", CLD = "#94A3B8", RAIN = "#60A5FA", SNOW = "#BAE6FD", BOLT = "#FDE047";
+  const rays = (cx, cy, r1, r2, col) => [0,45,90,135,180,225,270,315].map((a, i) => {
+    const rad = a * Math.PI / 180;
+    return <line key={i} x1={cx+r1*Math.cos(rad)} y1={cy+r1*Math.sin(rad)} x2={cx+r2*Math.cos(rad)} y2={cy+r2*Math.sin(rad)} stroke={col} strokeWidth="5" strokeLinecap="round"/>;
+  });
+  const cloud = (cx, cy, r, col) => (
+    <g>
+      <ellipse cx={cx-r*0.55} cy={cy+r*0.1} rx={r*0.7} ry={r*0.55} fill={col}/>
+      <ellipse cx={cx+r*0.1} cy={cy-r*0.28} rx={r*0.65} ry={r*0.55} fill={col}/>
+      <ellipse cx={cx+r*0.75} cy={cy+r*0.1} rx={r*0.55} ry={r*0.48} fill={col}/>
+      <rect x={cx-r*0.6} y={cy-r*0.05} width={r*1.4} height={r*0.65} fill={col}/>
+    </g>
+  );
+  if (n <= 1) return <svg style={S} viewBox="0 0 100 100">{rays(50,50,27,40,SUN)}<circle cx="50" cy="50" r="22" fill={SUN}/></svg>;
+  if (n === 2) return <svg style={S} viewBox="0 0 100 100">{rays(33,36,17,27,SUN)}<circle cx="33" cy="36" r="13" fill={SUN}/>{cloud(55,60,22,CLD)}</svg>;
+  if (n === 3) return <svg style={S} viewBox="0 0 100 100">{cloud(50,52,28,CLD)}</svg>;
+  if (n === 45 || n === 48) return <svg style={S} viewBox="0 0 100 100">{[22,38,54,70].map((y,i)=><line key={i} x1="10" y1={y} x2="90" y2={y} stroke={CLD} strokeWidth="7" strokeLinecap="round" opacity={0.4+i*0.15}/>)}</svg>;
+  const isRain = [51,53,55,61,63,65,80,81,82].includes(n);
+  const isSnow = [71,73,75,77,85,86].includes(n);
+  const isStorm = [95,96,99].includes(n);
+  const dropPts = [[30,62],[42,68],[54,62],[36,75],[60,68]];
+  const snowPts = [[30,64],[46,72],[62,64],[38,77],[54,77]];
+  return (
+    <svg style={S} viewBox="0 0 100 100">
+      {cloud(50,46,24, isStorm ? "#475569" : CLD)}
+      {isRain && dropPts.map(([x,y],i)=><line key={i} x1={x} y1={y} x2={x-4} y2={y+12} stroke={RAIN} strokeWidth="3.5" strokeLinecap="round"/>)}
+      {isSnow && snowPts.map(([x,y],i)=><g key={i} stroke={SNOW} strokeWidth="3" strokeLinecap="round"><line x1={x-6} y1={y} x2={x+6} y2={y}/><line x1={x} y1={y-6} x2={x} y2={y+6}/></g>)}
+      {isStorm && <polyline points="54,59 44,73 52,73 42,89" fill="none" stroke={BOLT} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>}
+    </svg>
+  );
+}
+
 function WeatherSlide({ weather }) {
   if (!weather) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "#0B1F3A", color: "white", fontSize: 20 }}>
@@ -1431,43 +1472,44 @@ function WeatherSlide({ weather }) {
     </div>
   );
   const { current, daily } = weather;
-  const wmo = WMO[current.weather_code] || { fr: "—", emoji: "🌡️" };
+  const wmo = WMO[current.weather_code] || { fr: "—" };
   const sunrise = daily.sunrise?.[0] ? new Date(daily.sunrise[0]).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "--:--";
   const sunset  = daily.sunset?.[0]  ? new Date(daily.sunset[0]).toLocaleTimeString("fr-FR",  { hour: "2-digit", minute: "2-digit" }) : "--:--";
   return (
     <div style={{ height: "100%", background: "linear-gradient(135deg, #0B1F3A 0%, #1a3a5c 60%, #0B1F3A 100%)", color: "white", display: "flex", flexDirection: "column", padding: "24px 36px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-        <span style={{ fontSize: 22 }}>🌍</span>
-        <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.05em" }}>MÉTÉO</span>
-        <span style={{ color: "#90CAF9", fontSize: 18 }}>· Paris</span>
+        <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.05em", color: "#90CAF9" }}>METEO</span>
+        <span style={{ color: "#60A5FA", fontSize: 18 }}>· Paris</span>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 28, marginBottom: 18 }}>
-        <div style={{ fontSize: 96, lineHeight: 1 }}>{wmo.emoji}</div>
+        <WeatherIcon code={current.weather_code} size={110}/>
         <div>
           <div style={{ fontSize: 80, fontWeight: 800, lineHeight: 1 }}>{Math.round(current.temperature_2m)}°C</div>
           <div style={{ fontSize: 18, color: "#90CAF9", marginTop: 6 }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
           <div style={{ fontSize: 22, fontWeight: 600, marginTop: 4 }}>{wmo.fr}</div>
         </div>
       </div>
-      <div style={{ display: "flex", gap: 32, marginBottom: 24, fontSize: 17, color: "#B0BEC5" }}>
-        <span>💧 {current.relative_humidity_2m}%</span>
-        <span>💨 {Math.round(current.wind_speed_10m)} km/h</span>
-        <span>🌅 {sunrise}</span>
-        <span>🌇 {sunset}</span>
+      <div style={{ display: "flex", gap: 32, marginBottom: 20, fontSize: 16, color: "#B0BEC5" }}>
+        <span>Hum. {current.relative_humidity_2m}%</span>
+        <span>Vent {Math.round(current.wind_speed_10m)} km/h</span>
+        <span>Lever {sunrise}</span>
+        <span>Coucher {sunset}</span>
       </div>
       <div style={{ display: "flex", gap: 16, flex: 1 }}>
         {(daily.time || []).slice(1, 4).map((date, i) => {
           const d = new Date(date);
-          const dWmo = WMO[daily.weather_code[i + 1]] || { emoji: "🌡️", fr: "" };
+          const dWmo = WMO[daily.weather_code[i + 1]] || { fr: "" };
+          const wind = daily.wind_speed_10m_max?.[i + 1];
           return (
-            <div key={i} style={{ flex: 1, background: "rgba(255,255,255,0.08)", borderRadius: 16, padding: "16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-              <div style={{ fontSize: 15, color: "#90CAF9", fontWeight: 700 }}>{DAYS_FR[d.getDay()]}</div>
-              <div style={{ fontSize: 40 }}>{dWmo.emoji}</div>
+            <div key={i} style={{ flex: 1, background: "rgba(255,255,255,0.08)", borderRadius: 16, padding: "16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+              <div style={{ fontSize: 16, color: "#90CAF9", fontWeight: 700 }}>{DAYS_FR[d.getDay()]}</div>
+              <WeatherIcon code={daily.weather_code[i + 1]} size={60}/>
               <div style={{ fontSize: 13, color: "#B0BEC5", textAlign: "center" }}>{dWmo.fr}</div>
-              <div style={{ display: "flex", gap: 10, fontSize: 17, fontWeight: 700 }}>
+              <div style={{ display: "flex", gap: 12, fontSize: 24, fontWeight: 800 }}>
                 <span style={{ color: "#EF5350" }}>{Math.round(daily.temperature_2m_max[i + 1])}°</span>
                 <span style={{ color: "#90CAF9" }}>{Math.round(daily.temperature_2m_min[i + 1])}°</span>
               </div>
+              {wind != null && <div style={{ fontSize: 12, color: "#64748B" }}>Vent {Math.round(wind)} km/h</div>}
             </div>
           );
         })}
@@ -1493,47 +1535,46 @@ function QuoteSlide({ quote }) {
 
 // ─── SLIDE TRANSPORT ─────────────────────────────────────────────────────────
 function TransportSlide({ lines, lastUpdate }) {
-  const grouped = { M: [], RER: [] };
+  const grouped = { M: [], RER: [], TER: [] };
   METRO_CONFIG.forEach(cfg => {
     const data = (lines || []).find(l => l.code === cfg.code);
     const disrupted = data ? data.disruptions.length > 0 : false;
     const message = disrupted ? (data.disruptions[0]?.message || "") : "";
     if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, message });
-    else grouped.RER.push({ ...cfg, disrupted, message });
+    else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, message });
+    else grouped.TER.push({ ...cfg, disrupted, message });
   });
-  const LineCard = ({ code, color, disrupted, message }) => (
-    <div style={{ background: disrupted ? "rgba(239,83,80,0.15)" : "rgba(255,255,255,0.05)", border: `1px solid ${disrupted ? "#EF5350" : "rgba(255,255,255,0.12)"}`, borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-      <div style={{ width: 38, height: 38, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "white", flexShrink: 0, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{code}</div>
+  const LineCard = ({ code, color, disrupted, message, type }) => (
+    <div style={{ background: disrupted ? "rgba(239,83,80,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${disrupted ? "#EF5350" : "rgba(255,255,255,0.10)"}`, borderRadius: 10, padding: "7px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ width: 34, height: 34, borderRadius: type === "T" ? "7px" : "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: code.length > 2 ? 10 : 12, color: "white", flexShrink: 0, textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}>{code}</div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 12, color: disrupted ? "#EF5350" : "#66BB6A", fontWeight: 700 }}>{disrupted ? "⚠ Perturbé" : "✓ Normal"}</div>
-        {disrupted && message && <div style={{ fontSize: 11, color: "#9CA3AF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 160 }}>{message}</div>}
+        <div style={{ fontSize: 11, color: disrupted ? "#EF5350" : "#4ADE80", fontWeight: 700 }}>{disrupted ? "Perturbe" : "Normal"}</div>
+        {disrupted && message && <div style={{ fontSize: 10, color: "#9CA3AF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 130 }}>{message}</div>}
       </div>
     </div>
   );
   const updStr = lastUpdate ? new Date(lastUpdate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : null;
+  const Section = ({ label, items, cols }) => (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ fontSize: 10, color: "#6B7280", fontWeight: 700, letterSpacing: "0.12em", marginBottom: 8 }}>{label}</div>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 7 }}>
+        {items.map(l => <LineCard key={l.code} {...l} />)}
+      </div>
+    </div>
+  );
   return (
-    <div style={{ height: "100%", background: "linear-gradient(135deg, #111827 0%, #1F2937 100%)", color: "white", display: "flex", flexDirection: "column", padding: "24px 36px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 22 }}>
-        <span style={{ fontSize: 22 }}>🚇</span>
+    <div style={{ height: "100%", background: "linear-gradient(135deg, #111827 0%, #1F2937 100%)", color: "white", display: "flex", flexDirection: "column", padding: "18px 30px", overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
         <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.05em" }}>TRANSPORTS</span>
-        <span style={{ color: "#6B7280", fontSize: 15 }}>· Île-de-France</span>
-        {updStr && <span style={{ marginLeft: "auto", fontSize: 12, color: "#4B5563" }}>Mis à jour {updStr}</span>}
+        <span style={{ color: "#6B7280", fontSize: 14 }}>· Ile-de-France</span>
+        {updStr && <span style={{ marginLeft: "auto", fontSize: 11, color: "#4B5563" }}>Mis a jour {updStr}</span>}
       </div>
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 11, color: "#6B7280", fontWeight: 700, letterSpacing: "0.12em", marginBottom: 12 }}>MÉTRO</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
-          {grouped.M.map(l => <LineCard key={l.code} {...l} />)}
-        </div>
-      </div>
-      <div>
-        <div style={{ fontSize: 11, color: "#6B7280", fontWeight: 700, letterSpacing: "0.12em", marginBottom: 12 }}>RER</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
-          {grouped.RER.map(l => <LineCard key={l.code} {...l} />)}
-        </div>
-      </div>
+      <Section label="METRO" items={grouped.M} cols={4}/>
+      <Section label="RER" items={grouped.RER} cols={5}/>
+      <Section label="TRANSILIEN" items={grouped.TER} cols={5}/>
       {(!lines || lines.length === 0) && (
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#4B5563", fontSize: 15 }}>
-          ⚙ Données indisponibles — vérifiez la clé API IDFM dans Vercel
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#4B5563", fontSize: 14 }}>
+          Donnees indisponibles — verifiez la cle API IDFM dans Vercel
         </div>
       )}
     </div>
@@ -1761,7 +1802,7 @@ export default function Dashboard() {
         const res = await fetch(
           "https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522" +
           "&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m" +
-          "&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset" +
+          "&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,wind_speed_10m_max" +
           "&timezone=Europe/Paris&forecast_days=4"
         );
         const data = await res.json();
