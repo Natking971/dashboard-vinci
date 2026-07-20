@@ -1556,7 +1556,7 @@ function WeatherSlide({ weather }) {
         </div>
       </div>
 
-      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "12px", display: "flex", flexDirection: "column", gap: 6, justifyContent: "flex-start" }}>
+      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "12px", display: "flex", flexDirection: "column", gap: 6, justifyContent: "center", alignItems: "center" }}>
         <div style={{ fontSize: 18, fontWeight: 700, textAlign: "center", color: "white" }}>Prévisions 5 jours</div>
         {(daily.time || []).slice(0, 4).map((date, i) => {
           const d = new Date(date);
