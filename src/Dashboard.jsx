@@ -287,12 +287,80 @@ const GOLDEN_RULES = [
 
 const SLIDES = [
   { id: "goldenRules", type: "goldenRules" },
+  { id: "quote", type: "quote" },
   { id: "planning", type: "planning" },
   ...TENANTS.map(t => ({ id: t.id, type: "tenant", tenantId: t.id })),
   { id: "subcontractorsCurrent", type: "subcontractors", week: "current" },
   { id: "subcontractorsNext", type: "subcontractors", week: "next" },
   { id: "planningNext", type: "planning", week: "next" },
   { id: "onesite", type: "onesite" },
+  { id: "weather", type: "weather" },
+  { id: "transport", type: "transport" },
+];
+
+
+// ─── MÉTÉO / TRANSPORT / CITATIONS ──────────────────────────────────────────
+
+const WMO = {
+  0: { fr: "Ciel dégagé", emoji: "☀️" }, 1: { fr: "Principalement dégagé", emoji: "🌤️" },
+  2: { fr: "Partiellement nuageux", emoji: "⛅" }, 3: { fr: "Couvert", emoji: "☁️" },
+  45: { fr: "Brouillard", emoji: "🌫️" }, 48: { fr: "Brouillard givrant", emoji: "🌫️" },
+  51: { fr: "Bruine légère", emoji: "🌦️" }, 53: { fr: "Bruine modérée", emoji: "🌦️" },
+  55: { fr: "Bruine dense", emoji: "🌧️" }, 61: { fr: "Pluie légère", emoji: "🌧️" },
+  63: { fr: "Pluie modérée", emoji: "🌧️" }, 65: { fr: "Pluie forte", emoji: "🌧️" },
+  71: { fr: "Neige légère", emoji: "🌨️" }, 73: { fr: "Neige modérée", emoji: "❄️" },
+  75: { fr: "Neige forte", emoji: "❄️" }, 80: { fr: "Averses légères", emoji: "🌦️" },
+  81: { fr: "Averses modérées", emoji: "🌧️" }, 82: { fr: "Averses violentes", emoji: "⛈️" },
+  95: { fr: "Orage", emoji: "⛈️" }, 96: { fr: "Orage avec grêle", emoji: "⛈️" },
+  99: { fr: "Orage avec forte grêle", emoji: "⛈️" },
+};
+const DAYS_FR = ["Dim.", "Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam."];
+
+const METRO_CONFIG = [
+  { code: "1",  color: "#F2A900", type: "M" }, { code: "2",  color: "#003CA6", type: "M" },
+  { code: "3",  color: "#837902", type: "M" }, { code: "3B", color: "#6EC4E8", type: "M" },
+  { code: "4",  color: "#CF009E", type: "M" }, { code: "5",  color: "#FF7E2E", type: "M" },
+  { code: "6",  color: "#6ECA97", type: "M" }, { code: "7",  color: "#FA9ABA", type: "M" },
+  { code: "7B", color: "#6ECA97", type: "M" }, { code: "8",  color: "#E19BDF", type: "M" },
+  { code: "9",  color: "#B6BD00", type: "M" }, { code: "10", color: "#C9910D", type: "M" },
+  { code: "11", color: "#704B1C", type: "M" }, { code: "12", color: "#007852", type: "M" },
+  { code: "13", color: "#6EC4E8", type: "M" }, { code: "14", color: "#62259D", type: "M" },
+  { code: "A",  color: "#E2231A", type: "RER" }, { code: "B", color: "#5190BF", type: "RER" },
+  { code: "C",  color: "#FFCD00", type: "RER" }, { code: "D", color: "#00814F", type: "RER" },
+  { code: "E",  color: "#BD76A1", type: "RER" },
+];
+
+const FRENCH_QUOTES = [
+  { text: "Le succès, c'est tomber sept fois et se relever huit.", author: "Proverbe japonais" },
+  { text: "Seul on va plus vite, ensemble on va plus loin.", author: "Proverbe africain" },
+  { text: "La qualité n'est jamais un accident. C'est toujours le résultat d'un effort intelligent.", author: "John Ruskin" },
+  { text: "Ce n'est pas parce que les choses sont difficiles que nous n'osons pas. C'est parce que nous n'osons pas qu'elles sont difficiles.", author: "Sénèque" },
+  { text: "Rien de grand ne s'est accompli dans le monde sans passion.", author: "Hegel" },
+  { text: "Il faut viser la lune car même en cas d'échec, on atterrit dans les étoiles.", author: "Oscar Wilde" },
+  { text: "Le génie, c'est 1% d'inspiration et 99% de transpiration.", author: "Thomas Edison" },
+  { text: "Le succès n'est pas final, l'échec n'est pas fatal : c'est le courage de continuer qui compte.", author: "Winston Churchill" },
+  { text: "Commencez par faire ce qui est nécessaire, puis ce qui est possible, et soudain vous ferez l'impossible.", author: "François d'Assise" },
+  { text: "Le meilleur moment pour planter un arbre, c'était il y a 20 ans. Le deuxième meilleur moment, c'est maintenant.", author: "Proverbe chinois" },
+  { text: "La réussite appartient à tout le monde. C'est au travail d'équipe qu'en revient le mérite.", author: "Franck Piccard" },
+  { text: "Il n'y a pas de vent favorable pour celui qui ne sait pas où il va.", author: "Sénèque" },
+  { text: "La simplicité est la sophistication suprême.", author: "Léonard de Vinci" },
+  { text: "Un grand voyage commence par un seul pas.", author: "Lao-Tseu" },
+  { text: "Soyez le changement que vous voulez voir dans le monde.", author: "Gandhi" },
+  { text: "La persévérance, c'est ce qui rend l'impossible possible.", author: "Calvin Coolidge" },
+  { text: "Si vous pensez que vous pouvez ou que vous ne pouvez pas, vous avez raison dans les deux cas.", author: "Henry Ford" },
+  { text: "Choisissez un travail que vous aimez et vous n'aurez pas à travailler un seul jour de votre vie.", author: "Confucius" },
+  { text: "L'union fait la force.", author: "Devise belge" },
+  { text: "Chaque jour est une nouvelle opportunité de s'améliorer.", author: "Proverbe" },
+  { text: "La différence entre l'impossible et le possible réside dans la détermination.", author: "Tommy Lasorda" },
+  { text: "L'enthousiasme est à la base de tout progrès.", author: "Henry Ford" },
+  { text: "Ne compte pas les jours, fais que les jours comptent.", author: "Muhammad Ali" },
+  { text: "Ensemble nous réussissons mieux.", author: "Proverbe" },
+  { text: "Le talent, c'est d'avoir envie de faire quelque chose.", author: "Anatole France" },
+  { text: "L'imagination est plus importante que le savoir.", author: "Albert Einstein" },
+  { text: "Votre temps est limité, ne le gâchez pas en vivant la vie de quelqu'un d'autre.", author: "Steve Jobs" },
+  { text: "Le doute est l'origine de la sagesse.", author: "René Descartes" },
+  { text: "Faites d'abord les choses difficiles. Les choses faciles s'arrangeront d'elles-mêmes.", author: "Dalai Lama" },
+  { text: "Le travail éloigne de nous trois grands maux : l'ennui, le vice et le besoin.", author: "Voltaire" },
 ];
 
 // ─── UTILITAIRES ────────────────────────────────────────────────────────────
@@ -1355,7 +1423,123 @@ function GoldenRulesSlide() {
   );
 }
 
-// ─── SLIDE COUPE DU MONDE ────────────────────────────────────────────────────
+// ─── SLIDE MÉTÉO ─────────────────────────────────────────────────────────────
+function WeatherSlide({ weather }) {
+  if (!weather) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: "#0B1F3A", color: "white", fontSize: 20 }}>
+      Chargement météo…
+    </div>
+  );
+  const { current, daily } = weather;
+  const wmo = WMO[current.weather_code] || { fr: "—", emoji: "🌡️" };
+  const sunrise = daily.sunrise?.[0] ? new Date(daily.sunrise[0]).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "--:--";
+  const sunset  = daily.sunset?.[0]  ? new Date(daily.sunset[0]).toLocaleTimeString("fr-FR",  { hour: "2-digit", minute: "2-digit" }) : "--:--";
+  return (
+    <div style={{ height: "100%", background: "linear-gradient(135deg, #0B1F3A 0%, #1a3a5c 60%, #0B1F3A 100%)", color: "white", display: "flex", flexDirection: "column", padding: "24px 36px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+        <span style={{ fontSize: 22 }}>🌍</span>
+        <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.05em" }}>MÉTÉO</span>
+        <span style={{ color: "#90CAF9", fontSize: 18 }}>· Paris</span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 28, marginBottom: 18 }}>
+        <div style={{ fontSize: 96, lineHeight: 1 }}>{wmo.emoji}</div>
+        <div>
+          <div style={{ fontSize: 80, fontWeight: 800, lineHeight: 1 }}>{Math.round(current.temperature_2m)}°C</div>
+          <div style={{ fontSize: 18, color: "#90CAF9", marginTop: 6 }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
+          <div style={{ fontSize: 22, fontWeight: 600, marginTop: 4 }}>{wmo.fr}</div>
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 32, marginBottom: 24, fontSize: 17, color: "#B0BEC5" }}>
+        <span>💧 {current.relative_humidity_2m}%</span>
+        <span>💨 {Math.round(current.wind_speed_10m)} km/h</span>
+        <span>🌅 {sunrise}</span>
+        <span>🌇 {sunset}</span>
+      </div>
+      <div style={{ display: "flex", gap: 16, flex: 1 }}>
+        {(daily.time || []).slice(1, 4).map((date, i) => {
+          const d = new Date(date);
+          const dWmo = WMO[daily.weather_code[i + 1]] || { emoji: "🌡️", fr: "" };
+          return (
+            <div key={i} style={{ flex: 1, background: "rgba(255,255,255,0.08)", borderRadius: 16, padding: "16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+              <div style={{ fontSize: 15, color: "#90CAF9", fontWeight: 700 }}>{DAYS_FR[d.getDay()]}</div>
+              <div style={{ fontSize: 40 }}>{dWmo.emoji}</div>
+              <div style={{ fontSize: 13, color: "#B0BEC5", textAlign: "center" }}>{dWmo.fr}</div>
+              <div style={{ display: "flex", gap: 10, fontSize: 17, fontWeight: 700 }}>
+                <span style={{ color: "#EF5350" }}>{Math.round(daily.temperature_2m_max[i + 1])}°</span>
+                <span style={{ color: "#90CAF9" }}>{Math.round(daily.temperature_2m_min[i + 1])}°</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── SLIDE CITATION ──────────────────────────────────────────────────────────
+function QuoteSlide({ quote }) {
+  return (
+    <div style={{ height: "100%", background: "linear-gradient(135deg, #1A1A2E 0%, #16213E 60%, #0F3460 100%)", color: "white", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 80px" }}>
+      <div style={{ fontSize: 13, letterSpacing: "0.25em", color: "#90CAF9", marginBottom: 32, fontWeight: 700 }}>✦ CITATION DU JOUR ✦</div>
+      <div style={{ fontSize: 100, color: "rgba(144,202,249,0.15)", lineHeight: 0.6, alignSelf: "flex-start", fontFamily: "Georgia, serif" }}>"</div>
+      <div style={{ fontSize: 30, fontWeight: 600, lineHeight: 1.6, textAlign: "center", fontStyle: "italic", maxWidth: 780, margin: "0 auto" }}>
+        {quote?.text || "…"}
+      </div>
+      <div style={{ fontSize: 100, color: "rgba(144,202,249,0.15)", lineHeight: 0.6, alignSelf: "flex-end", fontFamily: "Georgia, serif" }}>"</div>
+      <div style={{ marginTop: 32, fontSize: 20, color: "#90CAF9", fontWeight: 600 }}>— {quote?.author || ""}</div>
+    </div>
+  );
+}
+
+// ─── SLIDE TRANSPORT ─────────────────────────────────────────────────────────
+function TransportSlide({ lines, lastUpdate }) {
+  const grouped = { M: [], RER: [] };
+  METRO_CONFIG.forEach(cfg => {
+    const data = (lines || []).find(l => l.code === cfg.code);
+    const disrupted = data ? data.disruptions.length > 0 : false;
+    const message = disrupted ? (data.disruptions[0]?.message || "") : "";
+    if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, message });
+    else grouped.RER.push({ ...cfg, disrupted, message });
+  });
+  const LineCard = ({ code, color, disrupted, message }) => (
+    <div style={{ background: disrupted ? "rgba(239,83,80,0.15)" : "rgba(255,255,255,0.05)", border: `1px solid ${disrupted ? "#EF5350" : "rgba(255,255,255,0.12)"}`, borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ width: 38, height: 38, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "white", flexShrink: 0, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{code}</div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 12, color: disrupted ? "#EF5350" : "#66BB6A", fontWeight: 700 }}>{disrupted ? "⚠ Perturbé" : "✓ Normal"}</div>
+        {disrupted && message && <div style={{ fontSize: 11, color: "#9CA3AF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 160 }}>{message}</div>}
+      </div>
+    </div>
+  );
+  const updStr = lastUpdate ? new Date(lastUpdate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : null;
+  return (
+    <div style={{ height: "100%", background: "linear-gradient(135deg, #111827 0%, #1F2937 100%)", color: "white", display: "flex", flexDirection: "column", padding: "24px 36px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 22 }}>
+        <span style={{ fontSize: 22 }}>🚇</span>
+        <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.05em" }}>TRANSPORTS</span>
+        <span style={{ color: "#6B7280", fontSize: 15 }}>· Île-de-France</span>
+        {updStr && <span style={{ marginLeft: "auto", fontSize: 12, color: "#4B5563" }}>Mis à jour {updStr}</span>}
+      </div>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 11, color: "#6B7280", fontWeight: 700, letterSpacing: "0.12em", marginBottom: 12 }}>MÉTRO</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+          {grouped.M.map(l => <LineCard key={l.code} {...l} />)}
+        </div>
+      </div>
+      <div>
+        <div style={{ fontSize: 11, color: "#6B7280", fontWeight: 700, letterSpacing: "0.12em", marginBottom: 12 }}>RER</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
+          {grouped.RER.map(l => <LineCard key={l.code} {...l} />)}
+        </div>
+      </div>
+      {(!lines || lines.length === 0) && (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#4B5563", fontSize: 15 }}>
+          ⚙ Données indisponibles — vérifiez la clé API IDFM dans Vercel
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 export default function Dashboard() {
   const [time, setTime] = useState(new Date());
@@ -1370,6 +1554,10 @@ export default function Dashboard() {
   const [onesite, setOnesite] = useState(FALLBACK_ONESITE);
   const [dataStatus, setDataStatus] = useState("loading"); // "loading" | "ok" | "error"
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [weather, setWeather] = useState(null);
+  const [transportLines, setTransportLines] = useState([]);
+  const [transportLastUpdate, setTransportLastUpdate] = useState(null);
+  const [quote, setQuote] = useState(() => FRENCH_QUOTES[Math.floor(Date.now() / 86400000) % FRENCH_QUOTES.length]);
 
   // Charger les données depuis Google Sheets
   useEffect(() => {
@@ -1567,6 +1755,40 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    async function fetchWeather() {
+      try {
+        const res = await fetch(
+          "https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522" +
+          "&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m" +
+          "&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset" +
+          "&timezone=Europe/Paris&forecast_days=4"
+        );
+        const data = await res.json();
+        setWeather(data);
+      } catch {}
+    }
+    fetchWeather();
+    const t = setInterval(fetchWeather, 30 * 60 * 1000); // toutes les 30 min
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    async function fetchTransport() {
+      try {
+        const res = await fetch("/api/transport");
+        const data = await res.json();
+        setTransportLines(data.lines || []);
+        setTransportLastUpdate(data.updatedAt || new Date().toISOString());
+      } catch {}
+    }
+    fetchTransport();
+    const t = setInterval(fetchTransport, 5 * 60 * 1000); // toutes les 5 min
+    return () => clearInterval(t);
+  }, []);
+
+
+
   // Navigation clavier : espace / flèche droite = suivant, flèche gauche = précédent
   useEffect(() => {
     function handleKey(e) {
@@ -1637,6 +1859,9 @@ export default function Dashboard() {
     ? currentTenant.accent
     : isSubcontractors ? SUBCONTRACTORS_ACCENT
     : isQuotes ? QUOTES_ACCENT
+    : currentSlide.type === "weather" ? "#0EA5E9"
+    : currentSlide.type === "quote" ? "#8B5CF6"
+    : currentSlide.type === "transport" ? "#10B981"
     : "#1D4ED8";
   const totalUrgent = Object.values(affairs).flat().filter(a => a.urgent).length;
 
@@ -1770,6 +1995,15 @@ export default function Dashboard() {
           } else if (s.type === "subcontractors") {
             label = s.week === "current" ? "ÉVÉN. CETTE SEM." : "ÉVÉN. SEM. PROCH.";
             accentColor = SUBCONTRACTORS_ACCENT;
+          } else if (s.type === "weather") {
+            label = "MÉTÉO";
+            accentColor = "#0EA5E9";
+          } else if (s.type === "quote") {
+            label = "CITATION";
+            accentColor = "#8B5CF6";
+          } else if (s.type === "transport") {
+            label = "TRANSPORT";
+            accentColor = "#10B981";
           } else {
             label = tenant.name.toUpperCase();
             accentColor = tenant.accent;
@@ -1794,6 +2028,9 @@ export default function Dashboard() {
         animation: "fadeIn 0.5s ease",
       }}>
         {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
+        {currentSlide.type === "weather" && <WeatherSlide weather={weather} />}
+        {currentSlide.type === "quote" && <QuoteSlide quote={quote} />}
+        {currentSlide.type === "transport" && <TransportSlide lines={transportLines} lastUpdate={transportLastUpdate} />}
         {currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
         {currentSlide.type === "planning" && (
           <PlanningSlide
