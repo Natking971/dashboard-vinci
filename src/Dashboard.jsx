@@ -299,114 +299,6 @@ const SLIDES = [
 ];
 
 
-// ─── ICÔNE MÉTÉO SVG ────────────────────────────────────────────────────────
-
-function WeatherIcon({ code, size = 80 }) {
-  const n = Number(code);
-  
-  // Soleil clair
-  if (n <= 1) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="35" fill="#FFD700"/>
-        {/* Rayons */}
-        <line x1="50" y1="5" x2="50" y2="20" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
-        <line x1="50" y1="80" x2="50" y2="95" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
-        <line x1="5" y1="50" x2="20" y2="50" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
-        <line x1="80" y1="50" x2="95" y2="50" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
-        <line x1="18" y1="18" x2="28" y2="28" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
-        <line x1="72" y1="72" x2="82" y2="82" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
-        <line x1="82" y1="18" x2="72" y2="28" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
-        <line x1="28" y1="72" x2="18" y2="82" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
-      </svg>
-    );
-  }
-  
-  // Nuages
-  if (n === 2) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 100 100">
-        <path d="M 30 70 Q 20 70 15 60 Q 10 50 20 45 Q 25 35 35 35 Q 45 25 55 30 Q 65 28 70 40 Q 80 45 75 60 Q 70 70 60 70 Z" 
-              fill="#E0E0E0"/>
-      </svg>
-    );
-  }
-  
-  // Nuageux
-  if (n === 3) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 100 100">
-        <path d="M 25 65 Q 15 65 10 55 Q 8 45 15 40 Q 20 32 30 32 Q 38 22 48 27 Q 58 25 65 35 Q 75 40 70 55 Q 65 65 55 65 Z" 
-              fill="#B0B0B0"/>
-      </svg>
-    );
-  }
-  
-  // Pluie
-  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(n)) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 100 100">
-        {/* Nuage */}
-        <path d="M 25 55 Q 15 55 10 45 Q 8 35 15 30 Q 20 22 30 22 Q 38 12 48 17 Q 58 15 65 25 Q 75 30 70 45 Q 65 55 55 55 Z" 
-              fill="#808080"/>
-        {/* Gouttes */}
-        <line x1="20" y1="65" x2="15" y2="80" stroke="#60A5FA" strokeWidth="2.5" strokeLinecap="round"/>
-        <line x1="40" y1="65" x2="35" y2="80" stroke="#60A5FA" strokeWidth="2.5" strokeLinecap="round"/>
-        <line x1="60" y1="65" x2="55" y2="80" stroke="#60A5FA" strokeWidth="2.5" strokeLinecap="round"/>
-      </svg>
-    );
-  }
-  
-  // Neige
-  if ([71, 73, 75, 77, 85, 86].includes(n)) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 100 100">
-        {/* Nuage */}
-        <path d="M 25 55 Q 15 55 10 45 Q 8 35 15 30 Q 20 22 30 22 Q 38 12 48 17 Q 58 15 65 25 Q 75 30 70 45 Q 65 55 55 55 Z" 
-              fill="#D0D0D0"/>
-        {/* Flocons */}
-        <circle cx="20" cy="70" r="3" fill="#FFFFFF"/>
-        <circle cx="40" cy="75" r="3" fill="#FFFFFF"/>
-        <circle cx="60" cy="70" r="3" fill="#FFFFFF"/>
-        <circle cx="30" cy="85" r="2.5" fill="#FFFFFF"/>
-        <circle cx="50" cy="85" r="2.5" fill="#FFFFFF"/>
-      </svg>
-    );
-  }
-  
-  // Brouillard
-  if ([45, 48].includes(n)) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 100 100">
-        <line x1="10" y1="35" x2="90" y2="35" stroke="#BFBFBF" strokeWidth="3" opacity="0.7"/>
-        <line x1="10" y1="50" x2="90" y2="50" stroke="#BFBFBF" strokeWidth="3" opacity="0.6"/>
-        <line x1="10" y1="65" x2="90" y2="65" stroke="#BFBFBF" strokeWidth="3" opacity="0.7"/>
-      </svg>
-    );
-  }
-  
-  // Orage
-  if ([95, 96, 99].includes(n)) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 100 100">
-        {/* Nuage sombre */}
-        <path d="M 20 60 Q 10 60 5 50 Q 3 40 10 35 Q 15 27 25 27 Q 33 17 43 22 Q 53 20 60 30 Q 70 35 65 50 Q 60 60 50 60 Z" 
-              fill="#404040"/>
-        {/* Éclair */}
-        <polygon points="45,65 40,80 48,80 35,100 50,85 42,85" fill="#FFFF00"/>
-      </svg>
-    );
-  }
-  
-  // Par défaut
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100">
-      <circle cx="50" cy="50" r="40" fill="none" stroke="#999" strokeWidth="2"/>
-      <text x="50" y="55" textAnchor="middle" fontSize="20" fill="#999">?</text>
-    </svg>
-  );
-}
-
 // ─── MÉTÉO / TRANSPORT / CITATIONS ──────────────────────────────────────────
 
 const WMO = {
@@ -1578,74 +1470,317 @@ function UVBadge({ uv }) {
   );
 }
 
+
+// ─── FOND DYNAMIQUE RÉALISTE SELON MÉTÉO ─────────────────────────────────────
+
+function getWeatherBackground(code, hour) {
+  const n = Number(code);
+  const isNight = hour < 6 || hour >= 20;
+  
+  // Orage ou forte pluie → noir/gris très sombre
+  if ([95, 96, 99].includes(n)) {
+    return "linear-gradient(180deg, #0a0a1a 0%, #1a1a2e 50%, #0f1419 100%)";
+  }
+  
+  // Pluie → gris bleu foncé
+  if ([45, 48, 51, 53, 55, 61, 63, 65, 80, 81, 82].includes(n)) {
+    return isNight 
+      ? "linear-gradient(180deg, #0d1b3a 0%, #1a2f4a 50%, #0f1a28 100%)"
+      : "linear-gradient(180deg, #3b5998 0%, #5a7db8 50%, #4a6fa8 100%)";
+  }
+  
+  // Neige → blanc/gris clair
+  if ([71, 73, 75, 77, 85, 86].includes(n)) {
+    return "linear-gradient(180deg, #c0d5e8 0%, #d8e5f0 50%, #b0c8e0 100%)";
+  }
+  
+  // Nuageux/Couvert → gris bleu
+  if ([2, 3].includes(n)) {
+    return isNight
+      ? "linear-gradient(180deg, #1a1f3a 0%, #2a3550 50%, #151f35 100%)"
+      : "linear-gradient(180deg, #6b8cae 0%, #8aabce 50%, #7a9bbe 100%)";
+  }
+  
+  // Nuages épars → bleu ciel
+  if (n === 1) {
+    return isNight
+      ? "linear-gradient(180deg, #0f1d3f 0%, #1a3050 50%, #0d1628 100%)"
+      : "linear-gradient(180deg, #5b9fd9 0%, #87ceeb 50%, #6eb5e0 100%)";
+  }
+  
+  // Soleil (0) → bleu clair brillant
+  if (n <= 0) {
+    return isNight
+      ? "linear-gradient(180deg, #0a0e1f 0%, #15203a 50%, #0a0f18 100%)"
+      : "linear-gradient(180deg, #4da6ff 0%, #87ceeb 50%, #5eb8f5 100%)";
+  }
+  
+  // Par défaut
+  return "linear-gradient(180deg, #5b9fd9 0%, #87ceeb 50%, #6eb5e0 100%)";
+}
+
+// ─── ICÔNE MÉTÉO SVG ────────────────────────────────────────────────────────
+
+function WeatherIcon({ code, size = 80 }) {
+  const n = Number(code);
+  
+  if (n <= 1) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="35" fill="#FFD700"/>
+        <line x1="50" y1="5" x2="50" y2="20" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="50" y1="80" x2="50" y2="95" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="5" y1="50" x2="20" y2="50" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="80" y1="50" x2="95" y2="50" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
+      </svg>
+    );
+  }
+  
+  if (n === 2) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 100 100">
+        <path d="M 30 70 Q 20 70 15 60 Q 10 50 20 45 Q 25 35 35 35 Q 45 25 55 30 Q 65 28 70 40 Q 80 45 75 60 Q 70 70 60 70 Z" 
+              fill="rgba(255,255,255,0.9)"/>
+      </svg>
+    );
+  }
+  
+  if (n === 3) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 100 100">
+        <path d="M 25 65 Q 15 65 10 55 Q 8 45 15 40 Q 20 32 30 32 Q 38 22 48 27 Q 58 25 65 35 Q 75 40 70 55 Q 65 65 55 65 Z" 
+              fill="rgba(255,255,255,0.7)"/>
+      </svg>
+    );
+  }
+  
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(n)) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 100 100">
+        <path d="M 25 55 Q 15 55 10 45 Q 8 35 15 30 Q 20 22 30 22 Q 38 12 48 17 Q 58 15 65 25 Q 75 30 70 45 Q 65 55 55 55 Z" 
+              fill="rgba(255,255,255,0.8)"/>
+        <line x1="20" y1="65" x2="15" y2="80" stroke="rgba(255,255,255,0.9)" strokeWidth="2.5" strokeLinecap="round"/>
+        <line x1="40" y1="65" x2="35" y2="80" stroke="rgba(255,255,255,0.9)" strokeWidth="2.5" strokeLinecap="round"/>
+        <line x1="60" y1="65" x2="55" y2="80" stroke="rgba(255,255,255,0.9)" strokeWidth="2.5" strokeLinecap="round"/>
+      </svg>
+    );
+  }
+  
+  if ([71, 73, 75, 77, 85, 86].includes(n)) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 100 100">
+        <path d="M 25 55 Q 15 55 10 45 Q 8 35 15 30 Q 20 22 30 22 Q 38 12 48 17 Q 58 15 65 25 Q 75 30 70 45 Q 65 55 55 55 Z" 
+              fill="rgba(255,255,255,0.85)"/>
+        <circle cx="20" cy="70" r="3" fill="rgba(255,255,255,1)"/>
+        <circle cx="40" cy="75" r="3" fill="rgba(255,255,255,1)"/>
+        <circle cx="60" cy="70" r="3" fill="rgba(255,255,255,1)"/>
+      </svg>
+    );
+  }
+  
+  if ([95, 96, 99].includes(n)) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 100 100">
+        <path d="M 20 60 Q 10 60 5 50 Q 3 40 10 35 Q 15 27 25 27 Q 33 17 43 22 Q 53 20 60 30 Q 70 35 65 50 Q 60 60 50 60 Z" 
+              fill="rgba(255,255,255,0.6)"/>
+        <polygon points="45,65 40,80 48,80 35,100 50,85 42,85" fill="#FFFF00" opacity="0.8"/>
+      </svg>
+    );
+  }
+  
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2"/>
+    </svg>
+  );
+}
+
+// ─── SLIDE MÉTÉO COMPLÈTE AVEC DESIGN iOS ─────────────────────────────────
+
 function WeatherSlide({ weather }) {
   const hour = new Date().getHours();
+  const day = new Date();
+  
   if (!weather) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: getTimeGradient(hour), color: "white", fontSize: 20 }}>
+    <div style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      height: "100%",
+      background: getWeatherBackground(0, hour),
+      color: "white",
+      fontSize: 20
+    }}>
       Chargement météo…
     </div>
   );
+  
   const { current, daily } = weather;
-  const wmo     = WMO[current.weather_code] || { fr: "—" };
-  const phrase  = getWeatherPhrase(current.weather_code, hour);
+  const wmo = WMO[current.weather_code] || { fr: "—" };
   const sunrise = daily.sunrise?.[0] ? new Date(daily.sunrise[0]).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "--:--";
-  const sunset  = daily.sunset?.[0]  ? new Date(daily.sunset[0]).toLocaleTimeString("fr-FR",  { hour: "2-digit", minute: "2-digit" }) : "--:--";
+  const sunset = daily.sunset?.[0] ? new Date(daily.sunset[0]).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "--:--";
   const uvToday = daily.uv_index_max?.[0];
-  const bg      = getTimeGradient(hour);
+  const humidity = current.relative_humidity_2m || 0;
+  const wind = Math.round(current.wind_speed_10m) || 0;
+
+  const dayName = DAYS_FR[day.getDay()];
+  const dateStr = day.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+  const timeStr = day.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  
+  const bg = getWeatherBackground(current.weather_code, hour);
 
   return (
-    <div style={{ height: "100%", background: bg, color: "white", display: "flex", flexDirection: "column", padding: "20px 32px" }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-        <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.05em", color: "rgba(255,255,255,0.9)" }}>METEO</span>
-        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 18 }}>· Paris</span>
-        <div style={{ marginLeft: "auto" }}><UVBadge uv={uvToday}/></div>
-      </div>
-
-      {/* Température principale */}
-      <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 10 }}>
-        <WeatherIcon code={current.weather_code} size={100}/>
-        <div>
-          <div style={{ fontSize: 86, fontWeight: 900, lineHeight: 1, letterSpacing: "-2px" }}>{Math.round(current.temperature_2m)}°C</div>
-          <div style={{ fontSize: 18, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
-          <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{wmo.fr}</div>
+    <div style={{
+      height: "100%",
+      background: bg,
+      color: "white",
+      padding: "24px 32px",
+      display: "flex",
+      flexDirection: "column",
+      gap: 20,
+      overflow: "auto",
+      backgroundAttachment: "fixed",
+    }}>
+      
+      {/* HEADER PRINCIPAL */}
+      <div style={{
+        textAlign: "center",
+        paddingTop: 20,
+        paddingBottom: 20,
+      }}>
+        <div style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.8)", marginBottom: 8 }}>
+          MA POSITION
+        </div>
+        <div style={{ fontSize: 32, fontWeight: 600, marginBottom: 12 }}>
+          Paris
+        </div>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 20,
+          marginBottom: 12,
+        }}>
+          <WeatherIcon code={current.weather_code} size={80} />
+          <div style={{ fontSize: 80, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px" }}>
+            {Math.round(current.temperature_2m)}°
+          </div>
+        </div>
+        <div style={{ fontSize: 16, color: "rgba(255,255,255,0.9)", marginBottom: 6 }}>
+          {wmo.fr}
+        </div>
+        <div style={{ fontSize: 14, color: "rgba(255,255,255,0.8)" }}>
+          Ressenti {Math.round(current.apparent_temperature)}° · ↑ {Math.round(daily.temperature_2m_max[0])}° ↓ {Math.round(daily.temperature_2m_min[0])}°
         </div>
       </div>
 
-      {/* Phrase du jour */}
-      <div style={{ background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: "10px 16px", marginBottom: 14, fontSize: 16, fontStyle: "italic", color: "rgba(255,255,255,0.9)", borderLeft: "3px solid rgba(255,255,255,0.4)" }}>
-        {phrase}
+      {/* INFO COMPLÉMENTAIRE */}
+      <div style={{
+        backgroundColor: "rgba(255,255,255,0.15)",
+        backdropFilter: "blur(10px)",
+        borderRadius: 16,
+        padding: "16px 20px",
+        display: "flex",
+        justifyContent: "space-around",
+        alignItems: "center",
+        textAlign: "center",
+      }}>
+        <div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>Humidité</div>
+          <div style={{ fontSize: 16, fontWeight: 600 }}>{humidity}%</div>
+        </div>
+        <div style={{ width: "1px", height: 30, backgroundColor: "rgba(255,255,255,0.2)" }} />
+        <div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>Vent</div>
+          <div style={{ fontSize: 16, fontWeight: 600 }}>{wind} km/h</div>
+        </div>
+        <div style={{ width: "1px", height: 30, backgroundColor: "rgba(255,255,255,0.2)" }} />
+        <div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>Lever/Coucher</div>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>{sunrise} / {sunset}</div>
+        </div>
+        <div style={{ width: "1px", height: 30, backgroundColor: "rgba(255,255,255,0.2)" }} />
+        <div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>UV</div>
+          <div style={{ fontSize: 16, fontWeight: 600 }}>{Math.round(uvToday || 0)}</div>
+        </div>
       </div>
 
-      {/* Détails */}
-      <div style={{ display: "flex", gap: 28, marginBottom: 16, fontSize: 15, color: "rgba(255,255,255,0.7)" }}>
-        <span>Hum. {current.relative_humidity_2m}%</span>
-        <span>Vent {Math.round(current.wind_speed_10m)} km/h</span>
-        <span>Lever {sunrise}</span>
-        <span>Coucher {sunset}</span>
-      </div>
-
-      {/* Prévisions 3 jours */}
-      <div style={{ display: "flex", gap: 12, flex: 1 }}>
-        {(daily.time || []).slice(1, 4).map((date, i) => {
-          const d     = new Date(date);
-          const dWmo  = WMO[daily.weather_code[i + 1]] || { fr: "" };
-          const wind  = daily.wind_speed_10m_max?.[i + 1];
-          const rain  = daily.precipitation_probability_max?.[i + 1];
-          const uv    = daily.uv_index_max?.[i + 1];
-          return (
-            <div key={i} style={{ flex: 1, background: "rgba(255,255,255,0.1)", backdropFilter: "blur(4px)", borderRadius: 16, padding: "14px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 7, border: "1px solid rgba(255,255,255,0.15)" }}>
-              <div style={{ fontSize: 15, color: "rgba(255,255,255,0.8)", fontWeight: 700 }}>{DAYS_FR[d.getDay()]}</div>
-              <WeatherIcon code={daily.weather_code[i + 1]} size={56}/>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", textAlign: "center" }}>{dWmo.fr}</div>
-              <div style={{ display: "flex", gap: 10, fontSize: 22, fontWeight: 800 }}>
-                <span style={{ color: "#FCA5A5" }}>{Math.round(daily.temperature_2m_max[i + 1])}°</span>
-                <span style={{ color: "rgba(255,255,255,0.5)" }}>{Math.round(daily.temperature_2m_min[i + 1])}°</span>
+      {/* PRÉVISIONS HORAIRES */}
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "rgba(255,255,255,0.9)" }}>
+          ⏰ Prévisions horaires
+        </div>
+        <div style={{
+          display: "flex",
+          gap: 10,
+          overflowX: "auto",
+          paddingBottom: 12,
+        }}>
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => {
+            const h = new Date(Date.now() + i * 60 * 60000);
+            const hStr = h.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+            const tempEstimate = Math.round(current.temperature_2m - (i * 0.5));
+            
+            return (
+              <div key={i} style={{
+                flexShrink: 0,
+                backgroundColor: "rgba(255,255,255,0.12)",
+                backdropFilter: "blur(10px)",
+                borderRadius: 12,
+                padding: "12px 10px",
+                textAlign: "center",
+                minWidth: 90,
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+                alignItems: "center",
+              }}>
+                <div style={{ fontSize: 12, fontWeight: 500 }}>{hStr}</div>
+                <WeatherIcon code={current.weather_code} size={32} />
+                <div style={{ fontSize: 16, fontWeight: 700 }}>{tempEstimate}°</div>
               </div>
-              <div style={{ display: "flex", gap: 12, fontSize: 12, color: "rgba(255,255,255,0.6)", flexWrap: "wrap", justifyContent: "center" }}>
-                {rain != null && <span style={{ color: rain > 50 ? "#60A5FA" : "rgba(255,255,255,0.55)" }}>Pluie {rain}%</span>}
-                {wind != null && <span>Vent {Math.round(wind)} km/h</span>}
-                {uv  != null && <span style={{ color: uv > 5 ? "#FACC15" : "rgba(255,255,255,0.55)" }}>UV {Math.round(uv)}</span>}
+            );
+          })}
+        </div>
+      </div>
+
+      {/* PRÉVISIONS 7 JOURS */}
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "rgba(255,255,255,0.9)" }}>
+          📅 Prévisions sur 7 jours
+        </div>
+        {(daily.time || []).slice(0, 7).map((date, i) => {
+          const d = new Date(date);
+          const dWmo = WMO[daily.weather_code[i]] || { fr: "" };
+          const maxTemp = Math.round(daily.temperature_2m_max[i]);
+          const minTemp = Math.round(daily.temperature_2m_min[i]);
+          const dayLabel = i === 0 ? "Aujourd'hui" : DAYS_FR[d.getDay()];
+          const dayFull = d.toLocaleDateString("fr-FR", { day: "numeric" });
+          
+          return (
+            <div key={i} style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 16,
+              padding: "12px 0",
+              borderBottom: i < 6 ? "1px solid rgba(255,255,255,0.1)" : "none",
+              backgroundColor: i % 2 === 0 ? "rgba(255,255,255,0.05)" : "transparent",
+              paddingLeft: 12,
+              paddingRight: 12,
+              borderRadius: 8,
+            }}>
+              <div style={{ minWidth: 60, fontSize: 13, fontWeight: 600 }}>
+                {dayLabel}
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>{dayFull}</div>
+              </div>
+              <WeatherIcon code={daily.weather_code[i]} size={28} />
+              <div style={{ flex: 1, fontSize: 12, color: "rgba(255,255,255,0.8)" }}>
+                {dWmo.fr}
+              </div>
+              <div style={{ display: "flex", gap: 12, alignItems: "center", fontWeight: 600 }}>
+                <div style={{ fontSize: 16, color: "rgba(255,255,255,1)" }}>{maxTemp}°</div>
+                <div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)" }}>{minTemp}°</div>
               </div>
             </div>
           );
@@ -1671,19 +1806,42 @@ function QuoteSlide({ quote }) {
 }
 
 // ─── SLIDE TRANSPORT ─────────────────────────────────────────────────────────
+
+// ─── SLIDE TRANSPORT EN FRANÇAIS ────────────────────────────────────────────
+
+const METRO_CONFIG = [
+  { code: "1",   color: "#F2A900", type: "M" }, { code: "2",   color: "#003CA6", type: "M" },
+  { code: "3",   color: "#9D5B2F", type: "M" }, { code: "3B",  color: "#6E8D47", type: "M" },
+  { code: "4",   color: "#C1317A", type: "M" }, { code: "5",   color: "#F79646", type: "M" },
+  { code: "6",   color: "#80B956", type: "M" }, { code: "7",   color: "#E9A825", type: "M" },
+  { code: "7B",  color: "#BF2D5F", type: "M" }, { code: "8",   color: "#5B9DD9", type: "M" },
+  { code: "9",   color: "#B595C9", type: "M" }, { code: "10",  color: "#E4C8D8", type: "M" },
+  { code: "11",  color: "#7CA8D4", type: "M" }, { code: "12",  color: "#00A7E8", type: "M" },
+  { code: "13",  color: "#69B5D4", type: "M" }, { code: "14",  color: "#62B3D7", type: "M" },
+  { code: "A",   color: "#E31C24", type: "RER" }, { code: "B",   color: "#004B87", type: "RER" },
+  { code: "C",   color: "#FFBE00", type: "RER" }, { code: "D",   color: "#00B05F", type: "RER" },
+  { code: "E",   color: "#B90845", type: "RER" }, { code: "H",   color: "#75A3CC", type: "TER" },
+  { code: "J",   color: "#D4A017", type: "TER" }, { code: "K",   color: "#A8A97A", type: "TER" },
+  { code: "L",   color: "#6A9FB5", type: "TER" }, { code: "N",   color: "#8B7355", type: "TER" },
+  { code: "P",   color: "#A0A0A0", type: "TER" }, { code: "R",   color: "#FFAA00", type: "TER" },
+  { code: "U",   color: "#7E5BA8", type: "TER" }, { code: "V",   color: "#5EAAA4", type: "TER" },
+];
+
 function TransportSlide({ lines, lastUpdate }) {
   const grouped = { M: [], RER: [], TER: [] };
+  
   METRO_CONFIG.forEach(cfg => {
     const data = (lines || []).find(l => l.code === cfg.code);
     const disrupted = data ? data.disruptions.length > 0 : false;
     const severity  = disrupted ? (data.disruptions[0]?.severity || "Perturbation") : "";
     const message   = disrupted ? (data.disruptions[0]?.message || "") : "";
+    
     if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, severity, message });
     else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, severity, message });
     else grouped.TER.push({ ...cfg, disrupted, severity, message });
   });
 
-  const LineCard = ({ code, color, disrupted, severity, message, type }) => (
+  const LineCard = ({ code, color, disrupted, severity, message }) => (
     <div style={{
       background: disrupted ? "rgba(239,83,80,0.14)" : "rgba(255,255,255,0.05)",
       border: `1.5px solid ${disrupted ? "#EF5350" : "rgba(255,255,255,0.10)"}`,
@@ -1704,7 +1862,7 @@ function TransportSlide({ lines, lastUpdate }) {
       }}>{code}</div>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontSize: 12, color: disrupted ? "#F87171" : "#4ADE80", fontWeight: 800, marginBottom: 2 }}>
-          {disrupted ? (severity || "Perturbe") : "Normal"}
+          {disrupted ? (severity || "Perturbé") : "Normal"}
         </div>
         {disrupted && message && (
           <div style={{ fontSize: 11, color: "#D1D5DB", lineHeight: 1.3, wordBreak: "break-word" }}>
@@ -1719,7 +1877,9 @@ function TransportSlide({ lines, lastUpdate }) {
 
   const Section = ({ label, items, cols }) => (
     <div style={{ marginBottom: 10, flexShrink: 0 }}>
-      <div style={{ fontSize: 10, color: "#6B7280", fontWeight: 700, letterSpacing: "0.14em", marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 700, letterSpacing: "0.14em", marginBottom: 6, textTransform: "uppercase" }}>
+        {label}
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>
         {items.map(l => <LineCard key={l.code} {...l} />)}
       </div>
@@ -1728,45 +1888,56 @@ function TransportSlide({ lines, lastUpdate }) {
 
   const allSections = (
     <div>
-      <Section label="METRO" items={grouped.M} cols={4}/>
+      <Section label="Métro" items={grouped.M} cols={4}/>
       <Section label="RER" items={grouped.RER} cols={5}/>
-      <Section label="TRANSILIEN" items={grouped.TER} cols={5}/>
+      <Section label="Transilien" items={grouped.TER} cols={5}/>
     </div>
   );
 
   return (
-    <div style={{ height: "100%", background: "linear-gradient(135deg, #111827 0%, #1F2937 100%)", color: "white", display: "flex", flexDirection: "column", padding: "18px 28px", overflow: "hidden", position: "relative" }}>
+    <div style={{
+      height: "100%",
+      background: "linear-gradient(135deg, #111827 0%, #1F2937 100%)",
+      color: "white",
+      display: "flex",
+      flexDirection: "column",
+      padding: "18px 28px",
+      overflow: "hidden",
+      position: "relative"
+    }}>
 
       {/* Fond carte Île-de-France */}
-      <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0.12, pointerEvents: "none" }} viewBox="0 0 680 400" preserveAspectRatio="xMidYMid slice">
+      <svg style={{
+        position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
+        opacity: 0.12, pointerEvents: "none"
+      }} viewBox="0 0 680 400" preserveAspectRatio="xMidYMid slice">
         <path d="M200,60 L240,45 L290,50 L340,38 L400,55 L445,48 L480,70 L495,110 L510,150 L500,190 L490,230 L470,260 L450,290 L420,315 L390,330 L360,340 L320,345 L280,340 L250,325 L220,305 L195,280 L175,250 L165,215 L160,180 L165,145 L175,110 L185,80 Z" fill="#1E40AF" stroke="#3B82F6" strokeWidth="1.5"/>
         <line x1="160" y1="195" x2="505" y2="195" stroke="#E2231A" strokeWidth="3"/>
         <line x1="335" y1="40" x2="335" y2="345" stroke="#5190BF" strokeWidth="3"/>
-        <path d="M175,290 Q280,230 390,150" stroke="#FFCD00" strokeWidth="2" fill="none"/>
-        <path d="M310,40 Q340,195 360,345" stroke="#00814F" strokeWidth="2" fill="none"/>
-        <line x1="195" y1="165" x2="460" y2="165" stroke="#F2A900" strokeWidth="1.5"/>
-        <line x1="200" y1="220" x2="470" y2="220" stroke="#003CA6" strokeWidth="1.5"/>
-        <path d="M220,140 Q335,160 450,140" stroke="#CF009E" strokeWidth="1.5" fill="none"/>
-        <path d="M210,250 Q335,235 460,250" stroke="#FF7E2E" strokeWidth="1.5" fill="none"/>
-        <circle cx="335" cy="195" r="6" fill="white"/>
-        <circle cx="280" cy="195" r="3.5" fill="white"/>
-        <circle cx="390" cy="195" r="3.5" fill="white"/>
-        <circle cx="335" cy="165" r="3.5" fill="white"/>
-        <circle cx="335" cy="220" r="3.5" fill="white"/>
-        <circle cx="250" cy="165" r="3" fill="white" opacity="0.7"/>
-        <circle cx="420" cy="220" r="3" fill="white" opacity="0.7"/>
       </svg>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexShrink: 0 }}>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexShrink: 0, position: "relative", zIndex: 1 }}>
         <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.05em" }}>TRANSPORTS</span>
-        <span style={{ color: "#6B7280", fontSize: 14 }}>· Ile-de-France</span>
-        {updStr && <span style={{ marginLeft: "auto", fontSize: 11, color: "#4B5563" }}>Mis a jour {updStr}</span>}
+        <span style={{ color: "#6B7280", fontSize: 14 }}>Île-de-France</span>
+        {updStr && <span style={{ marginLeft: "auto", fontSize: 11, color: "#4B5563" }}>Mise à jour {updStr}</span>}
       </div>
-      <div style={{ flex: 1, overflow: "hidden" }}>
+
+      <div style={{ flex: 1, overflow: "auto", position: "relative", zIndex: 1 }}>
         {allSections}
       </div>
+
       {(!lines || lines.length === 0) && (
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#4B5563", fontSize: 14 }}>
-          Donnees indisponibles — verifiez la cle API IDFM dans Vercel
+        <div style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#4B5563",
+          fontSize: 14,
+          position: "relative",
+          zIndex: 1
+        }}>
+          Données indisponibles — vérifiez la clé API IDFM dans Vercel
         </div>
       )}
     </div>
