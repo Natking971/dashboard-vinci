@@ -1304,7 +1304,7 @@ function OneSiteSlide({ onesite }) {
 
         {/* Colonne PAT */}
         <div style={{
-          flex: 1, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 18,
+          flex: 1, backgroundColor: "rgba(255,255,255,0.13)", borderRadius: 18,
           border: "1px solid rgba(255,255,255,0.14)", padding: "24px 28px",
           display: "flex", flexDirection: "column", gap: 20,
         }}>
@@ -1331,7 +1331,7 @@ function OneSiteSlide({ onesite }) {
 
         {/* Colonne QHS */}
         <div style={{
-          flex: 1, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 18,
+          flex: 1, backgroundColor: "rgba(255,255,255,0.13)", borderRadius: 18,
           border: "1px solid rgba(255,255,255,0.14)", padding: "24px 28px",
           display: "flex", flexDirection: "column", gap: 20,
         }}>
@@ -1405,7 +1405,7 @@ function GoldenRulesSlide() {
           <div key={rule.num} style={{
             display: "flex", alignItems: "center", gap: 20,
             backgroundColor: "rgba(255,255,255,0.07)",
-            border: "1px solid rgba(255,255,255,0.12)",
+            border: "1px solid rgba(255,255,255,0.17)",
             borderLeft: `5px solid ${idx % 2 === 0 ? "#00A091" : "#3BB5E8"}`,
             borderRadius: "0 14px 14px 0",
             padding: "16px 22px",
@@ -1517,14 +1517,14 @@ function WeatherSlide({ weather }) {
   return (
     <div style={{ height: "100%", background: bg, color: "white", padding: "20px 28px", display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 16, overflow: "hidden" }}>
       
-      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 20, padding: "20px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
+      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 20, padding: "20px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
         <div style={{ fontSize: 16, fontWeight: 500, color: "rgba(255,255,255,0.7)", marginBottom: 10 }}>MA POSITION</div>
         <div style={{ fontSize: 36, fontWeight: 700, marginBottom: 16 }}>Paris</div>
         <div style={{ fontSize: 72, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px", marginBottom: 10 }}>{timeStr}</div>
         <div style={{ fontSize: 18, color: "rgba(255,255,255,0.8)" }}>{dayName}, {dateStr}</div>
       </div>
 
-      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 20, padding: "20px", display: "flex", flexDirection: "column", gap: 16, alignItems: "center", justifyContent: "center" }}>
+      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 20, padding: "20px", display: "flex", flexDirection: "column", gap: 16, alignItems: "center", justifyContent: "center" }}>
         
         <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
           <div style={{ textAlign: "right" }}>
@@ -1559,7 +1559,7 @@ function WeatherSlide({ weather }) {
         </div>
       </div>
 
-      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 20, padding: "20px", display: "flex", flexDirection: "column", gap: 12, overflowY: "auto", justifyContent: "center" }}>
+      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 20, padding: "20px", display: "flex", flexDirection: "column", gap: 8, justifyContent: "center" }}>
         <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 10, textAlign: "center" }}>Prévisions 5 jours</div>
         {(daily.time || []).slice(0, 5).map((date, i) => {
           const d = new Date(date);
@@ -1578,7 +1578,7 @@ function WeatherSlide({ weather }) {
         })}
       </div>
 
-      <div style={{ backgroundColor: "rgba(0,0,0,0.25)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 20, padding: "20px", display: "flex", flexDirection: "column", gap: 12, justifyContent: "center" }}>
+      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 20, padding: "20px", display: "flex", flexDirection: "column", gap: 12, justifyContent: "center" }}>
         <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, textAlign: "center" }}>Prévisions horaires</div>
         <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 10, justifyContent: "center" }}>
           {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
@@ -1586,7 +1586,7 @@ function WeatherSlide({ weather }) {
             const hStr = h.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
             const tempEstimate = Math.round(current.temperature_2m - (i * 0.5));
             return (
-              <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: "12px 10px", textAlign: "center", minWidth: 90, display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
+              <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.13)", border: "1px solid rgba(255,255,255,0.17)", borderRadius: 12, padding: "12px 10px", textAlign: "center", minWidth: 90, display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
                 <div style={{ fontSize: 14, fontWeight: 500 }}>{hStr}</div>
                 <WeatherIcon code={current.weather_code} size={28} />
                 <div style={{ fontSize: 16, fontWeight: 700 }}>{tempEstimate}°</div>
@@ -1670,6 +1670,7 @@ export default function Dashboard() {
   const [time, setTime] = useState(new Date());
   const [slideIdx, setSlideIdx] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const [planning, setPlanning] = useState(FALLBACK_PLANNING);
   const [planningNext, setPlanningNext] = useState(FALLBACK_PLANNING);
   const [affairs, setAffairs] = useState(FALLBACK_AFFAIRS);
@@ -1917,7 +1918,10 @@ export default function Dashboard() {
   // Navigation clavier : espace / flèche droite = suivant, flèche gauche = précédent
   useEffect(() => {
     function handleKey(e) {
-      if (e.code === "Space" || e.code === "ArrowRight") {
+      if (e.code === "ArrowDown") {
+        e.preventDefault();
+        setIsPaused(!isPaused);
+      } else if (e.code === "Space" || e.code === "ArrowRight") {
         e.preventDefault();
         setSlideIdx(i => (i + 1) % SLIDES.length);
       } else if (e.code === "ArrowLeft") {
@@ -1927,7 +1931,7 @@ export default function Dashboard() {
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, []);
+  }, [isPaused]);
 
   // Détecte si la slide actuelle n'a aucune donnée à afficher
   function isSlideEmpty(slide) {
@@ -1963,10 +1967,10 @@ export default function Dashboard() {
       const elapsed = Date.now() - start;
       setProgress(Math.min(100, (elapsed / slideDuration) * 100));
     }, 100);
-    const advance = setTimeout(() => {
+    const advance = !isPaused ? setTimeout(() => {
       setSlideIdx(i => (i + 1) % SLIDES.length);
-    }, slideDuration);
-    return () => { clearInterval(tick); clearTimeout(advance); };
+    }, slideDuration) : null;
+    return () => { clearInterval(tick); if (advance) clearTimeout(advance); };
   }, [slideIdx, planning, planningNext, affairs, subcontractorsCurrent, subcontractorsNext, quotes]);
 
   const timeStr = time.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -2175,3 +2179,4 @@ export default function Dashboard() {
     </div>
   );
 }
+
