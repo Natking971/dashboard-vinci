@@ -299,6 +299,114 @@ const SLIDES = [
 ];
 
 
+// ─── ICÔNE MÉTÉO SVG ────────────────────────────────────────────────────────
+
+function WeatherIcon({ code, size = 80 }) {
+  const n = Number(code);
+  
+  // Soleil clair
+  if (n <= 1) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="35" fill="#FFD700"/>
+        {/* Rayons */}
+        <line x1="50" y1="5" x2="50" y2="20" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="50" y1="80" x2="50" y2="95" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="5" y1="50" x2="20" y2="50" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="80" y1="50" x2="95" y2="50" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="18" y1="18" x2="28" y2="28" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="72" y1="72" x2="82" y2="82" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="82" y1="18" x2="72" y2="28" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="28" y1="72" x2="18" y2="82" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/>
+      </svg>
+    );
+  }
+  
+  // Nuages
+  if (n === 2) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 100 100">
+        <path d="M 30 70 Q 20 70 15 60 Q 10 50 20 45 Q 25 35 35 35 Q 45 25 55 30 Q 65 28 70 40 Q 80 45 75 60 Q 70 70 60 70 Z" 
+              fill="#E0E0E0"/>
+      </svg>
+    );
+  }
+  
+  // Nuageux
+  if (n === 3) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 100 100">
+        <path d="M 25 65 Q 15 65 10 55 Q 8 45 15 40 Q 20 32 30 32 Q 38 22 48 27 Q 58 25 65 35 Q 75 40 70 55 Q 65 65 55 65 Z" 
+              fill="#B0B0B0"/>
+      </svg>
+    );
+  }
+  
+  // Pluie
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(n)) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 100 100">
+        {/* Nuage */}
+        <path d="M 25 55 Q 15 55 10 45 Q 8 35 15 30 Q 20 22 30 22 Q 38 12 48 17 Q 58 15 65 25 Q 75 30 70 45 Q 65 55 55 55 Z" 
+              fill="#808080"/>
+        {/* Gouttes */}
+        <line x1="20" y1="65" x2="15" y2="80" stroke="#60A5FA" strokeWidth="2.5" strokeLinecap="round"/>
+        <line x1="40" y1="65" x2="35" y2="80" stroke="#60A5FA" strokeWidth="2.5" strokeLinecap="round"/>
+        <line x1="60" y1="65" x2="55" y2="80" stroke="#60A5FA" strokeWidth="2.5" strokeLinecap="round"/>
+      </svg>
+    );
+  }
+  
+  // Neige
+  if ([71, 73, 75, 77, 85, 86].includes(n)) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 100 100">
+        {/* Nuage */}
+        <path d="M 25 55 Q 15 55 10 45 Q 8 35 15 30 Q 20 22 30 22 Q 38 12 48 17 Q 58 15 65 25 Q 75 30 70 45 Q 65 55 55 55 Z" 
+              fill="#D0D0D0"/>
+        {/* Flocons */}
+        <circle cx="20" cy="70" r="3" fill="#FFFFFF"/>
+        <circle cx="40" cy="75" r="3" fill="#FFFFFF"/>
+        <circle cx="60" cy="70" r="3" fill="#FFFFFF"/>
+        <circle cx="30" cy="85" r="2.5" fill="#FFFFFF"/>
+        <circle cx="50" cy="85" r="2.5" fill="#FFFFFF"/>
+      </svg>
+    );
+  }
+  
+  // Brouillard
+  if ([45, 48].includes(n)) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 100 100">
+        <line x1="10" y1="35" x2="90" y2="35" stroke="#BFBFBF" strokeWidth="3" opacity="0.7"/>
+        <line x1="10" y1="50" x2="90" y2="50" stroke="#BFBFBF" strokeWidth="3" opacity="0.6"/>
+        <line x1="10" y1="65" x2="90" y2="65" stroke="#BFBFBF" strokeWidth="3" opacity="0.7"/>
+      </svg>
+    );
+  }
+  
+  // Orage
+  if ([95, 96, 99].includes(n)) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 100 100">
+        {/* Nuage sombre */}
+        <path d="M 20 60 Q 10 60 5 50 Q 3 40 10 35 Q 15 27 25 27 Q 33 17 43 22 Q 53 20 60 30 Q 70 35 65 50 Q 60 60 50 60 Z" 
+              fill="#404040"/>
+        {/* Éclair */}
+        <polygon points="45,65 40,80 48,80 35,100 50,85 42,85" fill="#FFFF00"/>
+      </svg>
+    );
+  }
+  
+  // Par défaut
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="40" fill="none" stroke="#999" strokeWidth="2"/>
+      <text x="50" y="55" textAnchor="middle" fontSize="20" fill="#999">?</text>
+    </svg>
+  );
+}
+
 // ─── MÉTÉO / TRANSPORT / CITATIONS ──────────────────────────────────────────
 
 const WMO = {
