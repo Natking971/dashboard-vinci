@@ -1557,7 +1557,7 @@ function WeatherSlide({ weather }) {
       </div>
 
       <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "12px", display: "flex", flexDirection: "column", gap: 6, justifyContent: "flex-start" }}>
-        <div style={{ fontSize: 16, fontWeight: 700, textAlign: "center", color: "white" }}>Prévisions 5 jours</div>
+        <div style={{ fontSize: 18, fontWeight: 700, textAlign: "center", color: "white" }}>Prévisions 5 jours</div>
         {(daily.time || []).slice(0, 4).map((date, i) => {
           const d = new Date(date);
           const dWmo = WMO[daily.weather_code[i]] || { fr: "" };
@@ -1566,17 +1566,17 @@ function WeatherSlide({ weather }) {
           const dayLabel = i === 0 ? "Auj." : DAYS_FR[d.getDay()];
           return (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 6, borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.1)" : "none", justifyContent: "space-between" }}>
-              <WeatherIcon code={daily.weather_code[i]} size={24} />
-              <div style={{ fontSize: 16, fontWeight: 600, minWidth: 50, textAlign: "right" }}>{maxTemp}°</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", minWidth: 40, textAlign: "right" }}>{minTemp}°</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", minWidth: 40, textAlign: "right" }}>{dayLabel}</div>
+              <WeatherIcon code={daily.weather_code[i]} size={28} />
+              <div style={{ fontSize: 18, fontWeight: 600, minWidth: 50, textAlign: "right" }}>{maxTemp}°</div>
+              <div style={{ fontSize: 15, color: "rgba(255,255,255,0.6)", minWidth: 40, textAlign: "right" }}>{minTemp}°</div>
+              <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", minWidth: 40, textAlign: "right" }}>{dayLabel}</div>
             </div>
           );
         })}
       </div>
 
       <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "12px", display: "flex", flexDirection: "column", gap: 8, justifyContent: "flex-start" }}>
-        <div style={{ fontSize: 16, fontWeight: 700, textAlign: "center" }}>Prévisions horaires</div>
+        <div style={{ fontSize: 18, fontWeight: 700, textAlign: "center" }}>Prévisions horaires</div>
         <div style={{ display: "flex", gap: 8, overflowX: "auto", justifyContent: "center" }}>
           {[0, 1, 2, 3, 4, 5, 6].map((i) => {
             const h = new Date(Date.now() + i * 60 * 60000);
@@ -1584,9 +1584,9 @@ function WeatherSlide({ weather }) {
             const tempEstimate = Math.round(current.temperature_2m - (i * 0.5));
             return (
               <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.13)", border: "1px solid rgba(255,255,255,0.17)", borderRadius: 10, padding: "10px 8px", textAlign: "center", minWidth: 80, display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
-                <div style={{ fontSize: 12, fontWeight: 500 }}>{hStr}</div>
-                <WeatherIcon code={current.weather_code} size={20} />
-                <div style={{ fontSize: 14, fontWeight: 700 }}>{tempEstimate}°</div>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>{hStr}</div>
+                <WeatherIcon code={current.weather_code} size={24} />
+                <div style={{ fontSize: 16, fontWeight: 700 }}>{tempEstimate}°</div>
               </div>
             );
           })}
