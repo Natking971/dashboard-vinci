@@ -491,6 +491,7 @@ function AffairCard({ affair, index, total }) {
       </div>
     </div>
   );
+  };
 }
 
 function TenantSlide({ tenant, affairs }) {
@@ -595,6 +596,7 @@ function TenantSlide({ tenant, affairs }) {
       </div>
     </div>
   );
+  };
 }
 
 function PlanningSlide({ planning, week = "current" }) {
@@ -830,6 +832,7 @@ function PlanningSlide({ planning, week = "current" }) {
       </div>
     </div>
   );
+  };
 }
 
 // ─── SLIDE DEVIS EN COURS ────────────────────────────────────────────────────
@@ -1005,6 +1008,7 @@ function QuotesSlide({ quotes }) {
       </div>
     </div>
   );
+  };
 }
 
 // ─── SLIDE SOUS-TRAITANTS ────────────────────────────────────────────────────
@@ -1152,6 +1156,7 @@ function SubcontractorsSlide({ subcontractors, week = "next" }) {
       </div>
     </div>
   );
+  };
 }
 
 // ─── SLIDE ONESITE ───────────────────────────────────────────────────────────
@@ -1208,6 +1213,7 @@ function PieChart({ done, total, color, size = 160, dark = false }) {
       </div>
     </div>
   );
+  };
 }
 
 function AutoScrollList({ items, color, bgColor, borderColor }) {
@@ -1259,6 +1265,7 @@ function AutoScrollList({ items, color, bgColor, borderColor }) {
       </div>
     </div>
   );
+  };
 }
 
 function OneSiteSlide({ onesite }) {
@@ -1359,6 +1366,7 @@ function OneSiteSlide({ onesite }) {
       </div>
     </div>
   );
+  };
 }
 
 // ─── SLIDE RÈGLES D'OR ───────────────────────────────────────────────────────
@@ -1426,6 +1434,7 @@ function GoldenRulesSlide() {
       </div>
     </div>
   );
+  };
 }
 
 // ─── SLIDE MÉTÉO ─────────────────────────────────────────────────────────────
@@ -1468,6 +1477,7 @@ function UVBadge({ uv }) {
       <span style={{ color: level.color, fontWeight: 700 }}>UV {Math.round(uv)} — {level.label}</span>
     </div>
   );
+  };
 }
 
 function getWeatherBackground(code, hour) {
@@ -1583,10 +1593,10 @@ function WeatherSlide({ weather }) {
             const hStr = h.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
             const tempEstimate = Math.round(current.temperature_2m - (i * 0.5));
             return (
-              <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.13)", border: "1px solid rgba(255,255,255,0.17)", borderRadius: 10, padding: "12px 10px", textAlign: "center", minWidth: 100, display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>{hStr}</div>
+              <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.13)", border: "1px solid rgba(255,255,255,0.17)", borderRadius: 10, padding: "16px 14px", textAlign: "center", minWidth: 180, display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
+                <div style={{ fontSize: 22, fontWeight: 500 }}>{hStr}</div>
                 <WeatherIcon code={current.weather_code} size={24} />
-                <div style={{ fontSize: 16, fontWeight: 700 }}>{tempEstimate}°</div>
+                <div style={{ fontSize: 32, fontWeight: 700 }}>{tempEstimate}°</div>
               </div>
             );
           })}
@@ -1594,6 +1604,7 @@ function WeatherSlide({ weather }) {
       </div>
     </div>
   );
+  };
 }
 
 function QuoteSlide({ quote }) {
@@ -1608,6 +1619,7 @@ function QuoteSlide({ quote }) {
       <div style={{ marginTop: 32, fontSize: 20, color: "#90CAF9", fontWeight: 600 }}>— {quote?.author || ""}</div>
     </div>
   );
+  };
 }
 
 // ─── SLIDE TRANSPORT ─────────────────────────────────────────────────────────
@@ -1618,15 +1630,24 @@ function TransportSlide({ lines, lastUpdate }) {
     const disrupted = data ? data.disruptions.length > 0 : false;
     const severity  = disrupted ? (data.disruptions[0]?.severity || "Perturbation") : "";
     const message   = disrupted ? (data.disruptions[0]?.message || "") : "";
-    if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, severity, message });
-    else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, severity, message });
-    else grouped.TER.push({ ...cfg, disrupted, severity, message });
+    const isWork = message && (message.toLowerCase().includes("travaux") || message.toLowerCase().includes("work"));
+    if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, severity, message, isWork });
+    else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, severity, message, isWork });
+    else grouped.TER.push({ ...cfg, disrupted, severity, message, isWork });
   });
 
-  const LineCard = ({ code, color, disrupted, severity, message, type }) => (
+  const LineCard = ({ code, color, disrupted, severity, message, type, isWork }) => {
+    // Perturbation = Rouge, Travaux = Orange, Travaux+Perturbation = Rouge (perturbation prioritaire)
+    const isRed = disrupted;
+    const isOrange = isWork && !disrupted;
+    const borderColor = isRed ? "#EF5350" : (isOrange ? "#FF8C00" : "rgba(255,255,255,0.10)");
+    const bgColor = isRed ? "rgba(239,83,80,0.14)" : (isOrange ? "rgba(255,140,0,0.14)" : "rgba(255,255,255,0.05)");
+    const textColor = isRed ? "#F87171" : (isOrange ? "#FFA500" : "#4ADE80");
+    
+    return (
     <div style={{
-      background: disrupted ? "rgba(239,83,80,0.14)" : "rgba(255,255,255,0.05)",
-      border: `1.5px solid ${disrupted ? "#EF5350" : "rgba(255,255,255,0.10)"}`,
+      background: bgColor,
+      border: `1.5px solid ${borderColor}`,
       borderRadius: 10,
       padding: "8px 10px",
       display: "flex",
@@ -1643,8 +1664,8 @@ function TransportSlide({ lines, lastUpdate }) {
         color: "white", textShadow: "0 1px 3px rgba(0,0,0,0.6)",
       }}>{code}</div>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 12, color: disrupted ? "#F87171" : "#4ADE80", fontWeight: 800, marginBottom: 2 }}>
-          {disrupted ? (severity || "Perturbe") : "Normal"}
+        <div style={{ fontSize: 12, color: textColor, fontWeight: 800, marginBottom: 2 }}>
+          {disrupted ? (severity || "Perturbé") : (isWork ? "Travaux" : "Normal")}
         </div>
         {disrupted && message && (
           <div style={{ fontSize: 11, color: "#D1D5DB", lineHeight: 1.3, wordBreak: "break-word" }}>
@@ -1654,6 +1675,7 @@ function TransportSlide({ lines, lastUpdate }) {
       </div>
     </div>
   );
+  };
 
   const updStr = lastUpdate ? new Date(lastUpdate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : null;
 
@@ -1665,6 +1687,7 @@ function TransportSlide({ lines, lastUpdate }) {
       </div>
     </div>
   );
+  };
 
   const allSections = (
     <div>
@@ -1673,6 +1696,7 @@ function TransportSlide({ lines, lastUpdate }) {
       <Section label="TRANSILIEN" items={grouped.TER} cols={5}/>
     </div>
   );
+  };
 
   return (
     <div style={{ height: "100%", background: "linear-gradient(135deg, #111827 0%, #1F2937 100%)", color: "white", display: "flex", flexDirection: "column", padding: "18px 28px", overflow: "hidden", position: "relative" }}>
@@ -1711,6 +1735,7 @@ function TransportSlide({ lines, lastUpdate }) {
       )}
     </div>
   );
+  };
 }
 
 
@@ -2226,4 +2251,5 @@ export default function Dashboard() {
       </div>
     </div>
   );
+  };
 }
