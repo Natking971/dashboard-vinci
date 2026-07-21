@@ -491,7 +491,6 @@ function AffairCard({ affair, index, total }) {
       </div>
     </div>
   );
-  };
 }
 
 function TenantSlide({ tenant, affairs }) {
