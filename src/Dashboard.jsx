@@ -1497,53 +1497,48 @@ function WeatherSlide({ weather }) {
   else if (hour >= 12 && hour < 18) bgGradient = "linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%)";
   else if (hour >= 18 && hour < 21) bgGradient = "linear-gradient(135deg, #ff6f00 0%, #e65100 100%)";
 
-  const weatherSymbol = (code) => {
-    const svgStyle = { display: "block", width: "100%", height: "100%" };
+  const weatherSymbol = (code, size = "32px") => {
+    const svgStyle = { width: size, height: size, display: "inline-block" };
     
     if (code <= 1) return (
       <svg viewBox="0 0 100 100" style={svgStyle}>
         <circle cx="50" cy="50" r="35" fill="#FFD700"/>
-        <circle cx="50" cy="50" r="30" fill="#FFA500"/>
       </svg>
     );
     if (code === 2 || code === 3) return (
       <svg viewBox="0 0 100 100" style={svgStyle}>
-        <path d="M 35 65 Q 25 65 20 55 Q 15 45 25 40 Q 30 30 40 30 Q 48 20 58 25 Q 68 23 73 35 Q 83 40 78 55 Q 73 65 63 65 Z" fill="#B0C4DE"/>
+        <path d="M 30 60 Q 20 60 15 50 Q 10 40 20 35 Q 25 25 35 25 Q 42 15 52 20 Q 62 18 67 30 Q 77 35 72 50 Q 67 60 57 60 Z" fill="#A8D5FF"/>
       </svg>
     );
     if (code >= 45 && code <= 48) return (
       <svg viewBox="0 0 100 100" style={svgStyle}>
-        <rect x="20" y="35" width="15" height="15" fill="#90CAF9" opacity="0.7"/>
-        <rect x="42.5" y="35" width="15" height="15" fill="#90CAF9" opacity="0.7"/>
-        <rect x="65" y="35" width="15" height="15" fill="#90CAF9" opacity="0.7"/>
+        <circle cx="25" cy="50" r="12" fill="#A8D5FF" opacity="0.6"/>
+        <circle cx="50" cy="50" r="12" fill="#A8D5FF" opacity="0.6"/>
+        <circle cx="75" cy="50" r="12" fill="#A8D5FF" opacity="0.6"/>
       </svg>
     );
     if (code >= 51 && code <= 82) return (
       <svg viewBox="0 0 100 100" style={svgStyle}>
-        <path d="M 35 65 Q 25 65 20 55 Q 15 45 25 40 Q 30 30 40 30 Q 48 20 58 25 Q 68 23 73 35 Q 83 40 78 55 Q 73 65 63 65 Z" fill="#64B5F6"/>
-        <line x1="30" y1="75" x2="25" y2="85" stroke="#42A5F5" strokeWidth="2"/>
-        <line x1="50" y1="75" x2="45" y2="85" stroke="#42A5F5" strokeWidth="2"/>
-        <line x1="70" y1="75" x2="65" y2="85" stroke="#42A5F5" strokeWidth="2"/>
+        <path d="M 30 60 Q 20 60 15 50 Q 10 40 20 35 Q 25 25 35 25 Q 42 15 52 20 Q 62 18 67 30 Q 77 35 72 50 Q 67 60 57 60 Z" fill="#64B5F6"/>
+        <line x1="35" y1="68" x2="32" y2="78" stroke="#42A5F5" strokeWidth="1.5"/>
+        <line x1="50" y1="68" x2="47" y2="78" stroke="#42A5F5" strokeWidth="1.5"/>
       </svg>
     );
     if (code >= 85 && code <= 86) return (
       <svg viewBox="0 0 100 100" style={svgStyle}>
-        <path d="M 35 65 Q 25 65 20 55 Q 15 45 25 40 Q 30 30 40 30 Q 48 20 58 25 Q 68 23 73 35 Q 83 40 78 55 Q 73 65 63 65 Z" fill="#E0E0E0"/>
-        <circle cx="30" cy="75" r="2" fill="#FFFFFF"/>
-        <circle cx="50" cy="75" r="2" fill="#FFFFFF"/>
-        <circle cx="70" cy="75" r="2" fill="#FFFFFF"/>
+        <path d="M 30 60 Q 20 60 15 50 Q 10 40 20 35 Q 25 25 35 25 Q 42 15 52 20 Q 62 18 67 30 Q 77 35 72 50 Q 67 60 57 60 Z" fill="#E8E8E8"/>
       </svg>
     );
     if (code >= 95) return (
       <svg viewBox="0 0 100 100" style={svgStyle}>
-        <path d="M 35 60 Q 25 60 20 50 Q 15 40 25 35 Q 30 25 40 25 Q 48 15 58 20 Q 68 18 73 30 Q 83 35 78 50 Q 73 60 63 60 Z" fill="#757575"/>
-        <polygon points="45,70 40,85 48,85 35,100 50,90 42,90" fill="#FFD700"/>
+        <path d="M 30 55 Q 20 55 15 45 Q 10 35 20 30 Q 25 20 35 20 Q 42 10 52 15 Q 62 13 67 25 Q 77 30 72 45 Q 67 55 57 55 Z" fill="#696969"/>
+        <polygon points="48,65 45,75 51,75 40,85 50,78" fill="#FFD700" opacity="0.9"/>
       </svg>
     );
     
     return (
       <svg viewBox="0 0 100 100" style={svgStyle}>
-        <path d="M 35 65 Q 25 65 20 55 Q 15 45 25 40 Q 30 30 40 30 Q 48 20 58 25 Q 68 23 73 35 Q 83 40 78 55 Q 73 65 63 65 Z" fill="#90CAF9"/>
+        <path d="M 30 60 Q 20 60 15 50 Q 10 40 20 35 Q 25 25 35 25 Q 42 15 52 20 Q 62 18 67 30 Q 77 35 72 50 Q 67 60 57 60 Z" fill="#A8D5FF"/>
       </svg>
     );
   };
@@ -1566,7 +1561,7 @@ function WeatherSlide({ weather }) {
             <div style={{ fontSize: 60, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px", marginBottom: 4 }}>{temp}°C</div>
             <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>Ressenti {tempFelt}°C</div>
           </div>
-          <div style={{ fontSize: 56, fontWeight: "bold", opacity: 0.8 }}>{weatherSymbol(current.weather_code)}</div>
+          <div style={{ width: 56, height: 56 }}>{weatherSymbol(current.weather_code, "56px")}</div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, width: "100%" }}>
           <div style={{ textAlign: "center" }}><div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Humidité</div><div style={{ fontSize: 20, fontWeight: 600 }}>{humidity}%</div></div>
@@ -1588,7 +1583,7 @@ function WeatherSlide({ weather }) {
           const symbol = weatherSymbol(code);
           return (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 14, borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.1)" : "none", justifyContent: "space-between", width: "100%" }}>
-              <div style={{ fontSize: 32, fontWeight: "bold", opacity: 0.8, minWidth: 30 }}>{symbol}</div>
+              <div style={{ width: 32, height: 32, minWidth: 32 }}>{symbol}</div>
               <div style={{ fontSize: 32, fontWeight: 600, minWidth: 60, textAlign: "right" }}>{maxTemp}°</div>
               <div style={{ fontSize: 24, color: "rgba(255,255,255,0.6)", minWidth: 45, textAlign: "right" }}>{minTemp}°</div>
               <div style={{ fontSize: 22, color: "rgba(255,255,255,0.7)", minWidth: 45, textAlign: "right" }}>{dayLabel}</div>
@@ -1608,7 +1603,7 @@ function WeatherSlide({ weather }) {
             return (
               <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.13)", border: "1px solid rgba(255,255,255,0.17)", borderRadius: 14, padding: "16px 12px", textAlign: "center", minWidth: 145, display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
                 <div style={{ fontSize: 18, fontWeight: 500 }}>{hStr}</div>
-                <div style={{ fontSize: 36, fontWeight: "bold", opacity: 0.8 }}>{weatherSymbol(current.weather_code)}</div>
+                <div style={{ width: 36, height: 36 }}>{weatherSymbol(current.weather_code, "36px")}</div>
                 <div style={{ fontSize: 28, fontWeight: 700 }}>{tempEstimate}°</div>
               </div>
             );
