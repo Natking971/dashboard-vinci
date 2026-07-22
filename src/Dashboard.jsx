@@ -1497,14 +1497,15 @@ function WeatherSlide({ weather }) {
   else if (hour >= 12 && hour < 18) bgGradient = "linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%)";
   else if (hour >= 18 && hour < 21) bgGradient = "linear-gradient(135deg, #ff6f00 0%, #e65100 100%)";
 
-  const weatherEmoji = {
-    0: "☀️", 1: "🌤️", 2: "🌤️", 3: "☁️",
-    45: "🌫️", 48: "🌫️", 51: "🌧️", 53: "🌧️", 55: "🌧️",
-    61: "🌧️", 63: "🌧️", 65: "🌧️", 71: "❄️", 73: "❄️", 75: "❄️",
-    77: "❄️", 80: "🌧️", 81: "🌧️", 82: "🌧️", 85: "❄️", 86: "❄️",
-    95: "⛈️", 96: "⛈️", 99: "⛈️"
+  const weatherSymbol = (code) => {
+    if (code <= 1) return "☀";
+    if (code === 2 || code === 3) return "☁";
+    if (code >= 45 && code <= 48) return "≈";
+    if (code >= 51 && code <= 82) return "∿";
+    if (code >= 85 && code <= 86) return "*";
+    if (code >= 95) return "⚡";
+    return "☁";
   };
-  const emoji = weatherEmoji[current.weather_code] || "🌤️";
 
   return (
     <div style={{ height: "100%", background: bgGradient, color: "white", padding: "16px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 14, overflow: "hidden" }}>
@@ -1524,7 +1525,7 @@ function WeatherSlide({ weather }) {
             <div style={{ fontSize: 60, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px", marginBottom: 4 }}>{temp}°C</div>
             <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>Ressenti {tempFelt}°C</div>
           </div>
-          <div style={{ fontSize: 70 }}>{emoji}</div>
+          <div style={{ fontSize: 56, fontWeight: "bold", opacity: 0.8 }}>{weatherSymbol(current.weather_code)}</div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, width: "100%" }}>
           <div style={{ textAlign: "center" }}><div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Humidité</div><div style={{ fontSize: 20, fontWeight: 600 }}>{humidity}%</div></div>
@@ -1543,10 +1544,10 @@ function WeatherSlide({ weather }) {
           const minTemp = Math.round(daily.temperature_2m_min[i]);
           const dayLabel = i === 0 ? "Auj." : DAYS_FR[d.getDay()];
           const code = daily.weather_code[i];
-          const emoji2 = weatherEmoji[code] || "🌤️";
+          const symbol = weatherSymbol(code);
           return (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 14, borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.1)" : "none", justifyContent: "space-between", width: "100%" }}>
-              <div style={{ fontSize: 44 }}>{emoji2}</div>
+              <div style={{ fontSize: 32, fontWeight: "bold", opacity: 0.8, minWidth: 30 }}>{symbol}</div>
               <div style={{ fontSize: 32, fontWeight: 600, minWidth: 60, textAlign: "right" }}>{maxTemp}°</div>
               <div style={{ fontSize: 24, color: "rgba(255,255,255,0.6)", minWidth: 45, textAlign: "right" }}>{minTemp}°</div>
               <div style={{ fontSize: 22, color: "rgba(255,255,255,0.7)", minWidth: 45, textAlign: "right" }}>{dayLabel}</div>
@@ -1564,10 +1565,10 @@ function WeatherSlide({ weather }) {
             const hStr = h.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
             const tempEstimate = Math.round(current.temperature_2m - (i * 0.5));
             return (
-              <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.13)", border: "1px solid rgba(255,255,255,0.17)", borderRadius: 14, padding: "20px 16px", textAlign: "center", minWidth: 180, display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
-                <div style={{ fontSize: 22, fontWeight: 500 }}>{hStr}</div>
-                <div style={{ fontSize: 48 }}>{emoji}</div>
-                <div style={{ fontSize: 32, fontWeight: 700 }}>{tempEstimate}°</div>
+              <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.13)", border: "1px solid rgba(255,255,255,0.17)", borderRadius: 14, padding: "16px 12px", textAlign: "center", minWidth: 145, display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+                <div style={{ fontSize: 18, fontWeight: 500 }}>{hStr}</div>
+                <div style={{ fontSize: 36, fontWeight: "bold", opacity: 0.8 }}>{weatherSymbol(current.weather_code)}</div>
+                <div style={{ fontSize: 28, fontWeight: 700 }}>{tempEstimate}°</div>
               </div>
             );
           })}
