@@ -1498,13 +1498,54 @@ function WeatherSlide({ weather }) {
   else if (hour >= 18 && hour < 21) bgGradient = "linear-gradient(135deg, #ff6f00 0%, #e65100 100%)";
 
   const weatherSymbol = (code) => {
-    if (code <= 1) return "☀";
-    if (code === 2 || code === 3) return "☁";
-    if (code >= 45 && code <= 48) return "≈";
-    if (code >= 51 && code <= 82) return "∿";
-    if (code >= 85 && code <= 86) return "*";
-    if (code >= 95) return "⚡";
-    return "☁";
+    const svgStyle = { display: "block", width: "100%", height: "100%" };
+    
+    if (code <= 1) return (
+      <svg viewBox="0 0 100 100" style={svgStyle}>
+        <circle cx="50" cy="50" r="35" fill="#FFD700"/>
+        <circle cx="50" cy="50" r="30" fill="#FFA500"/>
+      </svg>
+    );
+    if (code === 2 || code === 3) return (
+      <svg viewBox="0 0 100 100" style={svgStyle}>
+        <path d="M 35 65 Q 25 65 20 55 Q 15 45 25 40 Q 30 30 40 30 Q 48 20 58 25 Q 68 23 73 35 Q 83 40 78 55 Q 73 65 63 65 Z" fill="#B0C4DE"/>
+      </svg>
+    );
+    if (code >= 45 && code <= 48) return (
+      <svg viewBox="0 0 100 100" style={svgStyle}>
+        <rect x="20" y="35" width="15" height="15" fill="#90CAF9" opacity="0.7"/>
+        <rect x="42.5" y="35" width="15" height="15" fill="#90CAF9" opacity="0.7"/>
+        <rect x="65" y="35" width="15" height="15" fill="#90CAF9" opacity="0.7"/>
+      </svg>
+    );
+    if (code >= 51 && code <= 82) return (
+      <svg viewBox="0 0 100 100" style={svgStyle}>
+        <path d="M 35 65 Q 25 65 20 55 Q 15 45 25 40 Q 30 30 40 30 Q 48 20 58 25 Q 68 23 73 35 Q 83 40 78 55 Q 73 65 63 65 Z" fill="#64B5F6"/>
+        <line x1="30" y1="75" x2="25" y2="85" stroke="#42A5F5" strokeWidth="2"/>
+        <line x1="50" y1="75" x2="45" y2="85" stroke="#42A5F5" strokeWidth="2"/>
+        <line x1="70" y1="75" x2="65" y2="85" stroke="#42A5F5" strokeWidth="2"/>
+      </svg>
+    );
+    if (code >= 85 && code <= 86) return (
+      <svg viewBox="0 0 100 100" style={svgStyle}>
+        <path d="M 35 65 Q 25 65 20 55 Q 15 45 25 40 Q 30 30 40 30 Q 48 20 58 25 Q 68 23 73 35 Q 83 40 78 55 Q 73 65 63 65 Z" fill="#E0E0E0"/>
+        <circle cx="30" cy="75" r="2" fill="#FFFFFF"/>
+        <circle cx="50" cy="75" r="2" fill="#FFFFFF"/>
+        <circle cx="70" cy="75" r="2" fill="#FFFFFF"/>
+      </svg>
+    );
+    if (code >= 95) return (
+      <svg viewBox="0 0 100 100" style={svgStyle}>
+        <path d="M 35 60 Q 25 60 20 50 Q 15 40 25 35 Q 30 25 40 25 Q 48 15 58 20 Q 68 18 73 30 Q 83 35 78 50 Q 73 60 63 60 Z" fill="#757575"/>
+        <polygon points="45,70 40,85 48,85 35,100 50,90 42,90" fill="#FFD700"/>
+      </svg>
+    );
+    
+    return (
+      <svg viewBox="0 0 100 100" style={svgStyle}>
+        <path d="M 35 65 Q 25 65 20 55 Q 15 45 25 40 Q 30 30 40 30 Q 48 20 58 25 Q 68 23 73 35 Q 83 40 78 55 Q 73 65 63 65 Z" fill="#90CAF9"/>
+      </svg>
+    );
   };
 
   return (
