@@ -1470,90 +1470,78 @@ function UVBadge({ uv }) {
   );
 }
 
-function getWeatherBackground(code, hour) {
-  const n = Number(code);
-  const isNight = hour < 6 || hour >= 20;
-  if ([95, 96, 99].includes(n)) return "linear-gradient(180deg, #0a0a1a 0%, #1a1a2e 50%, #0f1419 100%)";
-  if ([45, 48, 51, 53, 55, 61, 63, 65, 80, 81, 82].includes(n)) return isNight ? "linear-gradient(180deg, #0d1b3a 0%, #1a2f4a 50%, #0f1a28 100%)" : "linear-gradient(180deg, #3b5998 0%, #5a7db8 50%, #4a6fa8 100%)";
-  if ([71, 73, 75, 77, 85, 86].includes(n)) return "linear-gradient(180deg, #c0d5e8 0%, #d8e5f0 50%, #b0c8e0 100%)";
-  if ([2, 3].includes(n)) return isNight ? "linear-gradient(180deg, #1a1f3a 0%, #2a3550 50%, #151f35 100%)" : "linear-gradient(180deg, #6b8cae 0%, #8aabce 50%, #7a9bbe 100%)";
-  if (n === 1) return isNight ? "linear-gradient(180deg, #0f1d3f 0%, #1a3050 50%, #0d1628 100%)" : "linear-gradient(180deg, #5b9fd9 0%, #87ceeb 50%, #6eb5e0 100%)";
-  if (n <= 0) return isNight ? "linear-gradient(180deg, #0a0e1f 0%, #15203a 50%, #0a0f18 100%)" : "linear-gradient(180deg, #4da6ff 0%, #87ceeb 50%, #5eb8f5 100%)";
-  return "linear-gradient(180deg, #5b9fd9 0%, #87ceeb 50%, #6eb5e0 100%)";
-}
-
 function WeatherSlide({ weather }) {
   const hour = new Date().getHours();
-  const day = new Date();
-  if (!weather) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: getWeatherBackground(0, hour), color: "white", fontSize: 20 }}>Chargement météo…</div>;
+  if (!weather) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: getTimeGradient(hour), color: "white", fontSize: 20 }}>
+      Chargement météo…
+    </div>
+  );
   const { current, daily } = weather;
-  const wmo = WMO[current.weather_code] || { fr: "—" };
+  const wmo     = WMO[current.weather_code] || { fr: "—" };
+  const phrase  = getWeatherPhrase(current.weather_code, hour);
   const sunrise = daily.sunrise?.[0] ? new Date(daily.sunrise[0]).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "--:--";
-  const sunset = daily.sunset?.[0] ? new Date(daily.sunset[0]).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "--:--";
+  const sunset  = daily.sunset?.[0]  ? new Date(daily.sunset[0]).toLocaleTimeString("fr-FR",  { hour: "2-digit", minute: "2-digit" }) : "--:--";
   const uvToday = daily.uv_index_max?.[0];
-  const humidity = current.relative_humidity_2m || 0;
-  const wind = Math.round(current.wind_speed_10m) || 0;
-  const dayName = DAYS_FR[day.getDay()];
-  const dateStr = day.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
-  const timeStr = day.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-  const bg = getWeatherBackground(current.weather_code, hour);
+  const bg      = getTimeGradient(hour);
+
   return (
-    <div style={{ height: "100%", background: bg, color: "white", padding: "16px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 14, overflow: "hidden" }}>
-      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "16px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
-        <div style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.7)", marginBottom: 8 }}>MA POSITION</div>
-        <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 12 }}>Paris</div>
-        <div style={{ fontSize: 64, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px", marginBottom: 8 }}>{timeStr}</div>
-        <div style={{ fontSize: 16, color: "rgba(255,255,255,0.8)" }}>{dayName}, {dateStr}</div>
+    <div style={{ height: "100%", background: bg, color: "white", display: "flex", flexDirection: "column", padding: "20px 32px" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+        <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.05em", color: "rgba(255,255,255,0.9)" }}>METEO</span>
+        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 18 }}>· Paris</span>
+        <div style={{ marginLeft: "auto" }}><UVBadge uv={uvToday}/></div>
       </div>
-      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "16px", display: "flex", flexDirection: "column", gap: 12, alignItems: "center", justifyContent: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 60, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px", marginBottom: 4 }}>{Math.round(current.temperature_2m)}°C</div>
-            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
-          </div>
-          <WeatherIcon code={current.weather_code} size={70} />
+
+      {/* Température principale */}
+      <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 10 }}>
+        <WeatherIcon code={current.weather_code} size={100}/>
+        <div>
+          <div style={{ fontSize: 86, fontWeight: 900, lineHeight: 1, letterSpacing: "-2px" }}>{Math.round(current.temperature_2m)}°C</div>
+          <div style={{ fontSize: 18, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
+          <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{wmo.fr}</div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, width: "100%" }}>
-          <div style={{ textAlign: "center" }}><div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Humidité</div><div style={{ fontSize: 20, fontWeight: 600 }}>{humidity}%</div></div>
-          <div style={{ textAlign: "center" }}><div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Vent</div><div style={{ fontSize: 20, fontWeight: 600 }}>{wind} km/h</div></div>
-          <div style={{ textAlign: "center" }}><div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Pression</div><div style={{ fontSize: 20, fontWeight: 600 }}>997hPa</div></div>
-          <div style={{ textAlign: "center" }}><div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>UV</div><div style={{ fontSize: 20, fontWeight: 600 }}>{Math.round(uvToday || 0)}</div></div>
-        </div>
-        <div style={{ textAlign: "center", marginTop: 6 }}><div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{wmo.fr}</div><div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>↑ {sunrise} · ↓ {sunset}</div></div>
       </div>
-      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "12px", display: "flex", flexDirection: "column", gap: 6, justifyContent: "center", alignItems: "center" }}>
-        <div style={{ fontSize: 24, fontWeight: 700, textAlign: "center", color: "white", marginBottom: 14 }}>Prévisions 5 jours</div>
-        {(daily.time || []).slice(0, 4).map((date, i) => {
-          const d = new Date(date);
-          const maxTemp = Math.round(daily.temperature_2m_max[i]);
-          const minTemp = Math.round(daily.temperature_2m_min[i]);
-          const dayLabel = i === 0 ? "Auj." : DAYS_FR[d.getDay()];
+
+      {/* Phrase du jour */}
+      <div style={{ background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: "10px 16px", marginBottom: 14, fontSize: 16, fontStyle: "italic", color: "rgba(255,255,255,0.9)", borderLeft: "3px solid rgba(255,255,255,0.4)" }}>
+        {phrase}
+      </div>
+
+      {/* Détails */}
+      <div style={{ display: "flex", gap: 28, marginBottom: 16, fontSize: 15, color: "rgba(255,255,255,0.7)" }}>
+        <span>Hum. {current.relative_humidity_2m}%</span>
+        <span>Vent {Math.round(current.wind_speed_10m)} km/h</span>
+        <span>Lever {sunrise}</span>
+        <span>Coucher {sunset}</span>
+      </div>
+
+      {/* Prévisions horaires AGRANDIES */}
+      <div style={{ display: "flex", gap: 12, flex: 1, overflow: "auto" }}>
+        {(daily.time || []).slice(0, 7).map((date, i) => {
+          const d     = new Date(date);
+          const dWmo  = WMO[daily.weather_code[i]] || { fr: "" };
+          const wind  = daily.wind_speed_10m_max?.[i];
+          const rain  = daily.precipitation_probability_max?.[i];
+          const uv    = daily.uv_index_max?.[i];
           return (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 14, borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.1)" : "none", justifyContent: "space-between" }}>
-              <WeatherIcon code={daily.weather_code[i]} size={44} />
-              <div style={{ fontSize: 32, fontWeight: 600, minWidth: 60, textAlign: "right" }}>{maxTemp}°</div>
-              <div style={{ fontSize: 24, color: "rgba(255,255,255,0.6)", minWidth: 45, textAlign: "right" }}>{minTemp}°</div>
-              <div style={{ fontSize: 22, color: "rgba(255,255,255,0.7)", minWidth: 45, textAlign: "right" }}>{dayLabel}</div>
+            <div key={i} style={{ flex: 1, background: "rgba(255,255,255,0.1)", backdropFilter: "blur(4px)", borderRadius: 16, padding: "20px 18px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, border: "1px solid rgba(255,255,255,0.15)", minWidth: 180 }}>
+              <div style={{ fontSize: 22, color: "rgba(255,255,255,0.8)", fontWeight: 700 }}>{DAYS_FR[d.getDay()]}</div>
+              <WeatherIcon code={daily.weather_code[i]} size={80}/>
+              <div style={{ fontSize: 18, color: "rgba(255,255,255,0.65)", textAlign: "center", fontWeight: 600 }}>{dWmo.fr}</div>
+              <div style={{ display: "flex", gap: 10, fontSize: 32, fontWeight: 800 }}>
+                <span style={{ color: "#FCA5A5" }}>{Math.round(daily.temperature_2m_max[i])}°</span>
+                <span style={{ color: "rgba(255,255,255,0.5)" }}>{Math.round(daily.temperature_2m_min[i])}°</span>
+              </div>
+              <div style={{ display: "flex", gap: 12, fontSize: 14, color: "rgba(255,255,255,0.6)", flexWrap: "wrap", justifyContent: "center" }}>
+                {rain != null && <span style={{ color: rain > 50 ? "#60A5FA" : "rgba(255,255,255,0.55)" }}>Pluie {rain}%</span>}
+                {wind != null && <span>Vent {Math.round(wind)} km/h</span>}
+                {uv  != null && <span style={{ color: uv > 5 ? "#FACC15" : "rgba(255,255,255,0.55)" }}>UV {Math.round(uv)}</span>}
+              </div>
             </div>
           );
         })}
-      </div>
-      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "12px", display: "flex", flexDirection: "column", gap: 8, justifyContent: "center", alignItems: "center" }}>
-        <div style={{ fontSize: 24, fontWeight: 700, textAlign: "center" }}>Prévisions horaires</div>
-        <div style={{ display: "flex", gap: 10, overflowX: "auto", justifyContent: "center", alignItems: "center" }}>
-          {[0, 1, 2, 3, 4, 5, 6].map((i) => {
-            const h = new Date(Date.now() + i * 60 * 60000);
-            const hStr = h.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-            const tempEstimate = Math.round(current.temperature_2m - (i * 0.5));
-            return (
-              <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.13)", border: "1px solid rgba(255,255,255,0.17)", borderRadius: 14, padding: "20px 16px", textAlign: "center", minWidth: 180, display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
-                <div style={{ fontSize: 22, fontWeight: 500 }}>{hStr}</div>
-                <WeatherIcon code={current.weather_code} size={48} />
-                <div style={{ fontSize: 32, fontWeight: 700 }}>{tempEstimate}°</div>
-              </div>
-            );
-          })}
-        </div>
       </div>
     </div>
   );
