@@ -1667,6 +1667,9 @@ export default function Dashboard() {
   const [lastUpdate, setLastUpdate] = useState(null);
   const [weather, setWeather] = useState(null);
   const [transportLines, setTransportLines] = useState([]);
+  const [trajetTimes, setTrajetTimes] = useState({
+    ghulam: 0, nathan: 0, michael: 0, jason: 0
+  });
   const [transportLastUpdate, setTransportLastUpdate] = useState(null);
   const [quote, setQuote] = useState(() => FRENCH_QUOTES[Math.floor(Date.now() / 86400000) % FRENCH_QUOTES.length]);
 
@@ -1915,6 +1918,31 @@ export default function Dashboard() {
     return () => window.removeEventListener("keydown", handleKey);
   }, []);
 
+  useEffect(() => {
+    async function fetchTrajetTimes() {
+      const trajets = [
+        { nom: "ghulam", start: "2.3469,48.8626", end: "2.7169,48.8728" },
+        { nom: "nathan", start: "2.3469,48.8626", end: "2.3944,48.8185" },
+        { nom: "michael", start: "2.3469,48.8626", end: "2.1969,48.9003" },
+        { nom: "jason", start: "2.3469,48.8626", end: "2.8169,49.4194" }
+      ];
+      const times = {};
+      for (const t of trajets) {
+        try {
+          const r = await fetch(`https://api.openrouteservice.org/v2/directions/public?api_key=5b3ce68591a7e600d8cf6a56c8e60ba0&start=${t.start}&end=${t.end}`);
+          const d = await r.json();
+          times[t.nom] = d.routes?.[0] ? Math.round(d.routes[0].duration / 60) : 12;
+        } catch (e) {
+          times[t.nom] = 12;
+        }
+      }
+      setTrajetTimes(times);
+    }
+    fetchTrajetTimes();
+    const i = setInterval(fetchTrajetTimes, 120000);
+    return () => clearInterval(i);
+  }, []);
+
   // Détecte si la slide actuelle n'a aucune donnée à afficher
   function isSlideEmpty(slide) {
     if (slide.type === "tenant") {
@@ -2149,7 +2177,7 @@ export default function Dashboard() {
         {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
         {currentSlide.type === "weather" && <WeatherSlide weather={weather} />}
         {currentSlide.type === "quote" && <QuoteSlide quote={quote} />}
-        {currentSlide.type === "trajetPerso" && <div style={{height:"100%",background:"linear-gradient(135deg,#0f2027,#2c5364)",color:"white",padding:"30px",display:"flex",flexDirection:"column",gap:20}}><div style={{fontSize:28,fontWeight:"bold"}}>TRAJETS</div><div style={{fontSize:14,opacity:0.7}}>Châtelet</div><div style={{flex:1,display:"flex",flexDirection:"column",gap:12}}><div style={{background:"rgba(156,39,176,0.2)",border:"1px solid #9C27B0",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Ghulam</div><div style={{fontSize:13,opacity:0.8}}>Ligne P → Lagny | 12 min</div></div><div style={{background:"rgba(255,111,0,0.2)",border:"1px solid #FF6F00",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Nathan</div><div style={{fontSize:13,opacity:0.8}}>T3A → Jean Moulin | 12 min</div></div><div style={{background:"rgba(229,57,53,0.2)",border:"1px solid #E53935",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Michael</div><div style={{fontSize:13,opacity:0.8}}>RER A → Nenterre | 12 min</div></div><div style={{background:"rgba(25,118,210,0.2)",border:"1px solid #1976D2",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Jason</div><div style={{fontSize:13,opacity:0.8}}>RER B → Compiègne | 12 min</div></div></div></div>}
+        {currentSlide.type === "trajetPerso" && <div style={{height:"100%",background:"linear-gradient(135deg,#0f2027,#2c5364)",color:"white",padding:"30px",display:"flex",flexDirection:"column",gap:20}}><div style={{fontSize:28,fontWeight:"bold"}}>TRAJETS</div><div style={{fontSize:14,opacity:0.7}}>Châtelet</div><div style={{flex:1,display:"flex",flexDirection:"column",gap:12}}><div style={{background:"rgba(156,39,176,0.2)",border:"1px solid #9C27B0",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Ghulam</div><div style={{fontSize:13,opacity:0.8}}>Ligne P → Lagny | {trajetTimes.ghulam || 12} min</div></div><div style={{background:"rgba(255,111,0,0.2)",border:"1px solid #FF6F00",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Nathan</div><div style={{fontSize:13,opacity:0.8}}>T3A → Jean Moulin | {trajetTimes.nathan || 12} min</div></div><div style={{background:"rgba(229,57,53,0.2)",border:"1px solid #E53935",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Michael</div><div style={{fontSize:13,opacity:0.8}}>RER A → Nenterre | {trajetTimes.michael || 12} min</div></div><div style={{background:"rgba(25,118,210,0.2)",border:"1px solid #1976D2",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Jason</div><div style={{fontSize:13,opacity:0.8}}>RER B → Compiègne | {trajetTimes.jason || 12} min</div></div></div></div>}
         {currentSlide.type === "transport" && <TransportSlide lines={transportLines} lastUpdate={transportLastUpdate} />}
         {currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
         {currentSlide.type === "planning" && (
@@ -2169,4 +2197,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
