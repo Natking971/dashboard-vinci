@@ -1470,126 +1470,93 @@ function UVBadge({ uv }) {
   );
 }
 
-function getTimeGradient(hour) {
-  if (hour >= 5 && hour < 8)   return "linear-gradient(160deg, #1a1035 0%, #3d2060 30%, #c2410c 70%, #f97316 100%)";
-  if (hour >= 8 && hour < 12)  return "linear-gradient(160deg, #0c2a5e 0%, #1e40af 40%, #3b82f6 80%, #93c5fd 100%)";
-  if (hour >= 12 && hour < 17) return "linear-gradient(160deg, #1e3a8a 0%, #1d4ed8 50%, #2563eb 100%)";
-  if (hour >= 17 && hour < 20) return "linear-gradient(160deg, #1e1b4b 0%, #7c3aed 30%, #dc2626 60%, #f97316 100%)";
-  if (hour >= 20 && hour < 22) return "linear-gradient(160deg, #0f0a2e 0%, #1e1b4b 40%, #4c1d95 100%)";
-  return "linear-gradient(160deg, #050510 0%, #0f0a2e 50%, #1e1b4b 100%)";
-}
-
-function WeatherIcon({ code, size = 80 }) {
-  const n = Number(code);
-  if (n <= 1) return <svg width={size} height={size} viewBox="0 0 100 100"><circle cx="50" cy="50" r="35" fill="#FFD700"/><line x1="50" y1="5" x2="50" y2="20" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/><line x1="50" y1="80" x2="50" y2="95" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/><line x1="5" y1="50" x2="20" y2="50" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/><line x1="80" y1="50" x2="95" y2="50" stroke="#FFD700" strokeWidth="4" strokeLinecap="round"/></svg>;
-  if (n === 2) return <svg width={size} height={size} viewBox="0 0 100 100"><path d="M 30 70 Q 20 70 15 60 Q 10 50 20 45 Q 25 35 35 35 Q 45 25 55 30 Q 65 28 70 40 Q 80 45 75 60 Q 70 70 60 70 Z" fill="rgba(255,255,255,0.9)"/></svg>;
-  if (n === 3) return <svg width={size} height={size} viewBox="0 0 100 100"><path d="M 25 65 Q 15 65 10 55 Q 8 45 15 40 Q 20 32 30 32 Q 38 22 48 27 Q 58 25 65 35 Q 75 40 70 55 Q 65 65 55 65 Z" fill="rgba(255,255,255,0.7)"/></svg>;
-  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(n)) return <svg width={size} height={size} viewBox="0 0 100 100"><path d="M 25 55 Q 15 55 10 45 Q 8 35 15 30 Q 20 22 30 22 Q 38 12 48 17 Q 58 15 65 25 Q 75 30 70 45 Q 65 55 55 55 Z" fill="rgba(255,255,255,0.8)"/><line x1="20" y1="65" x2="15" y2="80" stroke="rgba(255,255,255,0.9)" strokeWidth="2.5" strokeLinecap="round"/><line x1="40" y1="65" x2="35" y2="80" stroke="rgba(255,255,255,0.9)" strokeWidth="2.5" strokeLinecap="round"/><line x1="60" y1="65" x2="55" y2="80" stroke="rgba(255,255,255,0.9)" strokeWidth="2.5" strokeLinecap="round"/></svg>;
-  if ([71, 73, 75, 77, 85, 86].includes(n)) return <svg width={size} height={size} viewBox="0 0 100 100"><path d="M 25 55 Q 15 55 10 45 Q 8 35 15 30 Q 20 22 30 22 Q 38 12 48 17 Q 58 15 65 25 Q 75 30 70 45 Q 65 55 55 55 Z" fill="rgba(255,255,255,0.85)"/><circle cx="20" cy="70" r="3" fill="rgba(255,255,255,1)"/><circle cx="40" cy="75" r="3" fill="rgba(255,255,255,1)"/><circle cx="60" cy="70" r="3" fill="rgba(255,255,255,1)"/></svg>;
-  if ([95, 96, 99].includes(n)) return <svg width={size} height={size} viewBox="0 0 100 100"><path d="M 20 60 Q 10 60 5 50 Q 3 40 10 35 Q 15 27 25 27 Q 33 17 43 22 Q 53 20 60 30 Q 70 35 65 50 Q 60 60 50 60 Z" fill="rgba(255,255,255,0.6)"/><polygon points="45,65 40,80 48,80 35,100 50,85 42,85" fill="#FFFF00" opacity="0.8"/></svg>;
-  return <svg width={size} height={size} viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2"/></svg>;
-}
-
-function getWeatherPhrase(code, hour) {
-  const n = Number(code);
-  if ([95,96,99].includes(n)) return "Restez à l'abri, orages prévus ⚡";
-  if ([71,73,75,77,85,86].includes(n)) return "Attention à la neige sur les routes";
-  if ([61,63,65,80,81,82].includes(n)) return "Prenez un parapluie en sortant";
-  if ([51,53,55].includes(n)) return "Légère bruine, vêtement imperméable conseillé";
-  if ([45,48].includes(n)) return "Brouillard ce matin, prudence sur la route";
-  if (n <= 1) {
-    if (hour < 10) return "Belle matinée ensoleillée, bonne journée !";
-    if (hour < 18) return "Grand soleil aujourd'hui, pensez à vous hydrater";
-    return "Soirée dégagée et agréable";
-  }
-  if (n === 2) return "Quelques nuages mais pas de pluie prévue";
-  if (n === 3) return "Ciel couvert, mais le temps reste sec";
-  return "Conditions météo acceptables aujourd'hui";
-}
-
-function UVBadge({ uv }) {
-  if (uv == null) return null;
-  const level = uv <= 2 ? { label: "Faible", color: "#4ADE80" }
-              : uv <= 5 ? { label: "Modéré", color: "#FACC15" }
-              : uv <= 7 ? { label: "Élevé", color: "#F97316" }
-              : uv <= 10 ? { label: "Très élevé", color: "#EF4444" }
-              : { label: "Extrême", color: "#A855F7" };
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <div style={{ width: 10, height: 10, borderRadius: "50%", background: level.color }}/>
-      <span style={{ color: level.color, fontWeight: 700 }}>UV {Math.round(uv)} — {level.label}</span>
-    </div>
-  );
-}
-
 function WeatherSlide({ weather }) {
-  const hour = new Date().getHours();
-  if (!weather) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: getTimeGradient(hour), color: "white", fontSize: 20 }}>
-      Chargement météo…
-    </div>
-  );
+  if (!weather) {
+    return (
+      <div style={{ height: "100%", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 24, fontWeight: "bold" }}>
+        Chargement météo...
+      </div>
+    );
+  }
+
   const { current, daily } = weather;
-  const wmo     = WMO[current.weather_code] || { fr: "—" };
-  const phrase  = getWeatherPhrase(current.weather_code, hour);
-  const sunrise = daily.sunrise?.[0] ? new Date(daily.sunrise[0]).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "--:--";
-  const sunset  = daily.sunset?.[0]  ? new Date(daily.sunset[0]).toLocaleTimeString("fr-FR",  { hour: "2-digit", minute: "2-digit" }) : "--:--";
-  const uvToday = daily.uv_index_max?.[0];
-  const bg      = getTimeGradient(hour);
+  const temp = Math.round(current.temperature_2m);
+  const tempFelt = Math.round(current.apparent_temperature);
+  const humidity = current.relative_humidity_2m;
+  const wind = Math.round(current.wind_speed_10m);
+  const code = current.weather_code;
+
+  // Déterminer l'heure pour les dégradés
+  const hour = new Date().getHours();
+  let bgGradient = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
+  if (hour >= 6 && hour < 12) bgGradient = "linear-gradient(135deg, #667eea 0%, #64b5f6 100%)";
+  else if (hour >= 12 && hour < 18) bgGradient = "linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%)";
+  else if (hour >= 18 && hour < 21) bgGradient = "linear-gradient(135deg, #ff6f00 0%, #e65100 100%)";
 
   return (
-    <div style={{ height: "100%", background: bg, color: "white", display: "flex", flexDirection: "column", padding: "20px 32px" }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-        <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.05em", color: "rgba(255,255,255,0.9)" }}>METEO</span>
-        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 18 }}>· Paris</span>
-        <div style={{ marginLeft: "auto" }}><UVBadge uv={uvToday}/></div>
-      </div>
-
-      {/* Température principale */}
-      <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 10 }}>
-        <WeatherIcon code={current.weather_code} size={100}/>
-        <div>
-          <div style={{ fontSize: 86, fontWeight: 900, lineHeight: 1, letterSpacing: "-2px" }}>{Math.round(current.temperature_2m)}°C</div>
-          <div style={{ fontSize: 18, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
-          <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{wmo.fr}</div>
+    <div style={{ height: "100%", background: bgGradient, color: "white", padding: "32px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* HEADER */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 28, fontWeight: "bold", marginBottom: 8 }}>MÉTÉO PARIS</div>
+        <div style={{ fontSize: 16, opacity: 0.8 }}>
+          {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
         </div>
       </div>
 
-      {/* Phrase du jour */}
-      <div style={{ background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: "10px 16px", marginBottom: 14, fontSize: 16, fontStyle: "italic", color: "rgba(255,255,255,0.9)", borderLeft: "3px solid rgba(255,255,255,0.4)" }}>
-        {phrase}
+      {/* TEMPÉRATURE PRINCIPALE */}
+      <div style={{ display: "flex", alignItems: "center", gap: 32, marginBottom: 32, flex: 1 }}>
+        {/* ICÔNE MÉTÉO */}
+        <div style={{ fontSize: 100, lineHeight: 1 }}>
+          {code <= 1 ? "☀️" : code === 2 ? "🌤️" : code === 3 ? "☁️" : code >= 45 && code <= 48 ? "🌫️" : code >= 51 && code <= 82 ? "🌧️" : code >= 85 && code <= 86 ? "❄️" : code >= 95 ? "⛈️" : "🌤️"}
+        </div>
+
+        {/* TEXTE TEMPÉRATURE */}
+        <div>
+          <div style={{ fontSize: 96, fontWeight: "900", lineHeight: 1, letterSpacing: "-3px" }}>
+            {temp}°
+          </div>
+          <div style={{ fontSize: 18, opacity: 0.8, marginTop: 8 }}>
+            Ressenti {tempFelt}°C
+          </div>
+        </div>
       </div>
 
-      {/* Détails */}
-      <div style={{ display: "flex", gap: 28, marginBottom: 16, fontSize: 15, color: "rgba(255,255,255,0.7)" }}>
-        <span>Hum. {current.relative_humidity_2m}%</span>
-        <span>Vent {Math.round(current.wind_speed_10m)} km/h</span>
-        <span>Lever {sunrise}</span>
-        <span>Coucher {sunset}</span>
+      {/* DÉTAILS */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, marginBottom: 32 }}>
+        <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: 12, padding: 16, textAlign: "center" }}>
+          <div style={{ fontSize: 14, opacity: 0.8, marginBottom: 8 }}>Humidité</div>
+          <div style={{ fontSize: 28, fontWeight: "bold" }}>{humidity}%</div>
+        </div>
+        <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: 12, padding: 16, textAlign: "center" }}>
+          <div style={{ fontSize: 14, opacity: 0.8, marginBottom: 8 }}>Vent</div>
+          <div style={{ fontSize: 28, fontWeight: "bold" }}>{wind} km/h</div>
+        </div>
+        <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: 12, padding: 16, textAlign: "center" }}>
+          <div style={{ fontSize: 14, opacity: 0.8, marginBottom: 8 }}>Pression</div>
+          <div style={{ fontSize: 28, fontWeight: "bold" }}>997 hPa</div>
+        </div>
+        <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: 12, padding: 16, textAlign: "center" }}>
+          <div style={{ fontSize: 14, opacity: 0.8, marginBottom: 8 }}>UV</div>
+          <div style={{ fontSize: 28, fontWeight: "bold" }}>{daily.uv_index_max ? Math.round(daily.uv_index_max[0]) : "—"}</div>
+        </div>
       </div>
 
-      {/* Prévisions horaires AGRANDIES */}
-      <div style={{ display: "flex", gap: 12, flex: 1, overflow: "auto" }}>
-        {(daily.time || []).slice(0, 7).map((date, i) => {
-          const d     = new Date(date);
-          const dWmo  = WMO[daily.weather_code[i]] || { fr: "" };
-          const wind  = daily.wind_speed_10m_max?.[i];
-          const rain  = daily.precipitation_probability_max?.[i];
-          const uv    = daily.uv_index_max?.[i];
+      {/* PRÉVISIONS 7 JOURS AGRANDIES */}
+      <div style={{ display: "flex", gap: 12, overflow: "auto", flex: 1, alignItems: "center" }}>
+        {daily.time && daily.time.slice(0, 7).map((dateStr, i) => {
+          const d = new Date(dateStr);
+          const dayName = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"][d.getDay()];
+          const maxTemp = Math.round(daily.temperature_2m_max[i]);
+          const minTemp = Math.round(daily.temperature_2m_min[i]);
+          const weatherCode = daily.weather_code[i];
+          const emoji = weatherCode <= 1 ? "☀️" : weatherCode === 2 ? "🌤️" : weatherCode === 3 ? "☁️" : weatherCode >= 45 && weatherCode <= 48 ? "🌫️" : weatherCode >= 51 && weatherCode <= 82 ? "🌧️" : weatherCode >= 85 && weatherCode <= 86 ? "❄️" : weatherCode >= 95 ? "⛈️" : "🌤️";
+          
           return (
-            <div key={i} style={{ flex: 1, background: "rgba(255,255,255,0.1)", backdropFilter: "blur(4px)", borderRadius: 16, padding: "20px 18px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, border: "1px solid rgba(255,255,255,0.15)", minWidth: 180 }}>
-              <div style={{ fontSize: 22, color: "rgba(255,255,255,0.8)", fontWeight: 700 }}>{DAYS_FR[d.getDay()]}</div>
-              <WeatherIcon code={daily.weather_code[i]} size={80}/>
-              <div style={{ fontSize: 18, color: "rgba(255,255,255,0.65)", textAlign: "center", fontWeight: 600 }}>{dWmo.fr}</div>
-              <div style={{ display: "flex", gap: 10, fontSize: 32, fontWeight: 800 }}>
-                <span style={{ color: "#FCA5A5" }}>{Math.round(daily.temperature_2m_max[i])}°</span>
-                <span style={{ color: "rgba(255,255,255,0.5)" }}>{Math.round(daily.temperature_2m_min[i])}°</span>
-              </div>
-              <div style={{ display: "flex", gap: 12, fontSize: 14, color: "rgba(255,255,255,0.6)", flexWrap: "wrap", justifyContent: "center" }}>
-                {rain != null && <span style={{ color: rain > 50 ? "#60A5FA" : "rgba(255,255,255,0.55)" }}>Pluie {rain}%</span>}
-                {wind != null && <span>Vent {Math.round(wind)} km/h</span>}
-                {uv  != null && <span style={{ color: uv > 5 ? "#FACC15" : "rgba(255,255,255,0.55)" }}>UV {Math.round(uv)}</span>}
+            <div key={i} style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", borderRadius: 16, padding: "20px 16px", minWidth: 180, display: "flex", flexDirection: "column", alignItems: "center", gap: 16, border: "1px solid rgba(255,255,255,0.3)" }}>
+              <div style={{ fontSize: 18, fontWeight: "bold" }}>{dayName}</div>
+              <div style={{ fontSize: 64 }}>{emoji}</div>
+              <div style={{ fontSize: 28, fontWeight: "bold" }}>
+                {maxTemp}° <span style={{ fontSize: 20, opacity: 0.6 }}>{minTemp}°</span>
               </div>
             </div>
           );
