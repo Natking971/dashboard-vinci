@@ -1637,42 +1637,59 @@ function TransportSlide({ lines, lastUpdate }) {
     const disrupted = data ? data.disruptions.length > 0 : false;
     const severity  = disrupted ? (data.disruptions[0]?.severity || "Perturbation") : "";
     const message   = disrupted ? (data.disruptions[0]?.message || "") : "";
-    if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, severity, message });
-    else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, severity, message });
-    else grouped.TER.push({ ...cfg, disrupted, severity, message });
+    
+    // Détecter les travaux
+    const isWork = message && (message.toLowerCase().includes("travaux") || message.toLowerCase().includes("work"));
+    
+    // Logique de couleur : Perturbation (rouge) prend le dessus sur Travaux (orange)
+    const isRed = disrupted && !isWork;  // Perturbation SEULE = rouge
+    const isRedBecauseWork = disrupted && isWork;  // Travaux + Perturbation = rouge (perturbation gagne)
+    const isOrange = isWork && !disrupted;  // Travaux SEUL = orange
+    
+    if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, severity, message, isWork, isOrange, isRed: isRed || isRedBecauseWork });
+    else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, severity, message, isWork, isOrange, isRed: isRed || isRedBecauseWork });
+    else grouped.TER.push({ ...cfg, disrupted, severity, message, isWork, isOrange, isRed: isRed || isRedBecauseWork });
   });
 
-  const LineCard = ({ code, color, disrupted, severity, message, type }) => (
-    <div style={{
-      background: disrupted ? "rgba(239,83,80,0.14)" : "rgba(255,255,255,0.05)",
-      border: `1.5px solid ${disrupted ? "#EF5350" : "rgba(255,255,255,0.10)"}`,
-      borderRadius: 10,
-      padding: "8px 10px",
-      display: "flex",
-      alignItems: "flex-start",
-      gap: 8,
-      minHeight: 52,
-    }}>
+  const LineCard = ({ code, color, disrupted, severity, message, type, isWork, isOrange, isRed }) => {
+    // Déterminer les couleurs
+    const bgColor = isRed ? "rgba(239,83,80,0.14)" : (isOrange ? "rgba(255,140,0,0.14)" : "rgba(255,255,255,0.05)");
+    const borderColor = isRed ? "#EF5350" : (isOrange ? "#FF8C00" : "rgba(255,255,255,0.10)");
+    const textColor = isRed ? "#F87171" : (isOrange ? "#FFA500" : "#4ADE80");
+    const statusText = disrupted ? (severity || "Perturbé") : (isWork ? "Travaux" : "Normal");
+    
+    return (
       <div style={{
-        width: 36, height: 36, flexShrink: 0,
-        borderRadius: "50%",
-        background: color,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontWeight: 900, fontSize: code.length > 2 ? 10 : 13,
-        color: "white", textShadow: "0 1px 3px rgba(0,0,0,0.6)",
-      }}>{code}</div>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 12, color: disrupted ? "#F87171" : "#4ADE80", fontWeight: 800, marginBottom: 2 }}>
-          {disrupted ? (severity || "Perturbe") : "Normal"}
-        </div>
-        {disrupted && message && (
-          <div style={{ fontSize: 11, color: "#D1D5DB", lineHeight: 1.3, wordBreak: "break-word" }}>
-            {message}
+        background: bgColor,
+        border: `1.5px solid ${borderColor}`,
+        borderRadius: 10,
+        padding: "8px 10px",
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 8,
+        minHeight: 52,
+      }}>
+        <div style={{
+          width: 36, height: 36, flexShrink: 0,
+          borderRadius: "50%",
+          background: color,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontWeight: 900, fontSize: code.length > 2 ? 10 : 13,
+          color: "white", textShadow: "0 1px 3px rgba(0,0,0,0.6)",
+        }}>{code}</div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 12, color: textColor, fontWeight: 800, marginBottom: 2 }}>
+            {statusText}
           </div>
-        )}
+          {disrupted && message && (
+            <div style={{ fontSize: 11, color: "#D1D5DB", lineHeight: 1.3, wordBreak: "break-word" }}>
+              {message}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const updStr = lastUpdate ? new Date(lastUpdate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : null;
 
