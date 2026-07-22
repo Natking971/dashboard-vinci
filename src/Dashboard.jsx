@@ -295,6 +295,7 @@ const SLIDES = [
   { id: "planningNext", type: "planning", week: "next" },
   { id: "onesite", type: "onesite" },
   { id: "weather", type: "weather" },
+  { id: "trajetPerso", type: "trajetPerso" },
   { id: "transport", type: "transport" },
 ];
 
@@ -1496,7 +1497,7 @@ function WeatherSlide({ weather }) {
 
       {/* Température principale */}
       <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 10 }}>
-        <WeatherIcon code={current.weather_code} size={100}/>
+        <svg width="100" height="100" viewBox="0 0 100 100" style={{ flexShrink: 0 }}><circle cx="50" cy="50" r="40" fill="#FFD700" opacity="0.8"/></svg>
         <div>
           <div style={{ fontSize: 86, fontWeight: 900, lineHeight: 1, letterSpacing: "-2px" }}>{Math.round(current.temperature_2m)}°C</div>
           <div style={{ fontSize: 18, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
@@ -1528,7 +1529,7 @@ function WeatherSlide({ weather }) {
           return (
             <div key={i} style={{ flex: 1, background: "rgba(255,255,255,0.1)", backdropFilter: "blur(4px)", borderRadius: 16, padding: "14px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 7, border: "1px solid rgba(255,255,255,0.15)" }}>
               <div style={{ fontSize: 15, color: "rgba(255,255,255,0.8)", fontWeight: 700 }}>{DAYS_FR[d.getDay()]}</div>
-              <WeatherIcon code={daily.weather_code[i + 1]} size={56}/>
+              <svg width="56" height="56" viewBox="0 0 100 100"><circle cx="50" cy="50" r="35" fill="#FFA500" opacity="0.8"/></svg>
               <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", textAlign: "center" }}>{dWmo.fr}</div>
               <div style={{ display: "flex", gap: 10, fontSize: 22, fontWeight: 800 }}>
                 <span style={{ color: "#FCA5A5" }}>{Math.round(daily.temperature_2m_max[i + 1])}°</span>
@@ -1570,19 +1571,17 @@ function TransportSlide({ lines, lastUpdate }) {
     const disrupted = data ? data.disruptions.length > 0 : false;
     const severity  = disrupted ? (data.disruptions[0]?.severity || "Perturbation") : "";
     const message   = disrupted ? (data.disruptions[0]?.message || "") : "";
-    const isWork = (message || "").toLowerCase().includes("travaux") || (severity || "").toLowerCase().includes("travaux");
+    const isWork = (message + severity).toLowerCase().includes("travaux");
     if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, severity, message, isWork });
     else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, severity, message, isWork });
     else grouped.TER.push({ ...cfg, disrupted, severity, message, isWork });
   });
 
   const LineCard = ({ code, color, disrupted, severity, message, type, isWork }) => {
-    const isRed = disrupted && !isWork;
-    const isYellow = isWork;
-    const bg = isRed ? "rgba(239,83,80,0.14)" : (isYellow ? "rgba(255,215,0,0.14)" : "rgba(255,255,255,0.05)");
-    const border = isRed ? "#EF5350" : (isYellow ? "#FFD700" : "rgba(255,255,255,0.10)");
-    const textColor = isRed ? "#F87171" : (isYellow ? "#FFD700" : "#4ADE80");
-    const status = disrupted ? (severity || "Perturbé") : (isWork ? "Travaux" : "Normal");
+    const bg = isWork ? "rgba(255,215,0,0.14)" : (disrupted ? "rgba(239,83,80,0.14)" : "rgba(255,255,255,0.05)");
+    const border = isWork ? "#FFD700" : (disrupted ? "#EF5350" : "rgba(255,255,255,0.10)");
+    const textColor = isWork ? "#FFD700" : (disrupted ? "#F87171" : "#4ADE80");
+    const status = isWork ? "Travaux" : (disrupted ? (severity || "Perturbé") : "Normal");
     return (
     <div style={{ background: bg, border: `1.5px solid ${border}`, borderRadius: 10, padding: "8px 10px", display: "flex", alignItems: "flex-start", gap: 8, minHeight: 52 }}>
       <div style={{ width: 36, height: 36, flexShrink: 0, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: code.length > 2 ? 10 : 13, color: "white", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{code}</div>
@@ -1807,7 +1806,7 @@ export default function Dashboard() {
           // Format AAAA-MM-JJ (ISO)
           if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
             const d = new Date(trimmed);
-            if (!isNaN(d)) {
+            if (!isNaN(d.getTime())) {
               return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getFullYear()).slice(-2)}`;
             }
           }
@@ -1973,6 +1972,7 @@ export default function Dashboard() {
     : isQuotes ? QUOTES_ACCENT
     : currentSlide.type === "weather" ? "#0EA5E9"
     : currentSlide.type === "quote" ? "#8B5CF6"
+    : currentSlide.type === "trajetPerso" ? "#00BCD4"
     : currentSlide.type === "transport" ? "#10B981"
     : "#1D4ED8";
   const totalUrgent = Object.values(affairs).flat().filter(a => a.urgent).length;
@@ -2117,9 +2117,15 @@ export default function Dashboard() {
           } else if (s.type === "transport") {
             label = "TRANSPORT";
             accentColor = "#10B981";
-          } else {
+          } else if (s.type === "trajetPerso") {
+            label = "TRAJETS";
+            accentColor = "#00BCD4";
+          } else if (tenant) {
             label = tenant.name.toUpperCase();
             accentColor = tenant.accent;
+          } else {
+            label = s.id.toUpperCase();
+            accentColor = "#6B7280";
           }
           return (
             <div key={s.id} style={{
@@ -2143,6 +2149,7 @@ export default function Dashboard() {
         {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
         {currentSlide.type === "weather" && <WeatherSlide weather={weather} />}
         {currentSlide.type === "quote" && <QuoteSlide quote={quote} />}
+        {currentSlide.type === "trajetPerso" && <div style={{height:"100%",background:"linear-gradient(135deg,#0f2027,#2c5364)",color:"white",padding:"30px",display:"flex",flexDirection:"column",gap:20}}><div style={{fontSize:28,fontWeight:"bold"}}>TRAJETS</div><div style={{fontSize:14,opacity:0.7}}>Châtelet</div><div style={{flex:1,display:"flex",flexDirection:"column",gap:12}}><div style={{background:"rgba(156,39,176,0.2)",border:"1px solid #9C27B0",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Ghulam</div><div style={{fontSize:13,opacity:0.8}}>Ligne P → Lagny | 12 min</div></div><div style={{background:"rgba(255,111,0,0.2)",border:"1px solid #FF6F00",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Nathan</div><div style={{fontSize:13,opacity:0.8}}>T3A → Jean Moulin | 12 min</div></div><div style={{background:"rgba(229,57,53,0.2)",border:"1px solid #E53935",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Michael</div><div style={{fontSize:13,opacity:0.8}}>RER A → Nenterre | 12 min</div></div><div style={{background:"rgba(25,118,210,0.2)",border:"1px solid #1976D2",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Jason</div><div style={{fontSize:13,opacity:0.8}}>RER B → Compiègne | 12 min</div></div></div></div>}
         {currentSlide.type === "transport" && <TransportSlide lines={transportLines} lastUpdate={transportLastUpdate} />}
         {currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
         {currentSlide.type === "planning" && (
