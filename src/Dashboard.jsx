@@ -1653,9 +1653,9 @@ function TransportSlide({ lines, lastUpdate }) {
 
   const LineCard = ({ code, color, disrupted, severity, message, type, isWork, isOrange, isRed }) => {
     // Déterminer les couleurs
-    const bgColor = isRed ? "rgba(239,83,80,0.14)" : (isOrange ? "rgba(255,140,0,0.14)" : "rgba(255,255,255,0.05)");
-    const borderColor = isRed ? "#EF5350" : (isOrange ? "#FF8C00" : "rgba(255,255,255,0.10)");
-    const textColor = isRed ? "#F87171" : (isOrange ? "#FFA500" : "#4ADE80");
+    const bgColor = isRed ? "rgba(239,83,80,0.14)" : (isOrange ? "rgba(255,215,0,0.14)" : "rgba(255,255,255,0.05)");
+    const borderColor = isRed ? "#EF5350" : (isOrange ? "#FFD700" : "rgba(255,255,255,0.10)");
+    const textColor = isRed ? "#F87171" : (isOrange ? "#FFD700" : "#4ADE80");
     const statusText = disrupted ? (severity || "Perturbé") : (isWork ? "Travaux" : "Normal");
     
     return (
