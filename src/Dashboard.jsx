@@ -294,7 +294,6 @@ const SLIDES = [
   { id: "subcontractorsNext", type: "subcontractors", week: "next" },
   { id: "planningNext", type: "planning", week: "next" },
   { id: "onesite", type: "onesite" },
-  { id: "trajets", type: "trajets" },
   { id: "weather", type: "weather" },
   { id: "transport", type: "transport" },
 ];
@@ -1471,203 +1470,78 @@ function UVBadge({ uv }) {
   );
 }
 
-// ─── TRAJETS PERSO ───────────────────────────────────────────────────────────
-
-function TrajetsSlide() {
-  const trajets = [
-    { name: "Ghulam", from: "Châtelet", to: "Lagny - Thorigny", line: "Ligne P", color: "#9C27B0" },
-    { name: "Nathan", from: "Châtelet", to: "Jean Moulin", line: "Tram T3A", color: "#FF6F00" },
-    { name: "Michael", from: "Châtelet", to: "Nenterre Préfecture", line: "RER A", color: "#E53935" },
-    { name: "Jason", from: "Châtelet", to: "Gare de Compiègne", line: "RER B", color: "#1976D2" },
-  ];
-
-  return (
-    <div style={{ height: "100%", background: "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)", color: "white", padding: "32px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      {/* HEADER */}
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 32, fontWeight: "bold", marginBottom: 8 }}>TRAJETS ÉQUIPE</div>
-        <div style={{ fontSize: 16, opacity: 0.8 }}>Depuis Châtelet vers domiciles</div>
-      </div>
-
-      {/* TRAJETS */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, flex: 1 }}>
-        {trajets.map((trajet, i) => (
-          <div key={i} style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 16, padding: "20px 24px", display: "flex", alignItems: "center", gap: 24 }}>
-            {/* NOM */}
-            <div style={{ minWidth: 120 }}>
-              <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 4 }}>Personne</div>
-              <div style={{ fontSize: 28, fontWeight: "bold" }}>{trajet.name}</div>
-            </div>
-
-            {/* LIGNE */}
-            <div style={{ background: trajet.color, borderRadius: 8, padding: "8px 16px", textAlign: "center", minWidth: 100 }}>
-              <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 4 }}>Ligne</div>
-              <div style={{ fontSize: 18, fontWeight: "bold" }}>{trajet.line}</div>
-            </div>
-
-            {/* TRAJET */}
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Itinéraire</div>
-              <div style={{ fontSize: 18, fontWeight: 600 }}>{trajet.from} → {trajet.to}</div>
-            </div>
-
-            {/* TEMPS PLACEHOLDER */}
-            <div style={{ textAlign: "right", minWidth: 140 }}>
-              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Temps estimé</div>
-              <div style={{ fontSize: 28, fontWeight: "bold", color: "#4ADE80" }}>12 min</div>
-              <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4, color: "#FFD700" }}>+2 min</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* INFO */}
-      <div style={{ marginTop: 20, fontSize: 12, opacity: 0.6, textAlign: "center" }}>
-        Mise à jour toutes les 2 minutes • Données IDFM
-      </div>
+function WeatherSlide({ weather }) {
+  const hour = new Date().getHours();
+  if (!weather) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: getTimeGradient(hour), color: "white", fontSize: 20 }}>
+      Chargement météo…
     </div>
   );
-}
-
-function WeatherSlide({ weather }) {
-  if (!weather) {
-    return (
-      <div style={{ height: "100%", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 24, fontWeight: "bold" }}>
-        Chargement météo...
-      </div>
-    );
-  }
-
   const { current, daily } = weather;
-  const hour = new Date().getHours();
-  const day = new Date();
-  
-  const temp = Math.round(current.temperature_2m);
-  const tempFelt = Math.round(current.apparent_temperature);
-  const humidity = current.relative_humidity_2m;
-  const wind = Math.round(current.wind_speed_10m);
-  const dayName = DAYS_FR[day.getDay()];
-  const dateStr = day.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
-  const timeStr = day.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-  const uvToday = daily.uv_index_max ? Math.round(daily.uv_index_max[0]) : 0;
-
-  let bgGradient = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
-  if (hour >= 6 && hour < 12) bgGradient = "linear-gradient(135deg, #667eea 0%, #64b5f6 100%)";
-  else if (hour >= 12 && hour < 18) bgGradient = "linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%)";
-  else if (hour >= 18 && hour < 21) bgGradient = "linear-gradient(135deg, #ff6f00 0%, #e65100 100%)";
-
-  const weatherSymbol = (code, size = "32px") => {
-    const svgStyle = { width: size, height: size, display: "inline-block" };
-    
-    if (code <= 1) return (
-      <svg viewBox="0 0 100 100" style={svgStyle}>
-        <circle cx="50" cy="50" r="35" fill="#FFD700"/>
-      </svg>
-    );
-    if (code === 2 || code === 3) return (
-      <svg viewBox="0 0 100 100" style={svgStyle}>
-        <path d="M 30 60 Q 20 60 15 50 Q 10 40 20 35 Q 25 25 35 25 Q 42 15 52 20 Q 62 18 67 30 Q 77 35 72 50 Q 67 60 57 60 Z" fill="#A8D5FF"/>
-      </svg>
-    );
-    if (code >= 45 && code <= 48) return (
-      <svg viewBox="0 0 100 100" style={svgStyle}>
-        <circle cx="25" cy="50" r="12" fill="#A8D5FF" opacity="0.6"/>
-        <circle cx="50" cy="50" r="12" fill="#A8D5FF" opacity="0.6"/>
-        <circle cx="75" cy="50" r="12" fill="#A8D5FF" opacity="0.6"/>
-      </svg>
-    );
-    if (code >= 51 && code <= 82) return (
-      <svg viewBox="0 0 100 100" style={svgStyle}>
-        <path d="M 30 60 Q 20 60 15 50 Q 10 40 20 35 Q 25 25 35 25 Q 42 15 52 20 Q 62 18 67 30 Q 77 35 72 50 Q 67 60 57 60 Z" fill="#64B5F6"/>
-        <line x1="35" y1="68" x2="32" y2="78" stroke="#42A5F5" strokeWidth="1.5"/>
-        <line x1="50" y1="68" x2="47" y2="78" stroke="#42A5F5" strokeWidth="1.5"/>
-      </svg>
-    );
-    if (code >= 85 && code <= 86) return (
-      <svg viewBox="0 0 100 100" style={svgStyle}>
-        <path d="M 30 60 Q 20 60 15 50 Q 10 40 20 35 Q 25 25 35 25 Q 42 15 52 20 Q 62 18 67 30 Q 77 35 72 50 Q 67 60 57 60 Z" fill="#E8E8E8"/>
-      </svg>
-    );
-    if (code >= 95) return (
-      <svg viewBox="0 0 100 100" style={svgStyle}>
-        <path d="M 30 55 Q 20 55 15 45 Q 10 35 20 30 Q 25 20 35 20 Q 42 10 52 15 Q 62 13 67 25 Q 77 30 72 45 Q 67 55 57 55 Z" fill="#696969"/>
-        <polygon points="48,65 45,75 51,75 40,85 50,78" fill="#FFD700" opacity="0.9"/>
-      </svg>
-    );
-    
-    return (
-      <svg viewBox="0 0 100 100" style={svgStyle}>
-        <path d="M 30 60 Q 20 60 15 50 Q 10 40 20 35 Q 25 25 35 25 Q 42 15 52 20 Q 62 18 67 30 Q 77 35 72 50 Q 67 60 57 60 Z" fill="#A8D5FF"/>
-      </svg>
-    );
-  };
+  const wmo     = WMO[current.weather_code] || { fr: "—" };
+  const phrase  = getWeatherPhrase(current.weather_code, hour);
+  const sunrise = daily.sunrise?.[0] ? new Date(daily.sunrise[0]).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "--:--";
+  const sunset  = daily.sunset?.[0]  ? new Date(daily.sunset[0]).toLocaleTimeString("fr-FR",  { hour: "2-digit", minute: "2-digit" }) : "--:--";
+  const uvToday = daily.uv_index_max?.[0];
+  const bg      = getTimeGradient(hour);
 
   return (
-    <div style={{ height: "100%", background: bgGradient, color: "white", padding: "16px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 14, overflow: "hidden" }}>
-      
-      {/* TOP LEFT - HEURE ET DATE */}
-      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "16px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
-        <div style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.7)", marginBottom: 8 }}>MA POSITION</div>
-        <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 12 }}>Paris</div>
-        <div style={{ fontSize: 64, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px", marginBottom: 8 }}>{timeStr}</div>
-        <div style={{ fontSize: 16, color: "rgba(255,255,255,0.8)" }}>{dayName}, {dateStr}</div>
+    <div style={{ height: "100%", background: bg, color: "white", display: "flex", flexDirection: "column", padding: "20px 32px" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+        <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.05em", color: "rgba(255,255,255,0.9)" }}>METEO</span>
+        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 18 }}>· Paris</span>
+        <div style={{ marginLeft: "auto" }}><UVBadge uv={uvToday}/></div>
       </div>
 
-      {/* TOP RIGHT - TEMPÉRATURE + INDICATEURS */}
-      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "16px", display: "flex", flexDirection: "column", gap: 12, alignItems: "center", justifyContent: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 60, fontWeight: 300, lineHeight: 1, letterSpacing: "-2px", marginBottom: 4 }}>{temp}°C</div>
-            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>Ressenti {tempFelt}°C</div>
-          </div>
-          <div style={{ width: 56, height: 56 }}>{weatherSymbol(current.weather_code, "56px")}</div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, width: "100%" }}>
-          <div style={{ textAlign: "center" }}><div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Humidité</div><div style={{ fontSize: 20, fontWeight: 600 }}>{humidity}%</div></div>
-          <div style={{ textAlign: "center" }}><div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Vent</div><div style={{ fontSize: 20, fontWeight: 600 }}>{wind} km/h</div></div>
-          <div style={{ textAlign: "center" }}><div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Pression</div><div style={{ fontSize: 20, fontWeight: 600 }}>997hPa</div></div>
-          <div style={{ textAlign: "center" }}><div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>UV</div><div style={{ fontSize: 20, fontWeight: 600 }}>{uvToday}</div></div>
+      {/* Température principale */}
+      <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 10 }}>
+        <WeatherIcon code={current.weather_code} size={100}/>
+        <div>
+          <div style={{ fontSize: 86, fontWeight: 900, lineHeight: 1, letterSpacing: "-2px" }}>{Math.round(current.temperature_2m)}°C</div>
+          <div style={{ fontSize: 18, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
+          <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{wmo.fr}</div>
         </div>
       </div>
 
-      {/* BOTTOM LEFT - PRÉVISIONS 5 JOURS */}
-      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "12px", display: "flex", flexDirection: "column", gap: 6, justifyContent: "center", alignItems: "center" }}>
-        <div style={{ fontSize: 24, fontWeight: 700, textAlign: "center", color: "white", marginBottom: 14 }}>Prévisions 5 jours</div>
-        {daily.time && daily.time.slice(0, 4).map((dateStr, i) => {
-          const d = new Date(dateStr);
-          const maxTemp = Math.round(daily.temperature_2m_max[i]);
-          const minTemp = Math.round(daily.temperature_2m_min[i]);
-          const dayLabel = i === 0 ? "Auj." : DAYS_FR[d.getDay()];
-          const code = daily.weather_code[i];
-          const symbol = weatherSymbol(code);
+      {/* Phrase du jour */}
+      <div style={{ background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: "10px 16px", marginBottom: 14, fontSize: 16, fontStyle: "italic", color: "rgba(255,255,255,0.9)", borderLeft: "3px solid rgba(255,255,255,0.4)" }}>
+        {phrase}
+      </div>
+
+      {/* Détails */}
+      <div style={{ display: "flex", gap: 28, marginBottom: 16, fontSize: 15, color: "rgba(255,255,255,0.7)" }}>
+        <span>Hum. {current.relative_humidity_2m}%</span>
+        <span>Vent {Math.round(current.wind_speed_10m)} km/h</span>
+        <span>Lever {sunrise}</span>
+        <span>Coucher {sunset}</span>
+      </div>
+
+      {/* Prévisions 3 jours */}
+      <div style={{ display: "flex", gap: 12, flex: 1 }}>
+        {(daily.time || []).slice(1, 4).map((date, i) => {
+          const d     = new Date(date);
+          const dWmo  = WMO[daily.weather_code[i + 1]] || { fr: "" };
+          const wind  = daily.wind_speed_10m_max?.[i + 1];
+          const rain  = daily.precipitation_probability_max?.[i + 1];
+          const uv    = daily.uv_index_max?.[i + 1];
           return (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 14, borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.1)" : "none", justifyContent: "space-between", width: "100%" }}>
-              <div style={{ width: 32, height: 32, minWidth: 32 }}>{symbol}</div>
-              <div style={{ fontSize: 32, fontWeight: 600, minWidth: 60, textAlign: "right" }}>{maxTemp}°</div>
-              <div style={{ fontSize: 24, color: "rgba(255,255,255,0.6)", minWidth: 45, textAlign: "right" }}>{minTemp}°</div>
-              <div style={{ fontSize: 22, color: "rgba(255,255,255,0.7)", minWidth: 45, textAlign: "right" }}>{dayLabel}</div>
+            <div key={i} style={{ flex: 1, background: "rgba(255,255,255,0.1)", backdropFilter: "blur(4px)", borderRadius: 16, padding: "14px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 7, border: "1px solid rgba(255,255,255,0.15)" }}>
+              <div style={{ fontSize: 15, color: "rgba(255,255,255,0.8)", fontWeight: 700 }}>{DAYS_FR[d.getDay()]}</div>
+              <WeatherIcon code={daily.weather_code[i + 1]} size={56}/>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", textAlign: "center" }}>{dWmo.fr}</div>
+              <div style={{ display: "flex", gap: 10, fontSize: 22, fontWeight: 800 }}>
+                <span style={{ color: "#FCA5A5" }}>{Math.round(daily.temperature_2m_max[i + 1])}°</span>
+                <span style={{ color: "rgba(255,255,255,0.5)" }}>{Math.round(daily.temperature_2m_min[i + 1])}°</span>
+              </div>
+              <div style={{ display: "flex", gap: 12, fontSize: 12, color: "rgba(255,255,255,0.6)", flexWrap: "wrap", justifyContent: "center" }}>
+                {rain != null && <span style={{ color: rain > 50 ? "#60A5FA" : "rgba(255,255,255,0.55)" }}>Pluie {rain}%</span>}
+                {wind != null && <span>Vent {Math.round(wind)} km/h</span>}
+                {uv  != null && <span style={{ color: uv > 5 ? "#FACC15" : "rgba(255,255,255,0.55)" }}>UV {Math.round(uv)}</span>}
+              </div>
             </div>
           );
         })}
-      </div>
-
-      {/* BOTTOM RIGHT - PRÉVISIONS HORAIRES AGRANDIES */}
-      <div style={{ backgroundColor: "rgba(0,0,0,0.30)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 18, padding: "12px", display: "flex", flexDirection: "column", gap: 8, justifyContent: "center", alignItems: "center" }}>
-        <div style={{ fontSize: 24, fontWeight: 700, textAlign: "center" }}>Prévisions horaires</div>
-        <div style={{ display: "flex", gap: 10, overflowX: "auto", justifyContent: "center", alignItems: "center", width: "100%" }}>
-          {[0, 1, 2, 3, 4, 5, 6].map((i) => {
-            const h = new Date(Date.now() + i * 60 * 60000);
-            const hStr = h.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-            const tempEstimate = Math.round(current.temperature_2m - (i * 0.5));
-            return (
-              <div key={i} style={{ flexShrink: 0, backgroundColor: "rgba(255,255,255,0.13)", border: "1px solid rgba(255,255,255,0.17)", borderRadius: 14, padding: "16px 12px", textAlign: "center", minWidth: 145, display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
-                <div style={{ fontSize: 18, fontWeight: 500 }}>{hStr}</div>
-                <div style={{ width: 36, height: 36 }}>{weatherSymbol(current.weather_code, "36px")}</div>
-                <div style={{ fontSize: 28, fontWeight: 700 }}>{tempEstimate}°</div>
-              </div>
-            );
-          })}
-        </div>
       </div>
     </div>
   );
@@ -1694,63 +1568,29 @@ function TransportSlide({ lines, lastUpdate }) {
   METRO_CONFIG.forEach(cfg => {
     const data = (lines || []).find(l => l.code === cfg.code);
     const disrupted = data ? data.disruptions.length > 0 : false;
-    const severity  = disrupted ? (data.disruptions[0]?.severity || "") : "";
+    const severity  = disrupted ? (data.disruptions[0]?.severity || "Perturbation") : "";
     const message   = disrupted ? (data.disruptions[0]?.message || "") : "";
-    
-    // Détecter les travaux - chercher d'abord dans severity (plus fiable)
-    const severityLower = (severity || "").toLowerCase();
-    const messageLower = (message || "").toLowerCase();
-    const isWork = severityLower.includes("travaux") || messageLower.includes("travaux") || messageLower.includes("work") || messageLower.includes("chantier") || messageLower.includes("maintenance");
-    
-    // Logique de couleur SIMPLE :
-    // - Si c'est "Travaux" → JAUNE (même si disrupted = true)
-    // - Sinon si c'est disrupted → ROUGE
-    // - Sinon → VERT
-    const isOrange = isWork;  // Travaux = JAUNE
-    const isRed = disrupted && !isWork;  // Perturbation (sans travaux) = ROUGE
-    
-    if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, severity, message, isWork, isOrange, isRed });
-    else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, severity, message, isWork, isOrange, isRed });
-    else grouped.TER.push({ ...cfg, disrupted, severity, message, isWork, isOrange, isRed });
+    const isWork = (message || "").toLowerCase().includes("travaux") || (severity || "").toLowerCase().includes("travaux");
+    if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, severity, message, isWork });
+    else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, severity, message, isWork });
+    else grouped.TER.push({ ...cfg, disrupted, severity, message, isWork });
   });
 
-  const LineCard = ({ code, color, disrupted, severity, message, type, isWork, isOrange, isRed }) => {
-    // Déterminer les couleurs
-    const bgColor = isRed ? "rgba(239,83,80,0.14)" : (isOrange ? "rgba(255,215,0,0.14)" : "rgba(255,255,255,0.05)");
-    const borderColor = isRed ? "#EF5350" : (isOrange ? "#FFD700" : "rgba(255,255,255,0.10)");
-    const textColor = isRed ? "#F87171" : (isOrange ? "#FFD700" : "#4ADE80");
-    const statusText = disrupted ? (severity || "Perturbé") : (isWork ? "Travaux" : "Normal");
-    
+  const LineCard = ({ code, color, disrupted, severity, message, type, isWork }) => {
+    const isRed = disrupted && !isWork;
+    const isYellow = isWork;
+    const bg = isRed ? "rgba(239,83,80,0.14)" : (isYellow ? "rgba(255,215,0,0.14)" : "rgba(255,255,255,0.05)");
+    const border = isRed ? "#EF5350" : (isYellow ? "#FFD700" : "rgba(255,255,255,0.10)");
+    const textColor = isRed ? "#F87171" : (isYellow ? "#FFD700" : "#4ADE80");
+    const status = disrupted ? (severity || "Perturbé") : (isWork ? "Travaux" : "Normal");
     return (
-      <div style={{
-        background: bgColor,
-        border: `1.5px solid ${borderColor}`,
-        borderRadius: 10,
-        padding: "8px 10px",
-        display: "flex",
-        alignItems: "flex-start",
-        gap: 8,
-        minHeight: 52,
-      }}>
-        <div style={{
-          width: 36, height: 36, flexShrink: 0,
-          borderRadius: "50%",
-          background: color,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontWeight: 900, fontSize: code.length > 2 ? 10 : 13,
-          color: "white", textShadow: "0 1px 3px rgba(0,0,0,0.6)",
-        }}>{code}</div>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: 12, color: textColor, fontWeight: 800, marginBottom: 2 }}>
-            {statusText}
-          </div>
-          {disrupted && message && (
-            <div style={{ fontSize: 11, color: "#D1D5DB", lineHeight: 1.3, wordBreak: "break-word" }}>
-              {message}
-            </div>
-          )}
-        </div>
+    <div style={{ background: bg, border: `1.5px solid ${border}`, borderRadius: 10, padding: "8px 10px", display: "flex", alignItems: "flex-start", gap: 8, minHeight: 52 }}>
+      <div style={{ width: 36, height: 36, flexShrink: 0, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: code.length > 2 ? 10 : 13, color: "white", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{code}</div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 12, color: textColor, fontWeight: 800, marginBottom: 2 }}>{status}</div>
+        {disrupted && message && (<div style={{ fontSize: 11, color: "#D1D5DB", lineHeight: 1.3, wordBreak: "break-word" }}>{message}</div>)}
       </div>
+    </div>
     );
   };
 
@@ -1817,7 +1657,6 @@ export default function Dashboard() {
   const [time, setTime] = useState(new Date());
   const [slideIdx, setSlideIdx] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
   const [planning, setPlanning] = useState(FALLBACK_PLANNING);
   const [planningNext, setPlanningNext] = useState(FALLBACK_PLANNING);
   const [affairs, setAffairs] = useState(FALLBACK_AFFAIRS);
@@ -2065,10 +1904,7 @@ export default function Dashboard() {
   // Navigation clavier : espace / flèche droite = suivant, flèche gauche = précédent
   useEffect(() => {
     function handleKey(e) {
-      if (e.code === "ArrowDown") {
-        e.preventDefault();
-        setIsPaused(!isPaused);
-      } else if (e.code === "Space" || e.code === "ArrowRight") {
+      if (e.code === "Space" || e.code === "ArrowRight") {
         e.preventDefault();
         setSlideIdx(i => (i + 1) % SLIDES.length);
       } else if (e.code === "ArrowLeft") {
@@ -2078,7 +1914,7 @@ export default function Dashboard() {
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [isPaused]);
+  }, []);
 
   // Détecte si la slide actuelle n'a aucune donnée à afficher
   function isSlideEmpty(slide) {
@@ -2102,8 +1938,6 @@ export default function Dashboard() {
   useEffect(() => {
     setProgress(0);
     const start = Date.now();
-    // Vérifier que la slide existe
-    if (!SLIDES[slideIdx]) return;
     // Slide vide : on passe très vite à la suivante (3s) au lieu d'attendre la durée complète
     const empty = isSlideEmpty(SLIDES[slideIdx]);
     let slideDuration = SLIDE_DURATION;
@@ -2116,26 +1950,23 @@ export default function Dashboard() {
       const elapsed = Date.now() - start;
       setProgress(Math.min(100, (elapsed / slideDuration) * 100));
     }, 100);
-    const advance = !isPaused ? setTimeout(() => {
+    const advance = setTimeout(() => {
       setSlideIdx(i => (i + 1) % SLIDES.length);
-    }, slideDuration) : null;
-    return () => { clearInterval(tick); if (advance) clearTimeout(advance); };
-  }, [slideIdx, planning, planningNext, affairs, subcontractorsCurrent, subcontractorsNext, quotes, isPaused]);
+    }, slideDuration);
+    return () => { clearInterval(tick); clearTimeout(advance); };
+  }, [slideIdx, planning, planningNext, affairs, subcontractorsCurrent, subcontractorsNext, quotes]);
 
   const timeStr = time.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const dateStr = time.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
   const currentSlide = SLIDES[slideIdx];
-  const currentTenant = currentSlide && currentSlide.type === "tenant" ? TENANTS.find(t => t.id === currentSlide.tenantId) : null;
-  const isSubcontractors = currentSlide && currentSlide.type === "subcontractors";
-  const isQuotes = currentSlide && currentSlide.type === "quotes";
-  const headerAccent = !currentSlide ? "#1D4ED8"
-    : currentSlide.type === "goldenRules"
+  const currentTenant = currentSlide.type === "tenant" ? TENANTS.find(t => t.id === currentSlide.tenantId) : null;
+  const isSubcontractors = currentSlide.type === "subcontractors";
+  const isQuotes = currentSlide.type === "quotes";
+  const headerAccent = currentSlide.type === "goldenRules"
     ? "#00A091"
     : currentSlide.type === "onesite"
     ? ONESITE_ACCENT
-    : currentSlide.type === "trajets"
-    ? "#2196F3"
     : currentTenant
     ? currentTenant.accent
     : isSubcontractors ? SUBCONTRACTORS_ACCENT
@@ -2309,20 +2140,19 @@ export default function Dashboard() {
         overflow: "hidden",
         animation: "fadeIn 0.5s ease",
       }}>
-        {currentSlide && currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
-        {currentSlide && currentSlide.type === "trajets" && <TrajetsSlide />}
-        {currentSlide && currentSlide.type === "weather" && <WeatherSlide weather={weather} />}
-        {currentSlide && currentSlide.type === "quote" && <QuoteSlide quote={quote} />}
-        {currentSlide && currentSlide.type === "transport" && <TransportSlide lines={transportLines} lastUpdate={transportLastUpdate} />}
-        {currentSlide && currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
-        {currentSlide && currentSlide.type === "planning" && (
+        {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
+        {currentSlide.type === "weather" && <WeatherSlide weather={weather} />}
+        {currentSlide.type === "quote" && <QuoteSlide quote={quote} />}
+        {currentSlide.type === "transport" && <TransportSlide lines={transportLines} lastUpdate={transportLastUpdate} />}
+        {currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
+        {currentSlide.type === "planning" && (
           <PlanningSlide
             planning={currentSlide.week === "next" ? planningNext : planning}
             week={currentSlide.week || "current"}
           />
         )}
-        {currentSlide && currentSlide.type === "tenant" && currentTenant && <TenantSlide tenant={currentTenant} affairs={affairs[currentTenant.id] || []} />}
-        {currentSlide && currentSlide.type === "subcontractors" && (
+        {currentSlide.type === "tenant" && <TenantSlide tenant={currentTenant} affairs={affairs[currentTenant.id] || []} />}
+        {currentSlide.type === "subcontractors" && (
           <SubcontractorsSlide
             subcontractors={currentSlide.week === "current" ? subcontractorsCurrent : subcontractorsNext}
             week={currentSlide.week}
