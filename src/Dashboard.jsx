@@ -1635,21 +1635,24 @@ function TransportSlide({ lines, lastUpdate }) {
   METRO_CONFIG.forEach(cfg => {
     const data = (lines || []).find(l => l.code === cfg.code);
     const disrupted = data ? data.disruptions.length > 0 : false;
-    const severity  = disrupted ? (data.disruptions[0]?.severity || "Perturbation") : "";
+    const severity  = disrupted ? (data.disruptions[0]?.severity || "") : "";
     const message   = disrupted ? (data.disruptions[0]?.message || "") : "";
     
-    // Détecter les travaux - chercher dans severity ET message
-    const fullText = (severity + " " + message).toLowerCase();
-    const isWork = fullText.includes("travaux") || fullText.includes("work") || fullText.includes("chantier") || fullText.includes("maintenance");
+    // Détecter les travaux - chercher d'abord dans severity (plus fiable)
+    const severityLower = (severity || "").toLowerCase();
+    const messageLower = (message || "").toLowerCase();
+    const isWork = severityLower.includes("travaux") || messageLower.includes("travaux") || messageLower.includes("work") || messageLower.includes("chantier") || messageLower.includes("maintenance");
     
-    // Logique de couleur : Perturbation (rouge) prend le dessus sur Travaux (jaune)
-    const isRed = disrupted && !isWork;  // Perturbation SEULE = rouge
-    const isRedBecauseWork = disrupted && isWork;  // Travaux + Perturbation = rouge (perturbation gagne)
-    const isOrange = isWork && !disrupted;  // Travaux SEUL = jaune
+    // Logique de couleur SIMPLE :
+    // - Si c'est "Travaux" → JAUNE (même si disrupted = true)
+    // - Sinon si c'est disrupted → ROUGE
+    // - Sinon → VERT
+    const isOrange = isWork;  // Travaux = JAUNE
+    const isRed = disrupted && !isWork;  // Perturbation (sans travaux) = ROUGE
     
-    if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, severity, message, isWork, isOrange, isRed: isRed || isRedBecauseWork });
-    else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, severity, message, isWork, isOrange, isRed: isRed || isRedBecauseWork });
-    else grouped.TER.push({ ...cfg, disrupted, severity, message, isWork, isOrange, isRed: isRed || isRedBecauseWork });
+    if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, severity, message, isWork, isOrange, isRed });
+    else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, severity, message, isWork, isOrange, isRed });
+    else grouped.TER.push({ ...cfg, disrupted, severity, message, isWork, isOrange, isRed });
   });
 
   const LineCard = ({ code, color, disrupted, severity, message, type, isWork, isOrange, isRed }) => {
