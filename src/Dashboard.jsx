@@ -1638,13 +1638,14 @@ function TransportSlide({ lines, lastUpdate }) {
     const severity  = disrupted ? (data.disruptions[0]?.severity || "Perturbation") : "";
     const message   = disrupted ? (data.disruptions[0]?.message || "") : "";
     
-    // Détecter les travaux
-    const isWork = message && (message.toLowerCase().includes("travaux") || message.toLowerCase().includes("work"));
+    // Détecter les travaux - chercher dans severity ET message
+    const fullText = (severity + " " + message).toLowerCase();
+    const isWork = fullText.includes("travaux") || fullText.includes("work") || fullText.includes("chantier") || fullText.includes("maintenance");
     
-    // Logique de couleur : Perturbation (rouge) prend le dessus sur Travaux (orange)
+    // Logique de couleur : Perturbation (rouge) prend le dessus sur Travaux (jaune)
     const isRed = disrupted && !isWork;  // Perturbation SEULE = rouge
     const isRedBecauseWork = disrupted && isWork;  // Travaux + Perturbation = rouge (perturbation gagne)
-    const isOrange = isWork && !disrupted;  // Travaux SEUL = orange
+    const isOrange = isWork && !disrupted;  // Travaux SEUL = jaune
     
     if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, severity, message, isWork, isOrange, isRed: isRed || isRedBecauseWork });
     else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, severity, message, isWork, isOrange, isRed: isRed || isRedBecauseWork });
