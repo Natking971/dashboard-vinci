@@ -294,6 +294,7 @@ const SLIDES = [
   { id: "subcontractorsNext", type: "subcontractors", week: "next" },
   { id: "planningNext", type: "planning", week: "next" },
   { id: "onesite", type: "onesite" },
+  { id: "trajets", type: "trajets" },
   { id: "weather", type: "weather" },
   { id: "transport", type: "transport" },
 ];
@@ -1470,6 +1471,64 @@ function UVBadge({ uv }) {
   );
 }
 
+// ─── TRAJETS PERSO ───────────────────────────────────────────────────────────
+
+function TrajetsSlide() {
+  const trajets = [
+    { name: "Ghulam", from: "Châtelet", to: "Lagny - Thorigny", line: "Ligne P", color: "#9C27B0" },
+    { name: "Nathan", from: "Châtelet", to: "Jean Moulin", line: "Tram T3A", color: "#FF6F00" },
+    { name: "Michael", from: "Châtelet", to: "Nenterre Préfecture", line: "RER A", color: "#E53935" },
+    { name: "Jason", from: "Châtelet", to: "Gare de Compiègne", line: "RER B", color: "#1976D2" },
+  ];
+
+  return (
+    <div style={{ height: "100%", background: "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)", color: "white", padding: "32px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* HEADER */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ fontSize: 32, fontWeight: "bold", marginBottom: 8 }}>TRAJETS ÉQUIPE</div>
+        <div style={{ fontSize: 16, opacity: 0.8 }}>Depuis Châtelet vers domiciles</div>
+      </div>
+
+      {/* TRAJETS */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 16, flex: 1 }}>
+        {trajets.map((trajet, i) => (
+          <div key={i} style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 16, padding: "20px 24px", display: "flex", alignItems: "center", gap: 24 }}>
+            {/* NOM */}
+            <div style={{ minWidth: 120 }}>
+              <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 4 }}>Personne</div>
+              <div style={{ fontSize: 28, fontWeight: "bold" }}>{trajet.name}</div>
+            </div>
+
+            {/* LIGNE */}
+            <div style={{ background: trajet.color, borderRadius: 8, padding: "8px 16px", textAlign: "center", minWidth: 100 }}>
+              <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 4 }}>Ligne</div>
+              <div style={{ fontSize: 18, fontWeight: "bold" }}>{trajet.line}</div>
+            </div>
+
+            {/* TRAJET */}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Itinéraire</div>
+              <div style={{ fontSize: 18, fontWeight: 600 }}>{trajet.from} → {trajet.to}</div>
+            </div>
+
+            {/* TEMPS PLACEHOLDER */}
+            <div style={{ textAlign: "right", minWidth: 140 }}>
+              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Temps estimé</div>
+              <div style={{ fontSize: 28, fontWeight: "bold", color: "#4ADE80" }}>12 min</div>
+              <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4, color: "#FFD700" }}>+2 min</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* INFO */}
+      <div style={{ marginTop: 20, fontSize: 12, opacity: 0.6, textAlign: "center" }}>
+        Mise à jour toutes les 2 minutes • Données IDFM
+      </div>
+    </div>
+  );
+}
+
 function WeatherSlide({ weather }) {
   if (!weather) {
     return (
@@ -2043,6 +2102,8 @@ export default function Dashboard() {
   useEffect(() => {
     setProgress(0);
     const start = Date.now();
+    // Vérifier que la slide existe
+    if (!SLIDES[slideIdx]) return;
     // Slide vide : on passe très vite à la suivante (3s) au lieu d'attendre la durée complète
     const empty = isSlideEmpty(SLIDES[slideIdx]);
     let slideDuration = SLIDE_DURATION;
@@ -2065,13 +2126,16 @@ export default function Dashboard() {
   const dateStr = time.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
   const currentSlide = SLIDES[slideIdx];
-  const currentTenant = currentSlide.type === "tenant" ? TENANTS.find(t => t.id === currentSlide.tenantId) : null;
-  const isSubcontractors = currentSlide.type === "subcontractors";
-  const isQuotes = currentSlide.type === "quotes";
-  const headerAccent = currentSlide.type === "goldenRules"
+  const currentTenant = currentSlide && currentSlide.type === "tenant" ? TENANTS.find(t => t.id === currentSlide.tenantId) : null;
+  const isSubcontractors = currentSlide && currentSlide.type === "subcontractors";
+  const isQuotes = currentSlide && currentSlide.type === "quotes";
+  const headerAccent = !currentSlide ? "#1D4ED8"
+    : currentSlide.type === "goldenRules"
     ? "#00A091"
     : currentSlide.type === "onesite"
     ? ONESITE_ACCENT
+    : currentSlide.type === "trajets"
+    ? "#2196F3"
     : currentTenant
     ? currentTenant.accent
     : isSubcontractors ? SUBCONTRACTORS_ACCENT
@@ -2245,19 +2309,20 @@ export default function Dashboard() {
         overflow: "hidden",
         animation: "fadeIn 0.5s ease",
       }}>
-        {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
-        {currentSlide.type === "weather" && <WeatherSlide weather={weather} />}
-        {currentSlide.type === "quote" && <QuoteSlide quote={quote} />}
-        {currentSlide.type === "transport" && <TransportSlide lines={transportLines} lastUpdate={transportLastUpdate} />}
-        {currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
-        {currentSlide.type === "planning" && (
+        {currentSlide && currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
+        {currentSlide && currentSlide.type === "trajets" && <TrajetsSlide />}
+        {currentSlide && currentSlide.type === "weather" && <WeatherSlide weather={weather} />}
+        {currentSlide && currentSlide.type === "quote" && <QuoteSlide quote={quote} />}
+        {currentSlide && currentSlide.type === "transport" && <TransportSlide lines={transportLines} lastUpdate={transportLastUpdate} />}
+        {currentSlide && currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
+        {currentSlide && currentSlide.type === "planning" && (
           <PlanningSlide
             planning={currentSlide.week === "next" ? planningNext : planning}
             week={currentSlide.week || "current"}
           />
         )}
-        {currentSlide.type === "tenant" && <TenantSlide tenant={currentTenant} affairs={affairs[currentTenant.id] || []} />}
-        {currentSlide.type === "subcontractors" && (
+        {currentSlide && currentSlide.type === "tenant" && currentTenant && <TenantSlide tenant={currentTenant} affairs={affairs[currentTenant.id] || []} />}
+        {currentSlide && currentSlide.type === "subcontractors" && (
           <SubcontractorsSlide
             subcontractors={currentSlide.week === "current" ? subcontractorsCurrent : subcontractorsNext}
             week={currentSlide.week}
