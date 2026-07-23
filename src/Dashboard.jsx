@@ -1668,7 +1668,7 @@ export default function Dashboard() {
   const [weather, setWeather] = useState(null);
   const [transportLines, setTransportLines] = useState([]);
   const [trajetTimes, setTrajetTimes] = useState({
-    ghulam: 0, nathan: 0, michael: 0, jason: 0
+    ghulam: 44, nathan: 21, michael: 12, jason: 77, cedric: 28
   });
   const [transportLastUpdate, setTransportLastUpdate] = useState(null);
   const [quote, setQuote] = useState(() => FRENCH_QUOTES[Math.floor(Date.now() / 86400000) % FRENCH_QUOTES.length]);
@@ -1921,27 +1921,27 @@ export default function Dashboard() {
   useEffect(() => {
     function calculateTrajetTimes() {
       const baseTimes = {
-        ghulam: 25,  // Ligne P: 25 min normal
-        nathan: 12,  // T3A: 12 min normal
-        michael: 20, // RER A: 20 min normal
-        jason: 45    // RER B: 45 min normal
+        ghulam: 44,    // Lagny-Thorigny: 44 min
+        nathan: 21,    // Jean Moulin: 21 min
+        michael: 12,   // Nanterre-Préfecture: 12 min
+        jason: 77,     // Compiègne: 77 min (1h 17)
+        cedric: 28     // Pierrefitte-Stains: 28 min
       };
       
       const lineMap = {
         ghulam: "P",
         nathan: "T3A",
         michael: "A",
-        jason: "B"
+        jason: "B",
+        cedric: "B"
       };
       
       const times = {};
       for (const [person, lineCode] of Object.entries(lineMap)) {
         let time = baseTimes[person];
         
-        // Chercher si la ligne a une perturbation dans transportLines
         const line = (transportLines || []).find(l => l.code === lineCode);
         if (line && line.disruptions && line.disruptions.length > 0) {
-          // +5 min pour chaque perturbation
           time += line.disruptions.length * 5;
         }
         
@@ -2188,7 +2188,7 @@ export default function Dashboard() {
         {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
         {currentSlide.type === "weather" && <WeatherSlide weather={weather} />}
         {currentSlide.type === "quote" && <QuoteSlide quote={quote} />}
-        {currentSlide.type === "trajetPerso" && <div style={{height:"100%",background:"linear-gradient(135deg,#0f2027,#2c5364)",color:"white",padding:"30px",display:"flex",flexDirection:"column",gap:20}}><div style={{fontSize:28,fontWeight:"bold"}}>TRAJETS</div><div style={{fontSize:14,opacity:0.7}}>Châtelet</div><div style={{flex:1,display:"flex",flexDirection:"column",gap:12}}><div style={{background:"rgba(156,39,176,0.2)",border:"1px solid #9C27B0",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Ghulam</div><div style={{fontSize:13,opacity:0.8}}>Ligne P → Lagny | {trajetTimes.ghulam || "—"} min</div></div><div style={{background:"rgba(255,111,0,0.2)",border:"1px solid #FF6F00",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Nathan</div><div style={{fontSize:13,opacity:0.8}}>T3A → Jean Moulin | {trajetTimes.nathan || "—"} min</div></div><div style={{background:"rgba(229,57,53,0.2)",border:"1px solid #E53935",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Michael</div><div style={{fontSize:13,opacity:0.8}}>RER A → Nenterre | {trajetTimes.michael || "—"} min</div></div><div style={{background:"rgba(25,118,210,0.2)",border:"1px solid #1976D2",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Jason</div><div style={{fontSize:13,opacity:0.8}}>RER B → Compiègne | {trajetTimes.jason || "—"} min</div></div></div></div>}
+        {currentSlide.type === "trajetPerso" && <div style={{height:"100%",background:"linear-gradient(135deg,#0f2027,#2c5364)",color:"white",padding:"30px",display:"flex",flexDirection:"column",gap:20}}><div style={{fontSize:28,fontWeight:"bold"}}>TRAJETS</div><div style={{fontSize:14,opacity:0.7}}>Châtelet</div><div style={{flex:1,display:"flex",flexDirection:"column",gap:16}}><div style={{display:"flex",alignItems:"center",gap:12,paddingBottom:12,borderBottom:"1px solid rgba(255,255,255,0.1)"}}><div style={{minWidth:90,fontWeight:"600",fontSize:15}}>Ghulam</div><div style={{flex:1,background:"rgba(255,255,255,0.1)",borderRadius:"4px",height:"8px",overflow:"hidden"}}><div style={{background:"#9C27B0",width:(trajetTimes.ghulam/77*100)+"%",height:"100%"}}></div></div><div style={{minWidth:50,textAlign:"right",fontWeight:"600"}}>{trajetTimes.ghulam || "—"} min</div></div><div style={{display:"flex",alignItems:"center",gap:12,paddingBottom:12,borderBottom:"1px solid rgba(255,255,255,0.1)"}}><div style={{minWidth:90,fontWeight:"600",fontSize:15}}>Nathan</div><div style={{flex:1,background:"rgba(255,255,255,0.1)",borderRadius:"4px",height:"8px",overflow:"hidden"}}><div style={{background:"#FF6F00",width:(trajetTimes.nathan/77*100)+"%",height:"100%"}}></div></div><div style={{minWidth:50,textAlign:"right",fontWeight:"600"}}>{trajetTimes.nathan || "—"} min</div></div><div style={{display:"flex",alignItems:"center",gap:12,paddingBottom:12,borderBottom:"1px solid rgba(255,255,255,0.1)"}}><div style={{minWidth:90,fontWeight:"600",fontSize:15}}>Michael</div><div style={{flex:1,background:"rgba(255,255,255,0.1)",borderRadius:"4px",height:"8px",overflow:"hidden"}}><div style={{background:"#E53935",width:(trajetTimes.michael/77*100)+"%",height:"100%"}}></div></div><div style={{minWidth:50,textAlign:"right",fontWeight:"600"}}>{trajetTimes.michael || "—"} min</div></div><div style={{display:"flex",alignItems:"center",gap:12,paddingBottom:12,borderBottom:"1px solid rgba(255,255,255,0.1)"}}><div style={{minWidth:90,fontWeight:"600",fontSize:15}}>Jason</div><div style={{flex:1,background:"rgba(255,255,255,0.1)",borderRadius:"4px",height:"8px",overflow:"hidden"}}><div style={{background:"#1976D2",width:"100%",height:"100%"}}></div></div><div style={{minWidth:50,textAlign:"right",fontWeight:"600"}}>{trajetTimes.jason || "—"} min</div></div><div style={{display:"flex",alignItems:"center",gap:12}}><div style={{minWidth:90,fontWeight:"600",fontSize:15}}>Cedric</div><div style={{flex:1,background:"rgba(255,255,255,0.1)",borderRadius:"4px",height:"8px",overflow:"hidden"}}><div style={{background:"#10B981",width:(trajetTimes.cedric/77*100)+"%",height:"100%"}}></div></div><div style={{minWidth:50,textAlign:"right",fontWeight:"600"}}>{trajetTimes.cedric || "—"} min</div></div></div></div>}
         {currentSlide.type === "transport" && <TransportSlide lines={transportLines} lastUpdate={transportLastUpdate} />}
         {currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
         {currentSlide.type === "planning" && (
