@@ -1919,43 +1919,40 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    async function fetchTrajetTimes() {
-      const trajets = [
-        { nom: "ghulam", start: "2.3469,48.8626", end: "2.7169,48.8728" },
-        { nom: "nathan", start: "2.3469,48.8626", end: "2.3944,48.8185" },
-        { nom: "michael", start: "2.3469,48.8626", end: "2.1969,48.9003" },
-        { nom: "jason", start: "2.3469,48.8626", end: "2.8169,49.4194" }
-      ];
+    function calculateTrajetTimes() {
+      const baseTimes = {
+        ghulam: 25,  // Ligne P: 25 min normal
+        nathan: 12,  // T3A: 12 min normal
+        michael: 20, // RER A: 20 min normal
+        jason: 45    // RER B: 45 min normal
+      };
+      
+      const lineMap = {
+        ghulam: "P",
+        nathan: "T3A",
+        michael: "A",
+        jason: "B"
+      };
+      
       const times = {};
-      await Promise.all(
-        trajets.map(async (trajet) => {
-          try {
-            const url =
-              "https://api.openrouteservice.org/v2/directions/driving-car" +
-              `?api_key=5b3ce68591a7e600d8cf6a56c8e60ba0` +
-              `&start=${encodeURIComponent(trajet.start)}` +
-              `&end=${encodeURIComponent(trajet.end)}`;
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`ORS ${response.status}`);
-            const data = await response.json();
-            const durationSeconds = data.features?.[0]?.properties?.summary?.duration;
-            times[trajet.nom] = Number.isFinite(durationSeconds) ? Math.round(durationSeconds / 60) : null;
-          } catch (error) {
-            console.error(`Erreur ${trajet.nom}:`, error);
-            times[trajet.nom] = null;
-          }
-        })
-      );
-      if (!cancelled) setTrajetTimes(times);
+      for (const [person, lineCode] of Object.entries(lineMap)) {
+        let time = baseTimes[person];
+        
+        // Chercher si la ligne a une perturbation dans transportLines
+        const line = (transportLines || []).find(l => l.code === lineCode);
+        if (line && line.disruptions && line.disruptions.length > 0) {
+          // +5 min pour chaque perturbation
+          time += line.disruptions.length * 5;
+        }
+        
+        times[person] = time;
+      }
+      
+      setTrajetTimes(times);
     }
-    fetchTrajetTimes();
-    const interval = setInterval(fetchTrajetTimes, 120000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
+    
+    calculateTrajetTimes();
+  }, [transportLines]);
 
   // Détecte si la slide actuelle n'a aucune donnée à afficher
   function isSlideEmpty(slide) {
@@ -2191,7 +2188,7 @@ export default function Dashboard() {
         {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
         {currentSlide.type === "weather" && <WeatherSlide weather={weather} />}
         {currentSlide.type === "quote" && <QuoteSlide quote={quote} />}
-        {currentSlide.type === "trajetPerso" && <div style={{height:"100%",background:"linear-gradient(135deg,#0f2027,#2c5364)",color:"white",padding:"30px",display:"flex",flexDirection:"column",gap:20}}><div style={{fontSize:28,fontWeight:"bold"}}>TRAJETS</div><div style={{fontSize:14,opacity:0.7}}>Châtelet</div><div style={{flex:1,display:"flex",flexDirection:"column",gap:12}}><div style={{background:"rgba(156,39,176,0.2)",border:"1px solid #9C27B0",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Ghulam</div><div style={{fontSize:13,opacity:0.8}}>Ligne P → Lagny | {trajetTimes.ghulam ?? "—"} min</div></div><div style={{background:"rgba(255,111,0,0.2)",border:"1px solid #FF6F00",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Nathan</div><div style={{fontSize:13,opacity:0.8}}>T3A → Jean Moulin | {trajetTimes.nathan ?? "—"} min</div></div><div style={{background:"rgba(229,57,53,0.2)",border:"1px solid #E53935",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Michael</div><div style={{fontSize:13,opacity:0.8}}>RER A → Nenterre | {trajetTimes.michael ?? "—"} min</div></div><div style={{background:"rgba(25,118,210,0.2)",border:"1px solid #1976D2",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Jason</div><div style={{fontSize:13,opacity:0.8}}>RER B → Compiègne | {trajetTimes.jason ?? "—"} min</div></div></div></div>}
+        {currentSlide.type === "trajetPerso" && <div style={{height:"100%",background:"linear-gradient(135deg,#0f2027,#2c5364)",color:"white",padding:"30px",display:"flex",flexDirection:"column",gap:20}}><div style={{fontSize:28,fontWeight:"bold"}}>TRAJETS</div><div style={{fontSize:14,opacity:0.7}}>Châtelet</div><div style={{flex:1,display:"flex",flexDirection:"column",gap:12}}><div style={{background:"rgba(156,39,176,0.2)",border:"1px solid #9C27B0",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Ghulam</div><div style={{fontSize:13,opacity:0.8}}>Ligne P → Lagny | {trajetTimes.ghulam || "—"} min</div></div><div style={{background:"rgba(255,111,0,0.2)",border:"1px solid #FF6F00",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Nathan</div><div style={{fontSize:13,opacity:0.8}}>T3A → Jean Moulin | {trajetTimes.nathan || "—"} min</div></div><div style={{background:"rgba(229,57,53,0.2)",border:"1px solid #E53935",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Michael</div><div style={{fontSize:13,opacity:0.8}}>RER A → Nenterre | {trajetTimes.michael || "—"} min</div></div><div style={{background:"rgba(25,118,210,0.2)",border:"1px solid #1976D2",borderRadius:10,padding:"12px 16px"}}><div style={{fontWeight:"bold"}}>Jason</div><div style={{fontSize:13,opacity:0.8}}>RER B → Compiègne | {trajetTimes.jason || "—"} min</div></div></div></div>}
         {currentSlide.type === "transport" && <TransportSlide lines={transportLines} lastUpdate={transportLastUpdate} />}
         {currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
         {currentSlide.type === "planning" && (
