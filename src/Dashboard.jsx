@@ -1921,18 +1921,24 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchTrajetTimes() {
       const trajets = [
-        { nom: "ghulam", start: "2.3469,48.8626", end: "2.7169,48.8728" },
-        { nom: "nathan", start: "2.3469,48.8626", end: "2.3944,48.8185" },
-        { nom: "michael", start: "2.3469,48.8626", end: "2.1969,48.9003" },
-        { nom: "jason", start: "2.3469,48.8626", end: "2.8169,49.4194" }
+        { nom: "ghulam", coords: "2.3469,48.8626|2.7169,48.8728" },
+        { nom: "nathan", coords: "2.3469,48.8626|2.3944,48.8185" },
+        { nom: "michael", coords: "2.3469,48.8626|2.1969,48.9003" },
+        { nom: "jason", coords: "2.3469,48.8626|2.8169,49.4194" }
       ];
       const times = {};
       for (const t of trajets) {
         try {
-          const r = await fetch(`https://api.openrouteservice.org/v2/directions/public?api_key=5b3ce68591a7e600d8cf6a56c8e60ba0&start=${t.start}&end=${t.end}`);
+          const r = await fetch(`https://api.openrouteservice.org/v2/directions/driving-car?api_key=5b3ce68591a7e600d8cf6a56c8e60ba0&coordinates=${t.coords}`);
           const d = await r.json();
-          times[t.nom] = d.routes?.[0] ? Math.round(d.routes[0].duration / 60) : 12;
+          if (d.routes && d.routes[0]) {
+            const duration = Math.round(d.routes[0].duration / 60);
+            times[t.nom] = duration;
+          } else {
+            times[t.nom] = 12;
+          }
         } catch (e) {
+          console.log(`Erreur ${t.nom}:`, e);
           times[t.nom] = 12;
         }
       }
