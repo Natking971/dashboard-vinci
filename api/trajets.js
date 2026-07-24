@@ -1,5 +1,5 @@
 // /api/trajets.js - Route Vercel pour calculer les trajets avec Navitia/PRIM
-// API officielle d'Île-de-France Mobilités
+// API officielle d'Île-de-France Mobilités - Format d'authentification corrigé
 
 export default async function handler(req, res) {
   const IDFM_API_KEY = process.env.IDFM_API_KEY;
@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "IDFM_API_KEY non configurée" });
   }
 
-  // Point de départ : Châtelet-Les Halles (Navitia format: lon,lat)
+  // Point de départ : Châtelet-Les Halles (Navitia format: lon;lat)
   const start = { lat: 48.8626, lon: 2.3469 };
 
   // Destinations (coordonnées GPS des gares/arrêts)
@@ -34,21 +34,22 @@ export default async function handler(req, res) {
         const from = `${start.lon};${start.lat}`;
         const to = `${trajet.lon};${trajet.lat}`;
 
-        // Requête Navitia avec paramètres pour transports en commun
+        // Requête Navitia avec paramètre key au lieu de Bearer token
         const url = 
           `https://api.navitia.io/v1/journeys?` +
           `from=${from}&` +
           `to=${to}&` +
-          `datetime=${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}&` +
-          `max_nb_transfers=4&` +
-          `min_nb_journeys=1`;
+          `key=${IDFM_API_KEY}`;
+
+        console.log(`🔄 Appel Navitia pour ${trajet.nom}...`);
 
         const response = await fetch(url, {
           headers: {
-            'Authorization': `Bearer ${IDFM_API_KEY}`,
             'Accept': 'application/json'
           }
         });
+
+        console.log(`📊 Réponse Navitia ${trajet.nom}: HTTP ${response.status}`);
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
@@ -77,6 +78,7 @@ export default async function handler(req, res) {
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
+    console.log("✅ Tous les trajets calculés");
     res.status(200).json({ times });
   } catch (error) {
     console.error("❌ Erreur calcul trajets:", error);
