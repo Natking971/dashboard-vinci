@@ -1497,7 +1497,7 @@ function WeatherSlide({ weather }) {
 
       {/* Température principale */}
       <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 10 }}>
-        <svg width="100" height="100" viewBox="0 0 100 100" style={{ flexShrink: 0 }}><circle cx="50" cy="50" r="40" fill="#FFD700" opacity="0.8"/></svg>
+        <WeatherIcon code={current.weather_code} size={100}/>
         <div>
           <div style={{ fontSize: 86, fontWeight: 900, lineHeight: 1, letterSpacing: "-2px" }}>{Math.round(current.temperature_2m)}°C</div>
           <div style={{ fontSize: 18, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
@@ -1529,7 +1529,7 @@ function WeatherSlide({ weather }) {
           return (
             <div key={i} style={{ flex: 1, background: "rgba(255,255,255,0.1)", backdropFilter: "blur(4px)", borderRadius: 16, padding: "14px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 7, border: "1px solid rgba(255,255,255,0.15)" }}>
               <div style={{ fontSize: 15, color: "rgba(255,255,255,0.8)", fontWeight: 700 }}>{DAYS_FR[d.getDay()]}</div>
-              <svg width="56" height="56" viewBox="0 0 100 100"><circle cx="50" cy="50" r="35" fill="#FFA500" opacity="0.8"/></svg>
+              <WeatherIcon code={daily.weather_code[i + 1]} size={56}/>
               <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", textAlign: "center" }}>{dWmo.fr}</div>
               <div style={{ display: "flex", gap: 10, fontSize: 22, fontWeight: 800 }}>
                 <span style={{ color: "#FCA5A5" }}>{Math.round(daily.temperature_2m_max[i + 1])}°</span>
@@ -1571,27 +1571,42 @@ function TransportSlide({ lines, lastUpdate }) {
     const disrupted = data ? data.disruptions.length > 0 : false;
     const severity  = disrupted ? (data.disruptions[0]?.severity || "Perturbation") : "";
     const message   = disrupted ? (data.disruptions[0]?.message || "") : "";
-    const isWork = (message + severity).toLowerCase().includes("travaux");
-    if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, severity, message, isWork });
-    else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, severity, message, isWork });
-    else grouped.TER.push({ ...cfg, disrupted, severity, message, isWork });
+    if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, severity, message });
+    else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, severity, message });
+    else grouped.TER.push({ ...cfg, disrupted, severity, message });
   });
 
-  const LineCard = ({ code, color, disrupted, severity, message, type, isWork }) => {
-    const bg = isWork ? "rgba(255,215,0,0.14)" : (disrupted ? "rgba(239,83,80,0.14)" : "rgba(255,255,255,0.05)");
-    const border = isWork ? "#FFD700" : (disrupted ? "#EF5350" : "rgba(255,255,255,0.10)");
-    const textColor = isWork ? "#FFD700" : (disrupted ? "#F87171" : "#4ADE80");
-    const status = isWork ? "Travaux" : (disrupted ? (severity || "Perturbé") : "Normal");
-    return (
-    <div style={{ background: bg, border: `1.5px solid ${border}`, borderRadius: 10, padding: "8px 10px", display: "flex", alignItems: "flex-start", gap: 8, minHeight: 52 }}>
-      <div style={{ width: 36, height: 36, flexShrink: 0, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: code.length > 2 ? 10 : 13, color: "white", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>{code}</div>
+  const LineCard = ({ code, color, disrupted, severity, message, type }) => (
+    <div style={{
+      background: disrupted ? "rgba(239,83,80,0.14)" : "rgba(255,255,255,0.05)",
+      border: `1.5px solid ${disrupted ? "#EF5350" : "rgba(255,255,255,0.10)"}`,
+      borderRadius: 10,
+      padding: "8px 10px",
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 8,
+      minHeight: 52,
+    }}>
+      <div style={{
+        width: 36, height: 36, flexShrink: 0,
+        borderRadius: "50%",
+        background: color,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontWeight: 900, fontSize: code.length > 2 ? 10 : 13,
+        color: "white", textShadow: "0 1px 3px rgba(0,0,0,0.6)",
+      }}>{code}</div>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 12, color: textColor, fontWeight: 800, marginBottom: 2 }}>{status}</div>
-        {disrupted && message && (<div style={{ fontSize: 11, color: "#D1D5DB", lineHeight: 1.3, wordBreak: "break-word" }}>{message}</div>)}
+        <div style={{ fontSize: 12, color: disrupted ? "#F87171" : "#4ADE80", fontWeight: 800, marginBottom: 2 }}>
+          {disrupted ? (severity || "Perturbe") : "Normal"}
+        </div>
+        {disrupted && message && (
+          <div style={{ fontSize: 11, color: "#D1D5DB", lineHeight: 1.3, wordBreak: "break-word" }}>
+            {message}
+          </div>
+        )}
       </div>
     </div>
-    );
-  };
+  );
 
   const updStr = lastUpdate ? new Date(lastUpdate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : null;
 
@@ -1667,7 +1682,7 @@ export default function Dashboard() {
   const [lastUpdate, setLastUpdate] = useState(null);
   const [weather, setWeather] = useState(null);
   const [transportLines, setTransportLines] = useState([]);
-  const [trajetTimes, setTrajetTimes] = useState({
+  const [trajetTimes] = useState({
     ghulam: 44, nathan: 21, michael: 12, jason: 77, cedric: 28, liazide: 35, rachid: 30, toufik: 30
   });
   const [transportLastUpdate, setTransportLastUpdate] = useState(null);
@@ -1809,7 +1824,7 @@ export default function Dashboard() {
           // Format AAAA-MM-JJ (ISO)
           if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
             const d = new Date(trimmed);
-            if (!isNaN(d.getTime())) {
+            if (!isNaN(d)) {
               return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getFullYear()).slice(-2)}`;
             }
           }
@@ -1918,55 +1933,6 @@ export default function Dashboard() {
     return () => window.removeEventListener("keydown", handleKey);
   }, []);
 
-  useEffect(() => {
-    async function fetchTrajetTimesFromAPI() {
-      const trajets = [
-        { nom: "ghulam", start: "2.3469,48.8626", end: "2.7169,48.8728" },
-        { nom: "nathan", start: "2.3469,48.8626", end: "2.3944,48.8185" },
-        { nom: "michael", start: "2.3469,48.8626", end: "2.1969,48.9003" },
-        { nom: "jason", start: "2.3469,48.8626", end: "2.8169,49.4194" },
-        { nom: "cedric", start: "2.3469,48.8626", end: "2.4089,48.9731" },
-        { nom: "liazide", start: "2.3469,48.8626", end: "2.1686,48.9797" },
-        { nom: "rachid", start: "2.3469,48.8626", end: "2.0275,48.8203" },
-        { nom: "toufik", start: "2.3469,48.8626", end: "2.0275,48.8203" }
-      ];
-      
-      const times = {};
-      
-      for (const trajet of trajets) {
-        try {
-          const url = `https://router.project-osrm.org/route/v1/driving/${trajet.start};${trajet.end}?overview=false`;
-          const response = await fetch(url);
-          const data = await response.json();
-          
-          if (data.routes && data.routes[0]) {
-            const durationSeconds = data.routes[0].duration;
-            let durationMinutes = Math.round(durationSeconds / 60);
-            
-            // Ajouter les perturbations IDFM si présentes
-            const lineMap = { ghulam: "P", nathan: "T3A", michael: "A", jason: "B", cedric: "B", liazide: "C", rachid: "A", toufik: "A" };
-            const lineCode = lineMap[trajet.nom];
-            const line = (transportLines || []).find(l => l.code === lineCode);
-            if (line && line.disruptions && line.disruptions.length > 0) {
-              durationMinutes += line.disruptions.length * 5;
-            }
-            
-            times[trajet.nom] = durationMinutes;
-          }
-        } catch (e) {
-          console.error(`Erreur OSRM ${trajet.nom}:`, e);
-          times[trajet.nom] = null;
-        }
-      }
-      
-      setTrajetTimes(times);
-    }
-    
-    fetchTrajetTimesFromAPI();
-    const interval = setInterval(fetchTrajetTimesFromAPI, 300000); // Mise à jour toutes les 5 minutes
-    return () => clearInterval(interval);
-  }, [transportLines]);
-
   // Détecte si la slide actuelle n'a aucune donnée à afficher
   function isSlideEmpty(slide) {
     if (slide.type === "tenant") {
@@ -2024,7 +1990,6 @@ export default function Dashboard() {
     : isQuotes ? QUOTES_ACCENT
     : currentSlide.type === "weather" ? "#0EA5E9"
     : currentSlide.type === "quote" ? "#8B5CF6"
-    : currentSlide.type === "trajetPerso" ? "#00BCD4"
     : currentSlide.type === "transport" ? "#10B981"
     : "#1D4ED8";
   const totalUrgent = Object.values(affairs).flat().filter(a => a.urgent).length;
@@ -2166,18 +2131,15 @@ export default function Dashboard() {
           } else if (s.type === "quote") {
             label = "CITATION";
             accentColor = "#8B5CF6";
-          } else if (s.type === "transport") {
-            label = "TRANSPORT";
-            accentColor = "#10B981";
           } else if (s.type === "trajetPerso") {
             label = "TRAJETS";
             accentColor = "#00BCD4";
-          } else if (tenant) {
+          } else if (s.type === "transport") {
+            label = "TRANSPORT";
+            accentColor = "#10B981";
+          } else {
             label = tenant.name.toUpperCase();
             accentColor = tenant.accent;
-          } else {
-            label = s.id.toUpperCase();
-            accentColor = "#6B7280";
           }
           return (
             <div key={s.id} style={{
@@ -2201,7 +2163,7 @@ export default function Dashboard() {
         {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
         {currentSlide.type === "weather" && <WeatherSlide weather={weather} />}
         {currentSlide.type === "quote" && <QuoteSlide quote={quote} />}
-        {currentSlide.type === "trajetPerso" && <div style={{height:"100%",background:"linear-gradient(135deg,#0f2027,#2c5364)",color:"white",padding:"20px",display:"flex",flexDirection:"column",gap:12}}><div style={{fontSize:26,fontWeight:"bold"}}>TRAJETS</div><div style={{fontSize:13,opacity:0.7}}>Châtelet</div><div style={{flex:1,display:"flex",flexDirection:"column",gap:8,overflowY:"auto"}}><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{minWidth:70,fontWeight:"600",fontSize:13}}>Ghulam</div><div style={{flex:1,background:"rgba(255,255,255,0.1)",borderRadius:"3px",height:"6px",overflow:"hidden"}}><div style={{background:"#9C27B0",width:(trajetTimes.ghulam/77*100)+"%",height:"100%"}}></div></div><div style={{minWidth:45,textAlign:"right",fontWeight:"600",fontSize:13}}>{trajetTimes.ghulam || "—"}</div></div><div style={{display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(255,255,255,0.05)"}}></div><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{minWidth:70,fontWeight:"600",fontSize:13}}>Nathan</div><div style={{flex:1,background:"rgba(255,255,255,0.1)",borderRadius:"3px",height:"6px",overflow:"hidden"}}><div style={{background:"#FF6F00",width:(trajetTimes.nathan/77*100)+"%",height:"100%"}}></div></div><div style={{minWidth:45,textAlign:"right",fontWeight:"600",fontSize:13}}>{trajetTimes.nathan || "—"}</div></div><div style={{display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(255,255,255,0.05)"}}></div><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{minWidth:70,fontWeight:"600",fontSize:13}}>Michael</div><div style={{flex:1,background:"rgba(255,255,255,0.1)",borderRadius:"3px",height:"6px",overflow:"hidden"}}><div style={{background:"#E53935",width:(trajetTimes.michael/77*100)+"%",height:"100%"}}></div></div><div style={{minWidth:45,textAlign:"right",fontWeight:"600",fontSize:13}}>{trajetTimes.michael || "—"}</div></div><div style={{display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(255,255,255,0.05)"}}></div><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{minWidth:70,fontWeight:"600",fontSize:13}}>Jason</div><div style={{flex:1,background:"rgba(255,255,255,0.1)",borderRadius:"3px",height:"6px",overflow:"hidden"}}><div style={{background:"#1976D2",width:"100%",height:"100%"}}></div></div><div style={{minWidth:45,textAlign:"right",fontWeight:"600",fontSize:13}}>{trajetTimes.jason || "—"}</div></div><div style={{display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(255,255,255,0.05)"}}></div><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{minWidth:70,fontWeight:"600",fontSize:13}}>Cedric</div><div style={{flex:1,background:"rgba(255,255,255,0.1)",borderRadius:"3px",height:"6px",overflow:"hidden"}}><div style={{background:"#10B981",width:(trajetTimes.cedric/77*100)+"%",height:"100%"}}></div></div><div style={{minWidth:45,textAlign:"right",fontWeight:"600",fontSize:13}}>{trajetTimes.cedric || "—"}</div></div><div style={{display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(255,255,255,0.05)"}}></div><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{minWidth:70,fontWeight:"600",fontSize:13}}>Liazide</div><div style={{flex:1,background:"rgba(255,255,255,0.1)",borderRadius:"3px",height:"6px",overflow:"hidden"}}><div style={{background:"#8B5CF6",width:(trajetTimes.liazide/77*100)+"%",height:"100%"}}></div></div><div style={{minWidth:45,textAlign:"right",fontWeight:"600",fontSize:13}}>{trajetTimes.liazide || "—"}</div></div><div style={{display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(255,255,255,0.05)"}}></div><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{minWidth:70,fontWeight:"600",fontSize:13}}>Rachid</div><div style={{flex:1,background:"rgba(255,255,255,0.1)",borderRadius:"3px",height:"6px",overflow:"hidden"}}><div style={{background:"#EC4899",width:(trajetTimes.rachid/77*100)+"%",height:"100%"}}></div></div><div style={{minWidth:45,textAlign:"right",fontWeight:"600",fontSize:13}}>{trajetTimes.rachid || "—"}</div></div><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{minWidth:70,fontWeight:"600",fontSize:13}}>Toufik</div><div style={{flex:1,background:"rgba(255,255,255,0.1)",borderRadius:"3px",height:"6px",overflow:"hidden"}}><div style={{background:"#06B6D4",width:(trajetTimes.toufik/77*100)+"%",height:"100%"}}></div></div><div style={{minWidth:45,textAlign:"right",fontWeight:"600",fontSize:13}}>{trajetTimes.toufik || "—"}</div></div></div></div>}
+        {currentSlide.type === "trajetPerso" && <div style={{height:"100%",background:"linear-gradient(135deg,#0f2027,#2c5364)",color:"white",padding:"20px",display:"flex",flexDirection:"column"}}><div style={{fontSize:26,fontWeight:"bold",marginBottom:10}}>TRAJETS</div><div style={{flex:1,display:"grid",gridTemplateColumns:"repeat(4, 1fr)",gap:12,overflowY:"auto"}}>{[{nom:"Ghulam",temps:trajetTimes.ghulam,dest:"Lagny",color:"#9C27B0"},{nom:"Nathan",temps:trajetTimes.nathan,dest:"Jean Moulin",color:"#FF6F00"},{nom:"Michael",temps:trajetTimes.michael,dest:"Nanterre",color:"#E53935"},{nom:"Jason",temps:trajetTimes.jason,dest:"Compiègne",color:"#1976D2"},{nom:"Cedric",temps:trajetTimes.cedric,dest:"Pierrefitte",color:"#10B981"},{nom:"Liazide",temps:trajetTimes.liazide,dest:"Pierrelaye",color:"#8B5CF6"},{nom:"Rachid",temps:trajetTimes.rachid,dest:"Poissy",color:"#EC4899"},{nom:"Toufik",temps:trajetTimes.toufik,dest:"Poissy",color:"#06B6D4"}].map(p=><div key={p.nom} style={{textAlign:"center",padding:"12px",background:"rgba(0,0,0,0.2)",borderRadius:8}}><div style={{position:"relative",width:100,height:100,margin:"0 auto 8px",display:"flex",alignItems:"center",justifyContent:"center"}}><svg viewBox="0 0 120 120" style={{width:"100%",height:"100%",transform:"rotate(-90deg)"}}><circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8"/><circle cx="60" cy="60" r="50" fill="none" stroke={p.color} strokeWidth="8" strokeDasharray={Math.round((p.temps/77)*235)+" 235"} strokeLinecap="round"/></svg><div style={{position:"absolute",textAlign:"center"}}><div style={{fontSize:24,fontWeight:"bold",color:"#4ADE80"}}>{p.temps || "—"}</div><div style={{fontSize:10,opacity:0.8}}>min</div></div></div><div style={{fontSize:14,fontWeight:600}}>{p.nom}</div><div style={{fontSize:11,opacity:0.7,marginTop:4}}>{p.dest}</div></div>)}</div></div>}
         {currentSlide.type === "transport" && <TransportSlide lines={transportLines} lastUpdate={transportLastUpdate} />}
         {currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
         {currentSlide.type === "planning" && (
