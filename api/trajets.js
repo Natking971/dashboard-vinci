@@ -1,4 +1,6 @@
 // /api/trajets.js - Route Vercel pour calculer les trajets avec TomTom
+// Place ce fichier dans ton repo dans le dossier /api
+
 export default async function handler(req, res) {
   const TOMTOM_API_KEY = process.env.TOMTOM_API_KEY;
 
@@ -6,23 +8,25 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "TOMTOM_API_KEY non configurée" });
   }
 
+  // Point de départ : Châtelet
   const start = { lat: 48.8626, lon: 2.3469 };
 
+  // Destinations (lat, lon) - Coordonnées GPS exactes des gares
   const trajets = [
-    { nom: "ghulam", lat: 48.8728, lon: 2.7169 },
-    { nom: "nathan", lat: 48.8185, lon: 2.3944 },
-    { nom: "michael", lat: 48.9003, lon: 2.1969 },
-    { nom: "jason", lat: 49.4194, lon: 2.8169 },
-    { nom: "cedric", lat: 48.9731, lon: 2.4089 },
-    { nom: "liazide", lat: 48.9797, lon: 2.1686 },
-    { nom: "rachid", lat: 48.8203, lon: 2.0275 },
-    { nom: "toufik", lat: 48.8203, lon: 2.0275 }
+    { nom: "ghulam", lat: 48.8822, lon: 2.7042 },      // Lagny-Thorigny
+    { nom: "nathan", lat: 48.8185, lon: 2.3944 },      // Jean Moulin
+    { nom: "michael", lat: 48.9037, lon: 2.1970 },     // Nanterre-Préfecture
+    { nom: "jason", lat: 49.4203, lon: 2.8218 },       // Compiègne
+    { nom: "cedric", lat: 48.9636, lon: 2.3719 },      // Pierrefitte-Stains
+    { nom: "liazide", lat: 49.0194, lon: 2.1537 },     // Pierrelaye
+    { nom: "rachid", lat: 48.933, lon: 2.040 },        // Poissy
+    { nom: "toufik", lat: 48.933, lon: 2.040 }         // Poissy
   ];
 
   const times = {};
 
   try {
-    // Requêtes séquentielles (une à la fois) avec délai pour éviter les limites TomTom
+    // Requêtes séquentielles avec délai (au lieu de parallèles) pour éviter les limites TomTom
     for (const trajet of trajets) {
       try {
         const url =
@@ -60,13 +64,13 @@ export default async function handler(req, res) {
         times[trajet.nom] = null;
       }
       
-      // Délai de 200ms entre les requêtes
+      // Délai de 200ms entre les requêtes pour respecter les limites TomTom
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
     res.status(200).json({ times });
   } catch (error) {
-    console.error("Erreur calcul trajets:", error);
+    console.error("❌ Erreur calcul trajets:", error);
     res.status(500).json({ error: "Erreur lors du calcul des trajets" });
   }
 }
