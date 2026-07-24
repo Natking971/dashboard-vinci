@@ -12,29 +12,30 @@ export default async function handler(req, res) {
     });
   }
 
-  // Point de départ : Châtelet-Les Halles
+  // Point de départ : gare Châtelet-Les Halles
   const start = {
-    lat: 48.8626,
-    lon: 2.3469,
+    lat: 48.8615,
+    lon: 2.3465,
   };
 
+  // Coordonnées des gares et stations
   const trajets = [
     {
       nom: "ghulam",
-      lat: 48.8822,
-      lon: 2.7042,
-      name: "Lagny-Thorigny RER A",
+      lat: 48.882222,
+      lon: 2.704167,
+      name: "Lagny-Thorigny",
     },
     {
       nom: "nathan",
-      lat: 48.835,
-      lon: 2.327,
+      lat: 48.824744,
+      lon: 2.318872,
       name: "Jean Moulin T3a",
     },
     {
       nom: "michael",
-      lat: 48.9037,
-      lon: 2.197,
+      lat: 48.895631,
+      lon: 2.223138,
       name: "Nanterre-Préfecture RER A",
     },
     {
@@ -45,14 +46,14 @@ export default async function handler(req, res) {
     },
     {
       nom: "cedric",
-      lat: 48.9636,
-      lon: 2.3719,
+      lat: 48.963873,
+      lon: 2.372285,
       name: "Pierrefitte-Stains RER D",
     },
     {
       nom: "liazide",
-      lat: 49.0194,
-      lon: 2.1537,
+      lat: 49.019392,
+      lon: 2.153672,
       name: "Pierrelaye RER C",
     },
     {
@@ -75,7 +76,7 @@ export default async function handler(req, res) {
   try {
     for (const trajet of trajets) {
       try {
-        // Format Navitia : longitude;latitude
+        // Navitia utilise le format longitude;latitude
         const from = `${start.lon};${start.lat}`;
         const to = `${trajet.lon};${trajet.lat}`;
 
@@ -83,20 +84,22 @@ export default async function handler(req, res) {
           from,
           to,
           count: "10",
+          data_freshness: "realtime",
+          datetime_represents: "departure",
         });
 
         const url =
           "https://prim.iledefrance-mobilites.fr/" +
           `marketplace/v2/navitia/journeys?${params.toString()}`;
 
-        console.log(`Appel PRIM pour ${trajet.nom} vers ${trajet.name}`);
+        console.log(
+          `Appel PRIM pour ${trajet.nom} vers ${trajet.name}`
+        );
 
         const response = await fetch(url, {
           method: "GET",
           headers: {
             Accept: "application/json",
-
-            // Authentification officielle PRIM
             apikey: IDFM_API_KEY,
           },
         });
@@ -127,13 +130,27 @@ export default async function handler(req, res) {
           ? data.journeys
           : [];
 
-        // On sélectionne uniquement un trajet contenant
-        // réellement des transports en commun.
-        const publicTransportJourney = journeys.find((journey) =>
+        // Garde uniquement les itinéraires utilisant
+        // réellement les transports en commun
+        const publicTransportJourneys = journeys.filter((journey) =>
           journey.sections?.some(
             (section) => section.type === "public_transport"
           )
         );
+
+        // Choisit l'itinéraire le plus rapide
+        const publicTransportJourney =
+          publicTransportJourneys.length > 0
+            ? publicTransportJourneys.reduce((fastest, journey) => {
+                if (!fastest) {
+                  return journey;
+                }
+
+                return journey.duration < fastest.duration
+                  ? journey
+                  : fastest;
+              }, null)
+            : null;
 
         if (!publicTransportJourney) {
           console.warn(
@@ -141,10 +158,15 @@ export default async function handler(req, res) {
           );
 
           times[trajet.nom] = null;
-          errors[trajet.nom] = "Aucun trajet en transport en commun";
+          errors[trajet.nom] =
+            "Aucun trajet en transport en commun";
         } else {
-          const durationSeconds = publicTransportJourney.duration;
-          const durationMinutes = Math.round(durationSeconds / 60);
+          const durationSeconds =
+            publicTransportJourney.duration;
+
+          const durationMinutes = Math.round(
+            durationSeconds / 60
+          );
 
           times[trajet.nom] = durationMinutes;
 
@@ -162,11 +184,9 @@ export default async function handler(req, res) {
         errors[trajet.nom] = error.message;
       }
 
-      // Quatre requêtes par seconde maximum environ
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
 
-    // Évite qu'une ancienne réponse soit conservée trop longtemps
     res.setHeader(
       "Cache-Control",
       "s-maxage=240, stale-while-revalidate=60"
