@@ -1,5 +1,5 @@
 // /api/trajets.js - Route Vercel pour calculer les trajets avec Navitia/PRIM
-// API officielle d'Île-de-France Mobilités - Format d'authentification corrigé
+// API officielle d'Île-de-France Mobilités - Authentification Basic HTTP correcte
 
 export default async function handler(req, res) {
   const IDFM_API_KEY = process.env.IDFM_API_KEY;
@@ -34,17 +34,20 @@ export default async function handler(req, res) {
         const from = `${start.lon};${start.lat}`;
         const to = `${trajet.lon};${trajet.lat}`;
 
-        // Requête Navitia avec paramètre key au lieu de Bearer token
+        // Requête Navitia avec authentification Basic HTTP
         const url = 
           `https://api.navitia.io/v1/journeys?` +
           `from=${from}&` +
-          `to=${to}&` +
-          `key=${IDFM_API_KEY}`;
+          `to=${to}`;
 
         console.log(`🔄 Appel Navitia pour ${trajet.nom}...`);
 
+        // Authentification Basic HTTP : clé:vide en base64
+        const basicAuth = Buffer.from(`${IDFM_API_KEY}:`).toString('base64');
+
         const response = await fetch(url, {
           headers: {
+            'Authorization': `Basic ${basicAuth}`,
             'Accept': 'application/json'
           }
         });
