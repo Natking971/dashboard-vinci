@@ -1497,7 +1497,7 @@ function WeatherSlide({ weather }) {
 
       {/* Température principale */}
       <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 10 }}>
-        <WeatherIcon code={current.weather_code} size={100}/>
+        <div style={{fontSize:80}}>{current.weather_code <= 3 ? "☀️" : current.weather_code <= 45 ? "☁️" : current.weather_code <= 80 ? "🌧️" : "⛈️"}</div>
         <div>
           <div style={{ fontSize: 86, fontWeight: 900, lineHeight: 1, letterSpacing: "-2px" }}>{Math.round(current.temperature_2m)}°C</div>
           <div style={{ fontSize: 18, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
@@ -1529,7 +1529,7 @@ function WeatherSlide({ weather }) {
           return (
             <div key={i} style={{ flex: 1, background: "rgba(255,255,255,0.1)", backdropFilter: "blur(4px)", borderRadius: 16, padding: "14px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 7, border: "1px solid rgba(255,255,255,0.15)" }}>
               <div style={{ fontSize: 15, color: "rgba(255,255,255,0.8)", fontWeight: 700 }}>{DAYS_FR[d.getDay()]}</div>
-              <WeatherIcon code={daily.weather_code[i + 1]} size={56}/>
+              <div style={{fontSize:48}}>{daily.weather_code[i + 1] <= 3 ? "☀️" : daily.weather_code[i + 1] <= 45 ? "☁️" : daily.weather_code[i + 1] <= 80 ? "🌧️" : "⛈️"}</div>
               <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", textAlign: "center" }}>{dWmo.fr}</div>
               <div style={{ display: "flex", gap: 10, fontSize: 22, fontWeight: 800 }}>
                 <span style={{ color: "#FCA5A5" }}>{Math.round(daily.temperature_2m_max[i + 1])}°</span>
@@ -1682,7 +1682,9 @@ export default function Dashboard() {
   const [lastUpdate, setLastUpdate] = useState(null);
   const [weather, setWeather] = useState(null);
   const [transportLines, setTransportLines] = useState([]);
-  const [trajetTimes, setTrajetTimes] = useState({});
+  const [trajetTimes, setTrajetTimes] = useState({
+    ghulam: 44, nathan: 27, michael: 12, jason: 77, cedric: 28, liazide: 35, rachid: 30, toufik: 30
+  });
   const [transportLastUpdate, setTransportLastUpdate] = useState(null);
   const [quote, setQuote] = useState(() => FRENCH_QUOTES[Math.floor(Date.now() / 86400000) % FRENCH_QUOTES.length]);
 
