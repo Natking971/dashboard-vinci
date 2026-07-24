@@ -1682,9 +1682,7 @@ export default function Dashboard() {
   const [lastUpdate, setLastUpdate] = useState(null);
   const [weather, setWeather] = useState(null);
   const [transportLines, setTransportLines] = useState([]);
-  const [trajetTimes] = useState({
-    ghulam: 44, nathan: 21, michael: 12, jason: 77, cedric: 28, liazide: 35, rachid: 30, toufik: 30
-  });
+  const [trajetTimes, setTrajetTimes] = useState({});
   const [transportLastUpdate, setTransportLastUpdate] = useState(null);
   const [quote, setQuote] = useState(() => FRENCH_QUOTES[Math.floor(Date.now() / 86400000) % FRENCH_QUOTES.length]);
 
@@ -1973,6 +1971,38 @@ export default function Dashboard() {
     return () => { clearInterval(tick); clearTimeout(advance); };
   }, [slideIdx, planning, planningNext, affairs, subcontractorsCurrent, subcontractorsNext, quotes]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchTrajetTimes() {
+      try {
+        const response = await fetch("/api/trajets");
+
+        if (!response.ok) {
+          throw new Error(`Erreur API trajets : ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!cancelled) {
+          setTrajetTimes(data.times || {});
+        }
+      } catch (error) {
+        console.error("Erreur actualisation trajets :", error);
+      }
+    }
+
+    fetchTrajetTimes();
+
+    // Actualisation automatique toutes les 5 minutes
+    const interval = setInterval(fetchTrajetTimes, 5 * 60 * 1000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
   const timeStr = time.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const dateStr = time.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
@@ -2163,7 +2193,7 @@ export default function Dashboard() {
         {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
         {currentSlide.type === "weather" && <WeatherSlide weather={weather} />}
         {currentSlide.type === "quote" && <QuoteSlide quote={quote} />}
-        {currentSlide.type === "trajetPerso" && <div style={{height:"100%",background:"linear-gradient(135deg,#0f2027,#2c5364)",color:"white",padding:"20px",display:"flex",flexDirection:"column"}}><div style={{fontSize:26,fontWeight:"bold",marginBottom:10}}>TRAJETS</div><div style={{flex:1,display:"grid",gridTemplateColumns:"repeat(4, 1fr)",gap:12,overflowY:"auto"}}>{[{nom:"Ghulam",temps:trajetTimes.ghulam,dest:"Lagny",color:"#9C27B0"},{nom:"Nathan",temps:trajetTimes.nathan,dest:"Jean Moulin",color:"#FF6F00"},{nom:"Michael",temps:trajetTimes.michael,dest:"Nanterre",color:"#E53935"},{nom:"Jason",temps:trajetTimes.jason,dest:"Compiègne",color:"#1976D2"},{nom:"Cedric",temps:trajetTimes.cedric,dest:"Pierrefitte",color:"#10B981"},{nom:"Liazide",temps:trajetTimes.liazide,dest:"Pierrelaye",color:"#8B5CF6"},{nom:"Rachid",temps:trajetTimes.rachid,dest:"Poissy",color:"#EC4899"},{nom:"Toufik",temps:trajetTimes.toufik,dest:"Poissy",color:"#06B6D4"}].map(p=><div key={p.nom} style={{textAlign:"center",padding:"12px",background:"rgba(0,0,0,0.2)",borderRadius:8}}><div style={{position:"relative",width:100,height:100,margin:"0 auto 8px",display:"flex",alignItems:"center",justifyContent:"center"}}><svg viewBox="0 0 120 120" style={{width:"100%",height:"100%",transform:"rotate(-90deg)"}}><circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8"/><circle cx="60" cy="60" r="50" fill="none" stroke={p.color} strokeWidth="8" strokeDasharray={Math.round((p.temps/77)*235)+" 235"} strokeLinecap="round"/></svg><div style={{position:"absolute",textAlign:"center"}}><div style={{fontSize:24,fontWeight:"bold",color:"#4ADE80"}}>{p.temps || "—"}</div><div style={{fontSize:10,opacity:0.8}}>min</div></div></div><div style={{fontSize:14,fontWeight:600}}>{p.nom}</div><div style={{fontSize:11,opacity:0.7,marginTop:4}}>{p.dest}</div></div>)}</div></div>}
+        {currentSlide.type === "trajetPerso" && <div style={{height:"100%",background:"linear-gradient(135deg,#0f2027,#2c5364)",color:"white",padding:"20px",display:"flex",flexDirection:"column"}}><div style={{fontSize:26,fontWeight:"bold",marginBottom:10}}>TRAJETS</div><div style={{flex:1,display:"grid",gridTemplateColumns:"repeat(4, 1fr)",gap:12,overflowY:"auto"}}>{[{nom:"Ghulam",temps:trajetTimes.ghulam,dest:"Lagny",color:"#9C27B0"},{nom:"Nathan",temps:trajetTimes.nathan,dest:"Jean Moulin",color:"#FF6F00"},{nom:"Michael",temps:trajetTimes.michael,dest:"Nanterre",color:"#E53935"},{nom:"Jason",temps:trajetTimes.jason,dest:"Compiègne",color:"#1976D2"},{nom:"Cedric",temps:trajetTimes.cedric,dest:"Pierrefitte",color:"#10B981"},{nom:"Liazide",temps:trajetTimes.liazide,dest:"Pierrelaye",color:"#8B5CF6"},{nom:"Rachid",temps:trajetTimes.rachid,dest:"Poissy",color:"#EC4899"},{nom:"Toufik",temps:trajetTimes.toufik,dest:"Poissy",color:"#06B6D4"}].map(p=><div key={p.nom} style={{textAlign:"center",padding:"12px",background:"rgba(0,0,0,0.2)",borderRadius:8}}><div style={{position:"relative",width:150,height:150,margin:"0 auto 8px",display:"flex",alignItems:"center",justifyContent:"center"}}><svg viewBox="0 0 120 120" style={{width:"100%",height:"100%",transform:"rotate(-90deg)"}}><circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8"/><circle cx="60" cy="60" r="50" fill="none" stroke={p.color} strokeWidth="8" strokeDasharray={Math.round((p.temps/77)*235)+" 235"} strokeLinecap="round"/></svg><div style={{position:"absolute",textAlign:"center"}}><div style={{fontSize:28,fontWeight:"bold",color:"#4ADE80"}}>{p.temps || "—"}</div><div style={{fontSize:11,opacity:0.8}}>min</div></div></div><div style={{fontSize:14,fontWeight:600}}>{p.nom}</div><div style={{fontSize:11,opacity:0.7,marginTop:4}}>{p.dest}</div></div>)}</div></div>}
         {currentSlide.type === "transport" && <TransportSlide lines={transportLines} lastUpdate={transportLastUpdate} />}
         {currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
         {currentSlide.type === "planning" && (
