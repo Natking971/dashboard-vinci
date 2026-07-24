@@ -40,21 +40,25 @@ export default async function handler(req, res) {
             `&key=${TOMTOM_API_KEY}`;
 
           const response = await fetch(url);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          
           const data = await response.json();
 
-          const summary = data.routes?.[0]?.summary;
-          if (summary) {
+          if (data.routes && data.routes[0] && data.routes[0].summary) {
+            const summary = data.routes[0].summary;
             const durationMinutes = Math.round(summary.travelTimeInSeconds / 60);
             const trafficDelayMinutes = summary.trafficDelayInSeconds
               ? Math.round(summary.trafficDelayInSeconds / 60)
               : 0;
 
-            // Temps total = temps sans trafic + retard trafic
             times[trajet.nom] = durationMinutes;
-            console.log(`${trajet.nom}: ${durationMinutes}min (trafic: +${trafficDelayMinutes}min)`);
+            console.log(`✅ ${trajet.nom}: ${durationMinutes}min (trafic: +${trafficDelayMinutes}min)`);
           } else {
             times[trajet.nom] = null;
-            console.error(`Pas de route trouvée pour ${trajet.nom}`);
+            console.error(`⚠️ Pas de route trouvée pour ${trajet.nom}. Response: ${JSON.stringify(data).slice(0, 200)}`);
           }
         } catch (error) {
           console.error(`Erreur TomTom ${trajet.nom}:`, error);
