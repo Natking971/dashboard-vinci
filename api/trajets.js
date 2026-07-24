@@ -1,70 +1,79 @@
-// /api/trajets.js - Route Vercel pour calculer les trajets avec TomTom
-// Place ce fichier dans ton repo dans le dossier /api
+// /api/trajets.js - Route Vercel pour calculer les trajets avec Navitia/PRIM
+// API officielle d'Île-de-France Mobilités
 
 export default async function handler(req, res) {
-  const TOMTOM_API_KEY = process.env.TOMTOM_API_KEY;
+  const IDFM_API_KEY = process.env.IDFM_API_KEY;
 
-  if (!TOMTOM_API_KEY) {
-    return res.status(500).json({ error: "TOMTOM_API_KEY non configurée" });
+  if (!IDFM_API_KEY) {
+    console.error("❌ IDFM_API_KEY non configurée");
+    return res.status(500).json({ error: "IDFM_API_KEY non configurée" });
   }
 
-  // Point de départ : Châtelet
+  // Point de départ : Châtelet-Les Halles (Navitia format: lon,lat)
   const start = { lat: 48.8626, lon: 2.3469 };
 
-  // Destinations (lat, lon) - Coordonnées GPS exactes des gares
+  // Destinations (coordonnées GPS des gares/arrêts)
   const trajets = [
-    { nom: "ghulam", lat: 48.8822, lon: 2.7042 },      // Lagny-Thorigny
-    { nom: "nathan", lat: 48.8185, lon: 2.3944 },      // Jean Moulin
-    { nom: "michael", lat: 48.9037, lon: 2.1970 },     // Nanterre-Préfecture
-    { nom: "jason", lat: 49.4203, lon: 2.8218 },       // Compiègne
-    { nom: "cedric", lat: 48.9636, lon: 2.3719 },      // Pierrefitte-Stains
-    { nom: "liazide", lat: 49.0194, lon: 2.1537 },     // Pierrelaye
-    { nom: "rachid", lat: 48.933, lon: 2.040 },        // Poissy
-    { nom: "toufik", lat: 48.933, lon: 2.040 }         // Poissy
+    { nom: "ghulam", lat: 48.8822, lon: 2.7042, name: "Lagny-Thorigny RER A" },
+    { nom: "nathan", lat: 48.8350, lon: 2.3270, name: "Jean Moulin T3a" },
+    { nom: "michael", lat: 48.9037, lon: 2.1970, name: "Nanterre-Préfecture RER A" },
+    { nom: "jason", lat: 49.4203, lon: 2.8218, name: "Compiègne SNCF" },
+    { nom: "cedric", lat: 48.9636, lon: 2.3719, name: "Pierrefitte-Stains RER D" },
+    { nom: "liazide", lat: 49.0194, lon: 2.1537, name: "Pierrelaye RER C" },
+    { nom: "rachid", lat: 48.933, lon: 2.040, name: "Poissy RER A" },
+    { nom: "toufik", lat: 48.933, lon: 2.040, name: "Poissy RER A" }
   ];
 
   const times = {};
 
   try {
-    // Requêtes séquentielles avec délai (au lieu de parallèles) pour éviter les limites TomTom
+    // Requêtes séquentielles avec délai pour respecter les limites Navitia
     for (const trajet of trajets) {
       try {
-        const url =
-          `https://api.tomtom.com/routing/1/calculateRoute/` +
-          `${start.lat},${start.lon}:${trajet.lat},${trajet.lon}/json` +
-          `?traffic=true` +
-          `&departAt=now` +
-          `&routeType=fastest` +
-          `&travelMode=car` +
-          `&key=${TOMTOM_API_KEY}`;
+        // Format Navitia: lon;lat
+        const from = `${start.lon};${start.lat}`;
+        const to = `${trajet.lon};${trajet.lat}`;
 
-        const response = await fetch(url);
-        
+        // Requête Navitia avec paramètres pour transports en commun
+        const url = 
+          `https://api.navitia.io/v1/journeys?` +
+          `from=${from}&` +
+          `to=${to}&` +
+          `datetime=${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}&` +
+          `max_nb_transfers=4&` +
+          `min_nb_journeys=1`;
+
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${IDFM_API_KEY}`,
+            'Accept': 'application/json'
+          }
+        });
+
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
-        
+
         const data = await response.json();
 
-        if (data.routes && data.routes[0] && data.routes[0].summary) {
-          const summary = data.routes[0].summary;
-          const durationMinutes = Math.round(summary.travelTimeInSeconds / 60);
-          const trafficDelayMinutes = summary.trafficDelayInSeconds
-            ? Math.round(summary.trafficDelayInSeconds / 60)
-            : 0;
+        // Extraire le temps du premier itinéraire
+        if (data.journeys && data.journeys.length > 0) {
+          const journey = data.journeys[0];
+          const durationSeconds = journey.duration;
+          const durationMinutes = Math.round(durationSeconds / 60);
 
           times[trajet.nom] = durationMinutes;
-          console.log(`✅ ${trajet.nom}: ${durationMinutes}min (trafic: +${trafficDelayMinutes}min)`);
+          console.log(`✅ ${trajet.nom} (${trajet.name}): ${durationMinutes}min`);
         } else {
+          console.warn(`⚠️ ${trajet.nom} (${trajet.name}): Pas d'itinéraire trouvé`);
           times[trajet.nom] = null;
-          console.error(`⚠️ Pas de route trouvée pour ${trajet.nom}`);
         }
       } catch (error) {
-        console.error(`❌ Erreur TomTom ${trajet.nom}:`, error.message);
+        console.error(`❌ Erreur Navitia ${trajet.nom}:`, error.message);
         times[trajet.nom] = null;
       }
-      
-      // Délai de 200ms entre les requêtes pour respecter les limites TomTom
+
+      // Délai de 200ms entre les requêtes pour respecter les limites
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
