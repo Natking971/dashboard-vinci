@@ -1919,39 +1919,49 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    function calculateTrajetTimes() {
-      const baseTimes = {
-        ghulam: 44,    // Lagny-Thorigny: 44 min
-        nathan: 21,    // Jean Moulin: 21 min
-        michael: 12,   // Nanterre-Préfecture: 12 min
-        jason: 77,     // Compiègne: 77 min (1h 17)
-        cedric: 28     // Pierrefitte-Stains: 28 min
-      };
-      
-      const lineMap = {
-        ghulam: "P",
-        nathan: "T3A",
-        michael: "A",
-        jason: "B",
-        cedric: "B"
-      };
+    async function fetchTrajetTimesFromAPI() {
+      const trajets = [
+        { nom: "ghulam", start: "2.3469,48.8626", end: "2.7169,48.8728" },
+        { nom: "nathan", start: "2.3469,48.8626", end: "2.3944,48.8185" },
+        { nom: "michael", start: "2.3469,48.8626", end: "2.1969,48.9003" },
+        { nom: "jason", start: "2.3469,48.8626", end: "2.8169,49.4194" },
+        { nom: "cedric", start: "2.3469,48.8626", end: "2.4089,48.9731" }
+      ];
       
       const times = {};
-      for (const [person, lineCode] of Object.entries(lineMap)) {
-        let time = baseTimes[person];
-        
-        const line = (transportLines || []).find(l => l.code === lineCode);
-        if (line && line.disruptions && line.disruptions.length > 0) {
-          time += line.disruptions.length * 5;
+      
+      for (const trajet of trajets) {
+        try {
+          const url = `https://router.project-osrm.org/route/v1/driving/${trajet.start};${trajet.end}?overview=false`;
+          const response = await fetch(url);
+          const data = await response.json();
+          
+          if (data.routes && data.routes[0]) {
+            const durationSeconds = data.routes[0].duration;
+            let durationMinutes = Math.round(durationSeconds / 60);
+            
+            // Ajouter les perturbations IDFM si présentes
+            const lineMap = { ghulam: "P", nathan: "T3A", michael: "A", jason: "B", cedric: "B" };
+            const lineCode = lineMap[trajet.nom];
+            const line = (transportLines || []).find(l => l.code === lineCode);
+            if (line && line.disruptions && line.disruptions.length > 0) {
+              durationMinutes += line.disruptions.length * 5;
+            }
+            
+            times[trajet.nom] = durationMinutes;
+          }
+        } catch (e) {
+          console.error(`Erreur OSRM ${trajet.nom}:`, e);
+          times[trajet.nom] = null;
         }
-        
-        times[person] = time;
       }
       
       setTrajetTimes(times);
     }
     
-    calculateTrajetTimes();
+    fetchTrajetTimesFromAPI();
+    const interval = setInterval(fetchTrajetTimesFromAPI, 300000); // Mise à jour toutes les 5 minutes
+    return () => clearInterval(interval);
   }, [transportLines]);
 
   // Détecte si la slide actuelle n'a aucune donnée à afficher
