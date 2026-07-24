@@ -1667,6 +1667,304 @@ function TransportSlide({ lines, lastUpdate }) {
 }
 
 
+
+// ─── SLIDE TRAJETS PERSONNELS ────────────────────────────────────────────────
+
+// Temps de trajet habituels servant de référence pour calculer le retard.
+const TRAJET_HABITUEL = {
+  ghulam: 40,
+  nathan: 24,
+  michael: 12,
+  jason: 75,
+  cedric: 24,
+  liazide: 41,
+  rachid: 41,
+  toufik: 41,
+};
+
+const TRAJETS_CONFIG = [
+  { key: "ghulam", nom: "Ghulam", dest: "Lagny" },
+  { key: "nathan", nom: "Nathan", dest: "Jean Moulin" },
+  { key: "michael", nom: "Michael", dest: "Nanterre" },
+  { key: "jason", nom: "Jason", dest: "Compiègne" },
+  { key: "cedric", nom: "Cedric", dest: "Pierrefitte" },
+  { key: "liazide", nom: "Liazide", dest: "Pierrelaye" },
+  { key: "rachid", nom: "Rachid", dest: "Poissy" },
+  { key: "toufik", nom: "Toufik", dest: "Poissy" },
+];
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function hexToRgb(hex) {
+  const cleanHex = hex.replace("#", "");
+
+  return {
+    r: parseInt(cleanHex.slice(0, 2), 16),
+    g: parseInt(cleanHex.slice(2, 4), 16),
+    b: parseInt(cleanHex.slice(4, 6), 16),
+  };
+}
+
+function rgbToHex({ r, g, b }) {
+  const toHex = value =>
+    Math.round(clamp(value, 0, 255))
+      .toString(16)
+      .padStart(2, "0");
+
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function mixColors(startColor, endColor, ratio) {
+  const start = hexToRgb(startColor);
+  const end = hexToRgb(endColor);
+  const safeRatio = clamp(ratio, 0, 1);
+
+  return rgbToHex({
+    r: start.r + (end.r - start.r) * safeRatio,
+    g: start.g + (end.g - start.g) * safeRatio,
+    b: start.b + (end.b - start.b) * safeRatio,
+  });
+}
+
+/*
+ * Dégradé selon l'écart par rapport au trajet habituel :
+ * - jusqu'à +4 min : vert
+ * - de +5 à +14 min : dégradé vert → orange
+ * - à partir de +15 min : dégradé orange → rouge
+ */
+function getTrajetStatus(temps, habituel) {
+  if (!Number.isFinite(temps)) {
+    return {
+      color: "#64748B",
+      delta: null,
+      label: "Indisponible",
+    };
+  }
+
+  const delta = Math.round(temps - habituel);
+
+  if (delta <= 0) {
+    return {
+      color: "#22C55E",
+      delta,
+      label: delta === 0 ? "Habituel" : `${delta} min`,
+    };
+  }
+
+  if (delta <= 4) {
+    return {
+      color: "#22C55E",
+      delta,
+      label: `+${delta} min`,
+    };
+  }
+
+  if (delta <= 14) {
+    return {
+      color: mixColors("#22C55E", "#F59E0B", (delta - 4) / 10),
+      delta,
+      label: `+${delta} min`,
+    };
+  }
+
+  return {
+    color: mixColors("#F59E0B", "#EF4444", (delta - 14) / 16),
+    delta,
+    label: `+${delta} min`,
+  };
+}
+
+function TrajetPersoSlide({ trajetTimes }) {
+  const radius = 50;
+  const circumference = 2 * Math.PI * radius;
+  const maxDisplayedMinutes = 120;
+
+  return (
+    <div
+      style={{
+        height: "100%",
+        background: "linear-gradient(135deg, #0f2027, #2c5364)",
+        color: "white",
+        padding: 20,
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 26,
+          fontWeight: "bold",
+          marginBottom: 10,
+        }}
+      >
+        TRAJETS
+      </div>
+
+      <div
+        style={{
+          flex: 1,
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: 12,
+          overflow: "hidden",
+        }}
+      >
+        {TRAJETS_CONFIG.map(personne => {
+          const tempsBrut = trajetTimes?.[personne.key];
+          const temps =
+            tempsBrut !== null &&
+            tempsBrut !== undefined &&
+            tempsBrut !== "" &&
+            Number.isFinite(Number(tempsBrut))
+              ? Number(tempsBrut)
+              : null;
+
+          const habituel = TRAJET_HABITUEL[personne.key];
+          const status = getTrajetStatus(temps, habituel);
+          const progress =
+            temps === null
+              ? 0
+              : clamp(temps / maxDisplayedMinutes, 0, 1);
+
+          const dashLength = progress * circumference;
+
+          return (
+            <div
+              key={personne.key}
+              style={{
+                textAlign: "center",
+                padding: 12,
+                background: "rgba(0, 0, 0, 0.2)",
+                borderRadius: 8,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: 0,
+              }}
+            >
+              <div
+                style={{
+                  position: "relative",
+                  width: 150,
+                  height: 150,
+                  margin: "0 auto 8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <svg
+                  viewBox="0 0 120 120"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    transform: "rotate(-90deg)",
+                  }}
+                  aria-hidden="true"
+                >
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r={radius}
+                    fill="none"
+                    stroke="rgba(255,255,255,0.12)"
+                    strokeWidth="8"
+                  />
+
+                  {temps !== null && (
+                    <circle
+                      cx="60"
+                      cy="60"
+                      r={radius}
+                      fill="none"
+                      stroke={status.color}
+                      strokeWidth="8"
+                      strokeDasharray={`${dashLength} ${circumference}`}
+                      strokeLinecap="round"
+                      style={{
+                        transition:
+                          "stroke 0.5s ease, stroke-dasharray 0.5s ease",
+                      }}
+                    />
+                  )}
+                </svg>
+
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    textAlign: "center",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      minHeight: 17,
+                      marginBottom: 1,
+                      fontSize: 11,
+                      lineHeight: 1.1,
+                      fontWeight: 800,
+                      color: status.color,
+                    }}
+                  >
+                    {temps === null ? "Indisponible" : status.label}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: 28,
+                      lineHeight: 1,
+                      fontWeight: "bold",
+                      color: status.color,
+                    }}
+                  >
+                    {temps ?? "—"}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: 11,
+                      opacity: 0.8,
+                      marginTop: 4,
+                    }}
+                  >
+                    min
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                }}
+              >
+                {personne.nom}
+              </div>
+
+              <div
+                style={{
+                  fontSize: 11,
+                  opacity: 0.7,
+                  marginTop: 4,
+                }}
+              >
+                {personne.dest}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [time, setTime] = useState(new Date());
   const [slideIdx, setSlideIdx] = useState(0);
@@ -2195,7 +2493,7 @@ export default function Dashboard() {
         {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
         {currentSlide.type === "weather" && <WeatherSlide weather={weather} />}
         {currentSlide.type === "quote" && <QuoteSlide quote={quote} />}
-        {currentSlide.type === "trajetPerso" && <div style={{height:"100%",background:"linear-gradient(135deg,#0f2027,#2c5364)",color:"white",padding:"20px",display:"flex",flexDirection:"column"}}><div style={{fontSize:26,fontWeight:"bold",marginBottom:10}}>TRAJETS</div><div style={{flex:1,display:"grid",gridTemplateColumns:"repeat(4, 1fr)",gap:12,overflowY:"auto"}}>{[{nom:"Ghulam",temps:trajetTimes.ghulam,dest:"Lagny",color:"#9C27B0"},{nom:"Nathan",temps:trajetTimes.nathan,dest:"Jean Moulin",color:"#FF6F00"},{nom:"Michael",temps:trajetTimes.michael,dest:"Nanterre",color:"#E53935"},{nom:"Jason",temps:trajetTimes.jason,dest:"Compiègne",color:"#1976D2"},{nom:"Cedric",temps:trajetTimes.cedric,dest:"Pierrefitte",color:"#10B981"},{nom:"Liazide",temps:trajetTimes.liazide,dest:"Pierrelaye",color:"#8B5CF6"},{nom:"Rachid",temps:trajetTimes.rachid,dest:"Poissy",color:"#EC4899"},{nom:"Toufik",temps:trajetTimes.toufik,dest:"Poissy",color:"#06B6D4"}].map(p=><div key={p.nom} style={{textAlign:"center",padding:"12px",background:"rgba(0,0,0,0.2)",borderRadius:8}}><div style={{position:"relative",width:150,height:150,margin:"0 auto 8px",display:"flex",alignItems:"center",justifyContent:"center"}}><svg viewBox="0 0 120 120" style={{width:"100%",height:"100%",transform:"rotate(-90deg)"}}><circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8"/><circle cx="60" cy="60" r="50" fill="none" stroke={p.color} strokeWidth="8" strokeDasharray={Math.round((p.temps/77)*235)+" 235"} strokeLinecap="round"/></svg><div style={{position:"absolute",textAlign:"center"}}><div style={{fontSize:28,fontWeight:"bold",color:"#4ADE80"}}>{p.temps || "—"}</div><div style={{fontSize:11,opacity:0.8}}>min</div></div></div><div style={{fontSize:14,fontWeight:600}}>{p.nom}</div><div style={{fontSize:11,opacity:0.7,marginTop:4}}>{p.dest}</div></div>)}</div></div>}
+        {currentSlide.type === "trajetPerso" && <TrajetPersoSlide trajetTimes={trajetTimes} />}
         {currentSlide.type === "transport" && <TransportSlide lines={transportLines} lastUpdate={transportLastUpdate} />}
         {currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
         {currentSlide.type === "planning" && (
