@@ -1,16 +1,27 @@
 // /api/trajets.js
-// PRIM / Île-de-France Mobilités + TER SNCF pour Jason
+// Trajets en transports en commun avec PRIM
+// Cas spécial Jason avec le TER SNCF
 
 const PRIM_URL =
   "https://prim.iledefrance-mobilites.fr/marketplace/v2/navitia/journeys";
 
-const SNCF_URL = "https://api.sncf.com/v1/journeys";
+const SNCF_URL =
+  "https://api.sncf.com/v1/journeys";
 
 const pause = (ms) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+  new Promise((resolve) =>
+    setTimeout(resolve, ms)
+  );
 
-function parseDate(value) {
-  if (!/^\d{8}T\d{6}$/.test(value || "")) {
+/*
+ * Transforme une date Navitia :
+ * 20260724T213000
+ * en timestamp utilisable.
+ */
+function parseNavitiaDate(value) {
+  if (
+    !/^\d{8}T\d{6}$/.test(value || "")
+  ) {
     return null;
   }
 
@@ -24,7 +35,10 @@ function parseDate(value) {
   );
 }
 
-function formatDate(timestamp) {
+/*
+ * Transforme un timestamp en date Navitia.
+ */
+function formatNavitiaDate(timestamp) {
   const date = new Date(timestamp);
 
   const pad = (number) =>
@@ -40,17 +54,35 @@ function formatDate(timestamp) {
   );
 }
 
+/*
+ * Ajoute des minutes à une date Navitia.
+ */
 function addMinutes(value, minutes) {
-  const timestamp = parseDate(value);
+  const timestamp =
+    parseNavitiaDate(value);
 
-  return timestamp === null
-    ? null
-    : formatDate(timestamp + minutes * 60_000);
+  if (timestamp === null) {
+    return null;
+  }
+
+  return formatNavitiaDate(
+    timestamp + minutes * 60_000
+  );
 }
 
-function minutesBetween(startValue, endValue) {
-  const start = parseDate(startValue);
-  const end = parseDate(endValue);
+/*
+ * Calcule le nombre de minutes
+ * entre deux dates Navitia.
+ */
+function minutesBetween(
+  startValue,
+  endValue
+) {
+  const start =
+    parseNavitiaDate(startValue);
+
+  const end =
+    parseNavitiaDate(endValue);
 
   if (
     start === null ||
@@ -65,37 +97,60 @@ function minutesBetween(startValue, endValue) {
   );
 }
 
+/*
+ * Vérifie que l'itinéraire utilise
+ * bien un transport en commun.
+ */
 function hasPublicTransport(journey) {
   return journey?.sections?.some(
     (section) =>
-      section.type === "public_transport"
+      section.type ===
+      "public_transport"
   );
 }
 
+/*
+ * Vérifie si l'itinéraire SNCF
+ * contient un TER.
+ */
 function hasTer(journey) {
-  return journey?.sections?.some((section) => {
-    if (
-      section.type !== "public_transport"
-    ) {
-      return false;
-    }
+  return journey?.sections?.some(
+    (section) => {
+      if (
+        section.type !==
+        "public_transport"
+      ) {
+        return false;
+      }
 
-    return JSON.stringify(
-      section.display_informations || {}
-    )
-      .toUpperCase()
-      .includes("TER");
-  });
+      const information =
+        JSON.stringify({
+          displayInformations:
+            section.display_informations ||
+            {},
+
+          physicalMode:
+            section.physical_mode || {},
+
+          commercialMode:
+            section.commercial_mode || {},
+
+          links:
+            section.links || [],
+        }).toUpperCase();
+
+      return information.includes("TER");
+    }
+  );
 }
 
 /*
- * Sélectionne le trajet qui arrive le plus tôt.
+ * Sélectionne l'itinéraire qui arrive
+ * le plus tôt.
  *
- * On ne prend plus data.journeys[0], car le premier
- * trajet n'est pas toujours le plus rapide.
- *
- * Le temps affiché comprend aussi l'attente avant
- * le prochain train, comme dans Google Maps.
+ * Cela évite de prendre automatiquement
+ * le premier trajet renvoyé par l'API,
+ * qui n'est pas toujours le plus rapide.
  */
 function selectBestJourney(
   data,
@@ -117,17 +172,14 @@ function selectBestJourney(
       )
   );
 
+  /*
+   * Pour Jason, on privilégie
+   * les trajets indiqués comme TER.
+   */
   if (terOnly) {
     const terJourneys =
       journeys.filter(hasTer);
 
-    /*
-     * Certaines réponses SNCF n'écrivent pas
-     * clairement "TER".
-     *
-     * Dans ce cas, on conserve les trajets
-     * ferroviaires disponibles.
-     */
     if (terJourneys.length > 0) {
       journeys = terJourneys;
     }
@@ -137,41 +189,62 @@ function selectBestJourney(
     return null;
   }
 
-  const reference =
+  /*
+   * Pour les trajets PRIM :
+   * on utilise l'heure actuelle retournée
+   * par l'API.
+   *
+   * Pour le TER :
+   * on utilise l'heure d'arrivée prévue
+   * à Gare du Nord + la correspondance.
+   */
+  const referenceDateTime =
     requestedDateTime ||
     data?.context?.current_datetime ||
     journeys[0].departure_date_time;
 
-  return journeys
-    .map((journey) => ({
-      journey,
-
-      minutes:
+  const rankedJourneys = journeys
+    .map((journey) => {
+      const totalMinutes =
         minutesBetween(
-          reference,
+          referenceDateTime,
           journey.arrival_date_time
         ) ??
         Math.round(
           Number(journey.duration) / 60
-        ),
-    }))
+        );
+
+      return {
+        journey,
+        minutes: totalMinutes,
+      };
+    })
+    .filter((item) =>
+      Number.isFinite(item.minutes)
+    )
     .sort(
-      (a, b) =>
-        a.minutes - b.minutes
-    )[0];
+      (first, second) =>
+        first.minutes - second.minutes
+    );
+
+  return rankedJourneys[0] || null;
 }
 
-async function getJson(
+/*
+ * Lit la réponse JSON et retourne
+ * une erreur claire en cas de problème.
+ */
+async function readJson(
   response,
-  service
+  serviceName
 ) {
   const body = await response.text();
 
   if (!response.ok) {
     throw new Error(
-      `${service} HTTP ` +
+      `${serviceName} HTTP ` +
         `${response.status} : ` +
-        body.slice(0, 180)
+        body.slice(0, 200)
     );
   }
 
@@ -179,29 +252,51 @@ async function getJson(
     return JSON.parse(body);
   } catch {
     throw new Error(
-      `${service} a renvoyé un JSON invalide`
+      `${serviceName} a renvoyé ` +
+        "une réponse JSON invalide"
     );
   }
 }
 
+/*
+ * Appel de l'API PRIM
+ * pour les trajets franciliens.
+ */
 async function getPrimJourney(
   apiKey,
   from,
   to
 ) {
-  const params = new URLSearchParams({
-    from: `${from.lon};${from.lat}`,
-    to: `${to.lon};${to.lat}`,
+  const params =
+    new URLSearchParams({
+      /*
+       * Navitia utilise le format :
+       * longitude;latitude
+       */
+      from:
+        `${from.lon};${from.lat}`,
 
-    // Prend en compte les horaires et perturbations
-    data_freshness: "realtime",
+      to:
+        `${to.lon};${to.lat}`,
 
-    // Calcul pour un départ immédiat
-    datetime_represents: "departure",
+      /*
+       * Horaires et perturbations
+       * en temps réel.
+       */
+      data_freshness: "realtime",
 
-    // Demande plusieurs possibilités
-    count: "10",
-  });
+      /*
+       * Calcul pour un départ immédiat.
+       */
+      datetime_represents:
+        "departure",
+
+      /*
+       * Demande plusieurs possibilités
+       * pour sélectionner la meilleure.
+       */
+      count: "10",
+    });
 
   const response = await fetch(
     `${PRIM_URL}?${params.toString()}`,
@@ -212,17 +307,18 @@ async function getPrimJourney(
         Accept: "application/json",
 
         /*
-         * Authentification PRIM officielle.
-         * Le header apikey est aussi conservé
-         * pour compatibilité.
+         * Ne pas ajouter de header
+         * Authorization ici.
+         *
+         * La clé PRIM est envoyée
+         * uniquement avec apikey.
          */
-        Authorization: `apikey ${apiKey}`,
         apikey: apiKey,
       },
     }
   );
 
-  const data = await getJson(
+  const data = await readJson(
     response,
     "PRIM"
   );
@@ -232,36 +328,55 @@ async function getPrimJourney(
 
   if (!result) {
     throw new Error(
-      "PRIM : aucun trajet trouvé"
+      "PRIM : aucun trajet en " +
+        "transport en commun trouvé"
     );
   }
 
   return result;
 }
 
+/*
+ * Appel de l'API SNCF
+ * pour Paris-Nord vers Compiègne.
+ */
 async function getSncfTer(
   apiKey,
   departureDateTime
 ) {
-  const params = new URLSearchParams({
-    // Paris Gare du Nord
-    from: "stop_area:SNCF:87271007",
+  const params =
+    new URLSearchParams({
+      /*
+       * Gare de Paris-Nord.
+       */
+      from:
+        "stop_area:SNCF:87271007",
 
-    // Gare de Compiègne
-    to: "stop_area:SNCF:87276691",
+      /*
+       * Gare de Compiègne.
+       */
+      to:
+        "stop_area:SNCF:87276691",
 
-    datetime: departureDateTime,
+      /*
+       * Heure à laquelle Jason peut
+       * prendre son TER après la
+       * correspondance.
+       */
+      datetime:
+        departureDateTime,
 
-    datetime_represents: "departure",
+      datetime_represents:
+        "departure",
 
-    data_freshness: "realtime",
+      data_freshness: "realtime",
 
-    count: "10",
-  });
+      count: "10",
+    });
 
   /*
    * API SNCF :
-   * identifiant = clé API
+   * utilisateur = token
    * mot de passe = vide
    */
   const basicAuth = Buffer.from(
@@ -282,20 +397,22 @@ async function getSncfTer(
     }
   );
 
-  const data = await getJson(
+  const data = await readJson(
     response,
     "SNCF"
   );
 
-  const result = selectBestJourney(
-    data,
-    departureDateTime,
-    true
-  );
+  const result =
+    selectBestJourney(
+      data,
+      departureDateTime,
+      true
+    );
 
   if (!result) {
     throw new Error(
-      "SNCF : aucun TER trouvé"
+      "SNCF : aucun TER trouvé " +
+        "entre Paris-Nord et Compiègne"
     );
   }
 
@@ -312,43 +429,53 @@ export default async function handler(
   const SNCF_API_KEY =
     process.env.SNCF_API_KEY;
 
-  if (
-    !IDFM_API_KEY ||
-    !SNCF_API_KEY
-  ) {
+  /*
+   * PRIM est obligatoire pour les
+   * sept trajets franciliens.
+   *
+   * La clé SNCF est contrôlée
+   * séparément pour éviter que les
+   * sept autres trajets disparaissent
+   * en cas de problème avec Jason.
+   */
+  if (!IDFM_API_KEY) {
     return res.status(500).json({
       error:
-        "IDFM_API_KEY ou SNCF_API_KEY " +
-        "non configurée dans Vercel",
+        "IDFM_API_KEY non configurée " +
+        "dans Vercel",
     });
   }
 
-  // Point de départ : Châtelet-Les Halles
+  /*
+   * Point de départ :
+   * gare Châtelet-Les Halles.
+   */
   const start = {
     lat: 48.8615,
     lon: 2.3465,
   };
 
-  // Correspondance de Jason
+  /*
+   * Gare du Nord :
+   * correspondance de Jason.
+   */
   const gareDuNord = {
     lat: 48.8809,
     lon: 2.3553,
   };
 
   /*
-   * Rachid et Toufik vont tous les deux
-   * à Poissy.
+   * Destinations couvertes par PRIM.
    *
-   * Une seule requête API est effectuée
-   * puis le même temps est utilisé.
+   * Rachid et Toufik ont la même
+   * destination : une seule requête
+   * est effectuée pour Poissy.
    */
   const destinations = [
     {
       key: "ghulam",
 
-      names: [
-        "ghulam",
-      ],
+      names: ["ghulam"],
 
       lat: 48.882222,
       lon: 2.704167,
@@ -357,9 +484,7 @@ export default async function handler(
     {
       key: "nathan",
 
-      names: [
-        "nathan",
-      ],
+      names: ["nathan"],
 
       lat: 48.824744,
       lon: 2.318872,
@@ -368,9 +493,7 @@ export default async function handler(
     {
       key: "michael",
 
-      names: [
-        "michael",
-      ],
+      names: ["michael"],
 
       lat: 48.895631,
       lon: 2.223138,
@@ -379,9 +502,7 @@ export default async function handler(
     {
       key: "cedric",
 
-      names: [
-        "cedric",
-      ],
+      names: ["cedric"],
 
       lat: 48.963873,
       lon: 2.372285,
@@ -390,9 +511,7 @@ export default async function handler(
     {
       key: "liazide",
 
-      names: [
-        "liazide",
-      ],
+      names: ["liazide"],
 
       lat: 49.019392,
       lon: 2.153672,
@@ -414,10 +533,12 @@ export default async function handler(
   const times = {};
   const errors = {};
   const details = {};
+  const results = {};
 
   try {
     /*
-     * Six destinations IDFM différentes
+     * Liste des appels PRIM :
+     * six destinations différentes
      * + Gare du Nord pour Jason.
      */
     const jobs = [
@@ -434,21 +555,18 @@ export default async function handler(
       },
     ];
 
-    const results = {};
-
     /*
-     * Maximum quatre appels simultanés.
-     * Cela évite d'envoyer trop de
-     * requêtes PRIM d'un seul coup.
+     * Trois appels simultanés maximum.
+     * Cela évite de surcharger l'API.
      */
     for (
       let index = 0;
       index < jobs.length;
-      index += 4
+      index += 3
     ) {
       const batch = jobs.slice(
         index,
-        index + 4
+        index + 3
       );
 
       const batchResults =
@@ -486,81 +604,100 @@ export default async function handler(
           )
         );
 
-      batchResults.forEach(
-        (item) => {
-          results[item.key] = item;
-        }
-      );
+      for (
+        const item of batchResults
+      ) {
+        results[item.key] = item;
+      }
 
+      /*
+       * Petite pause entre les groupes
+       * de requêtes.
+       */
       if (
-        index + 4 <
+        index + 3 <
         jobs.length
       ) {
-        await pause(1100);
+        await pause(800);
       }
     }
 
     /*
-     * Enregistre les résultats
-     * des personnes IDFM.
+     * Enregistrement des temps
+     * des sept personnes IDFM.
      */
-    destinations.forEach(
-      (destination) => {
-        const selected =
-          results[destination.key];
+    for (
+      const destination
+      of destinations
+    ) {
+      const selected =
+        results[destination.key];
 
-        destination.names.forEach(
-          (name) => {
-            if (
-              !selected?.result
-            ) {
-              times[name] = null;
+      for (
+        const name
+        of destination.names
+      ) {
+        if (!selected?.result) {
+          times[name] = null;
 
-              errors[name] =
-                selected?.error ||
-                "Trajet indisponible";
+          errors[name] =
+            selected?.error ||
+            "Trajet indisponible";
 
-              return;
-            }
+          continue;
+        }
 
-            times[name] =
-              selected.result.minutes;
-          }
-        );
+        times[name] =
+          selected.result.minutes;
       }
-    );
+    }
 
     /*
      * Cas spécial Jason :
      *
-     * 1. Châtelet -> Gare du Nord
+     * 1. Châtelet vers Gare du Nord
      * 2. Dix minutes de correspondance
-     * 3. TER Gare du Nord -> Compiègne
+     * 3. TER Paris-Nord vers Compiègne
      */
     try {
+      if (!SNCF_API_KEY) {
+        throw new Error(
+          "SNCF_API_KEY non configurée " +
+            "dans Vercel"
+        );
+      }
+
       const firstLeg =
         results.gareDuNord;
 
       if (!firstLeg?.result) {
         throw new Error(
           firstLeg?.error ||
-            "Trajet vers Gare du Nord indisponible"
+            "Trajet Châtelet vers " +
+              "Gare du Nord indisponible"
         );
       }
 
+      /*
+       * Temps prévu pour rejoindre
+       * le quai du TER.
+       */
       const transferMinutes = 10;
+
+      const firstLegArrival =
+        firstLeg.result.journey
+          .arrival_date_time;
 
       const terSearchTime =
         addMinutes(
-          firstLeg.result.journey
-            .arrival_date_time,
-
+          firstLegArrival,
           transferMinutes
         );
 
       if (!terSearchTime) {
         throw new Error(
-          "Horaire Gare du Nord invalide"
+          "Horaire d'arrivée à " +
+            "Gare du Nord invalide"
         );
       }
 
@@ -571,12 +708,12 @@ export default async function handler(
         );
 
       /*
-       * Total Jason :
+       * Temps total de Jason :
        *
-       * durée vers Gare du Nord
+       * attente + trajet vers Gare du Nord
        * + correspondance
        * + attente du TER
-       * + trajet TER
+       * + trajet TER vers Compiègne
        */
       times.jason =
         firstLeg.result.minutes +
@@ -584,21 +721,21 @@ export default async function handler(
         ter.minutes;
 
       details.jason = {
-        chateletToGareDuNord:
+        chateletToGareDuNordMinutes:
           firstLeg.result.minutes,
 
-        correspondence:
+        correspondenceMinutes:
           transferMinutes,
 
-        waitingAndTer:
+        waitingAndTerMinutes:
           ter.minutes,
 
-        terDeparture:
+        terDepartureDateTime:
           ter.journey
             .departure_date_time ||
           null,
 
-        arrivalCompiegne:
+        arrivalCompiegneDateTime:
           ter.journey
             .arrival_date_time ||
           null,
@@ -613,12 +750,13 @@ export default async function handler(
     }
 
     /*
-     * Actualisation toutes les cinq minutes.
+     * Le résultat peut être conservé
+     * environ quatre minutes.
      */
     res.setHeader(
       "Cache-Control",
 
-      "s-maxage=300, " +
+      "s-maxage=240, " +
         "stale-while-revalidate=30"
     );
 
@@ -633,7 +771,8 @@ export default async function handler(
   } catch (error) {
     return res.status(500).json({
       error:
-        "Erreur lors du calcul des trajets",
+        "Erreur lors du calcul " +
+        "des trajets",
 
       details:
         error instanceof Error
