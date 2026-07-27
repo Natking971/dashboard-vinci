@@ -1,5 +1,6 @@
 // /api/trajets.js
-// Trajets PRIM + trajet SNCF pour Jason
+// Trajets PRIM avec limitation des appels
+// Jason calculé avec l'API SNCF
 
 const PRIM_URL =
   "https://prim.iledefrance-mobilites.fr/marketplace/v2/navitia/journeys";
@@ -7,8 +8,53 @@ const PRIM_URL =
 const SNCF_URL =
   "https://api.sncf.com/v1/coverage/sncf/journeys";
 
-const sleep = (ms) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+/*
+ * Durée du cache serveur :
+ * un nouveau calcul maximum toutes les 15 minutes.
+ */
+const CACHE_DURATION_MS = 15 * 60 * 1000;
+
+/*
+ * Petite pause entre chaque appel PRIM
+ * pour éviter les rafales de requêtes.
+ */
+const PRIM_REQUEST_DELAY_MS = 1500;
+
+/*
+ * Temps habituels utilisés uniquement :
+ * - si PRIM est temporairement bloqué ;
+ * - et si aucun ancien résultat valide n'existe.
+ */
+const FALLBACK_TIMES = {
+  ghulam: 40,
+  nathan: 24,
+  michael: 12,
+  cedric: 24,
+  liazide: 41,
+  rachid: 41,
+  toufik: 41,
+  jason: 75,
+};
+
+/*
+ * Cache conservé tant que l'instance
+ * Vercel reste active.
+ */
+let memoryCache = {
+  data: null,
+  timestamp: 0,
+};
+
+/*
+ * Empêche plusieurs visiteurs de lancer
+ * le même calcul en parallèle.
+ */
+let calculationInProgress = null;
+
+const sleep = (milliseconds) =>
+  new Promise((resolve) =>
+    setTimeout(resolve, milliseconds)
+  );
 
 function parseNavitiaDate(value) {
   if (!/^\d{8}T\d{6}$/.test(value || "")) {
@@ -57,11 +103,8 @@ function minutesBetween(
   startValue,
   endValue
 ) {
-  const start =
-    parseNavitiaDate(startValue);
-
-  const end =
-    parseNavitiaDate(endValue);
+  const start = parseNavitiaDate(startValue);
+  const end = parseNavitiaDate(endValue);
 
   if (
     start === null ||
@@ -76,14 +119,21 @@ function minutesBetween(
   );
 }
 
+function getCurrentNavitiaDate() {
+  return formatNavitiaDate(Date.now());
+}
+
 function hasPublicTransport(journey) {
   return journey?.sections?.some(
     (section) =>
-      section.type ===
-      "public_transport"
+      section.type === "public_transport"
   );
 }
 
+/*
+ * Choisit l'itinéraire qui arrive
+ * réellement le plus tôt.
+ */
 function selectBestJourney(
   data,
   referenceDateTime = null
@@ -114,7 +164,7 @@ function selectBestJourney(
 
   const ranked = candidates
     .map((journey) => {
-      const minutes =
+      const totalMinutes =
         minutesBetween(
           reference,
           journey.arrival_date_time
@@ -125,7 +175,7 @@ function selectBestJourney(
 
       return {
         journey,
-        minutes,
+        minutes: totalMinutes,
       };
     })
     .filter((item) =>
@@ -146,11 +196,14 @@ async function readJsonResponse(
   const body = await response.text();
 
   if (!response.ok) {
-    throw new Error(
+    const error = new Error(
       `${serviceName} HTTP ` +
         `${response.status} : ` +
         body.slice(0, 220)
     );
+
+    error.status = response.status;
+    throw error;
   }
 
   try {
@@ -158,7 +211,7 @@ async function readJsonResponse(
   } catch {
     throw new Error(
       `${serviceName} a renvoyé ` +
-        "un JSON invalide"
+        "une réponse JSON invalide"
     );
   }
 }
@@ -168,22 +221,13 @@ async function getPrimJourney(
   from,
   to
 ) {
-  const params =
-    new URLSearchParams({
-      from:
-        `${from.lon};${from.lat}`,
-
-      to:
-        `${to.lon};${to.lat}`,
-
-      count: "10",
-
-      data_freshness:
-        "realtime",
-
-      datetime_represents:
-        "departure",
-    });
+  const params = new URLSearchParams({
+    from: `${from.lon};${from.lat}`,
+    to: `${to.lon};${to.lat}`,
+    count: "10",
+    data_freshness: "realtime",
+    datetime_represents: "departure",
+  });
 
   const response = await fetch(
     `${PRIM_URL}?${params.toString()}`,
@@ -197,65 +241,55 @@ async function getPrimJourney(
     }
   );
 
-  const data =
-    await readJsonResponse(
-      response,
-      "PRIM"
-    );
+  const data = await readJsonResponse(
+    response,
+    "PRIM"
+  );
 
-  const selected =
-    selectBestJourney(data);
+  const selected = selectBestJourney(data);
 
   if (!selected) {
     throw new Error(
-      "PRIM : aucun trajet en " +
-        "transport en commun trouvé"
+      "PRIM : aucun trajet trouvé"
     );
   }
 
-  return {
-    ...selected,
-
-    referenceDateTime:
-      data?.context?.current_datetime ||
-      selected.journey
-        .departure_date_time,
-  };
+  return selected;
 }
 
-async function requestSncfJourneys(
+async function requestSncfJourney(
   apiKey,
   departureDateTime,
-  dataFreshness
+  freshness
 ) {
-  const params =
-    new URLSearchParams({
-      from:
-        "stop_area:SNCF:87271007",
+  const params = new URLSearchParams({
+    /*
+     * Paris Gare du Nord.
+     */
+    from: "stop_area:SNCF:87271007",
 
-      to:
-        "stop_area:SNCF:87276691",
+    /*
+     * Gare de Compiègne.
+     */
+    to: "stop_area:SNCF:87276691",
 
-      datetime:
-        departureDateTime,
+    datetime: departureDateTime,
 
-      datetime_represents:
-        "departure",
+    datetime_represents: "departure",
 
-      count: "10",
-    });
+    count: "10",
+  });
 
-  if (dataFreshness) {
+  if (freshness) {
     params.set(
       "data_freshness",
-      dataFreshness
+      freshness
     );
   }
 
-  const basicAuth =
-    Buffer.from(
-      `${apiKey}:`
-    ).toString("base64");
+  const basicAuth = Buffer.from(
+    `${apiKey}:`
+  ).toString("base64");
 
   const response = await fetch(
     `${SNCF_URL}?${params.toString()}`,
@@ -281,104 +315,140 @@ async function getSncfJourney(
   apiKey,
   departureDateTime
 ) {
-  let realtimeError = null;
+  let firstError = null;
 
+  /*
+   * Premier essai avec les données
+   * en temps réel.
+   */
   try {
     const realtimeData =
-      await requestSncfJourneys(
+      await requestSncfJourney(
         apiKey,
         departureDateTime,
         "realtime"
       );
 
-    const realtimeJourney =
+    const selected =
       selectBestJourney(
         realtimeData,
         departureDateTime
       );
 
-    if (realtimeJourney) {
+    if (selected) {
       return {
-        ...realtimeJourney,
+        ...selected,
         freshness: "realtime",
       };
     }
   } catch (error) {
-    realtimeError = error;
+    firstError = error;
   }
 
+  /*
+   * Deuxième essai avec les horaires
+   * programmés.
+   */
   try {
     const scheduledData =
-      await requestSncfJourneys(
+      await requestSncfJourney(
         apiKey,
         departureDateTime,
         null
       );
 
-    const scheduledJourney =
+    const selected =
       selectBestJourney(
         scheduledData,
         departureDateTime
       );
 
-    if (scheduledJourney) {
+    if (selected) {
       return {
-        ...scheduledJourney,
-        freshness:
-          "base_schedule",
+        ...selected,
+        freshness: "base_schedule",
       };
     }
-  } catch (scheduledError) {
+  } catch (error) {
     const firstMessage =
-      realtimeError instanceof Error
-        ? realtimeError.message
+      firstError instanceof Error
+        ? firstError.message
         : "Temps réel indisponible";
-
-    const secondMessage =
-      scheduledError instanceof Error
-        ? scheduledError.message
-        : String(scheduledError);
 
     throw new Error(
       `${firstMessage} | ` +
-        `Second essai : ${secondMessage}`
+        `Second essai : ${error.message}`
     );
   }
 
   throw new Error(
-    "SNCF : aucun trajet " +
-      "Paris-Nord vers Compiègne trouvé"
+    "SNCF : aucun trajet trouvé " +
+      "entre Paris-Nord et Compiègne"
   );
 }
 
-export default async function handler(
-  req,
-  res
+function getFallbackResponse(
+  reason,
+  previousData = null
 ) {
-  const IDFM_API_KEY =
-    process.env.IDFM_API_KEY;
+  /*
+   * On privilégie les anciennes valeurs
+   * valides si elles existent.
+   */
+  if (previousData?.times) {
+    return {
+      ...previousData,
 
-  const SNCF_API_KEY =
-    process.env.SNCF_API_KEY;
+      stale: true,
 
-  if (!IDFM_API_KEY) {
-    return res.status(500).json({
-      error:
-        "IDFM_API_KEY non configurée " +
-        "dans Vercel",
-    });
+      warning:
+        "Dernières valeurs conservées : " +
+        reason,
+
+      servedAt:
+        new Date().toISOString(),
+    };
   }
 
+  /*
+   * Sinon, on affiche les temps habituels
+   * plutôt que des tirets.
+   */
+  return {
+    times: {
+      ...FALLBACK_TIMES,
+    },
+
+    errors: {},
+
+    details: {},
+
+    stale: true,
+
+    fallback: true,
+
+    warning:
+      "Temps habituels provisoires : " +
+      reason,
+
+    updatedAt:
+      new Date().toISOString(),
+  };
+}
+
+async function calculateAllJourneys(
+  idfmApiKey,
+  sncfApiKey
+) {
   const start = {
     lat: 48.8615,
     lon: 2.3465,
   };
 
-  const gareDuNord = {
-    lat: 48.8809,
-    lon: 2.3553,
-  };
-
+  /*
+   * Six destinations différentes.
+   * Rachid et Toufik partagent Poissy.
+   */
   const destinations = [
     {
       key: "ghulam",
@@ -431,224 +501,265 @@ export default async function handler(
   const times = {};
   const errors = {};
   const details = {};
-  const results = {};
 
-  try {
-    const jobs = [
-      ...destinations.map(
-        (destination) => ({
-          key: destination.key,
-          destination,
-        })
-      ),
+  let rateLimitDetected = false;
 
-      {
-        key: "gareDuNord",
-        destination: gareDuNord,
-      },
-    ];
+  /*
+   * Les appels sont effectués un par un,
+   * avec une pause entre chaque appel.
+   */
+  for (
+    let index = 0;
+    index < destinations.length;
+    index += 1
+  ) {
+    const destination =
+      destinations[index];
 
-    for (
-      let index = 0;
-      index < jobs.length;
-      index += 3
-    ) {
-      const batch =
-        jobs.slice(
-          index,
-          index + 3
+    try {
+      const result =
+        await getPrimJourney(
+          idfmApiKey,
+          start,
+          destination
         );
-
-      const batchResults =
-        await Promise.all(
-          batch.map(
-            async ({
-              key,
-              destination,
-            }) => {
-              try {
-                const result =
-                  await getPrimJourney(
-                    IDFM_API_KEY,
-                    start,
-                    destination
-                  );
-
-                return {
-                  key,
-                  result,
-                  error: null,
-                };
-              } catch (error) {
-                return {
-                  key,
-                  result: null,
-
-                  error:
-                    error instanceof Error
-                      ? error.message
-                      : String(error),
-                };
-              }
-            }
-          )
-        );
-
-      for (
-        const item
-        of batchResults
-      ) {
-        results[item.key] = item;
-      }
-
-      if (
-        index + 3 <
-        jobs.length
-      ) {
-        await sleep(800);
-      }
-    }
-
-    for (
-      const destination
-      of destinations
-    ) {
-      const selected =
-        results[destination.key];
 
       for (
         const name
         of destination.names
       ) {
-        if (!selected?.result) {
-          times[name] = null;
-
-          errors[name] =
-            selected?.error ||
-            "Trajet indisponible";
-
-          continue;
-        }
-
-        times[name] =
-          selected.result.minutes;
+        times[name] = result.minutes;
       }
-    }
-
-    try {
-      if (!SNCF_API_KEY) {
-        throw new Error(
-          "SNCF_API_KEY non configurée " +
-            "dans Vercel"
-        );
-      }
-
-      const firstLeg =
-        results.gareDuNord;
-
-      if (!firstLeg?.result) {
-        throw new Error(
-          firstLeg?.error ||
-            "Trajet Châtelet vers " +
-              "Gare du Nord indisponible"
-        );
-      }
-
-      const transferMinutes = 10;
-
-      const terSearchDateTime =
-        addMinutes(
-          firstLeg.result.journey
-            .arrival_date_time,
-
-          transferMinutes
-        );
-
-      if (!terSearchDateTime) {
-        throw new Error(
-          "Horaire d'arrivée à " +
-            "Gare du Nord invalide"
-        );
-      }
-
-      const ter =
-        await getSncfJourney(
-          SNCF_API_KEY,
-          terSearchDateTime
-        );
-
-      const totalFromNow =
-        minutesBetween(
-          firstLeg.result
-            .referenceDateTime,
-
-          ter.journey
-            .arrival_date_time
-        );
-
-      times.jason =
-        totalFromNow ??
-        firstLeg.result.minutes +
-          transferMinutes +
-          ter.minutes;
-
-      details.jason = {
-        chateletToGareDuNordMinutes:
-          firstLeg.result.minutes,
-
-        correspondenceMinutes:
-          transferMinutes,
-
-        waitingAndTerMinutes:
-          ter.minutes,
-
-        sncfDataFreshness:
-          ter.freshness,
-
-        terDepartureDateTime:
-          ter.journey
-            .departure_date_time ||
-          null,
-
-        arrivalCompiegneDateTime:
-          ter.journey
-            .arrival_date_time ||
-          null,
-      };
     } catch (error) {
-      times.jason = null;
+      if (error?.status === 429) {
+        rateLimitDetected = true;
+      }
 
-      errors.jason =
-        error instanceof Error
-          ? error.message
-          : String(error);
+      for (
+        const name
+        of destination.names
+      ) {
+        times[name] = null;
+
+        errors[name] =
+          error instanceof Error
+            ? error.message
+            : String(error);
+      }
     }
 
+    /*
+     * Dès qu'un 429 apparaît, on arrête
+     * les autres appels PRIM.
+     */
+    if (rateLimitDetected) {
+      break;
+    }
+
+    if (
+      index <
+      destinations.length - 1
+    ) {
+      await sleep(
+        PRIM_REQUEST_DELAY_MS
+      );
+    }
+  }
+
+  /*
+   * Si la limite est atteinte,
+   * on ne continue pas le calcul.
+   */
+  if (rateLimitDetected) {
+    const rateLimitError = new Error(
+      "PRIM : limite de requêtes atteinte"
+    );
+
+    rateLimitError.status = 429;
+    throw rateLimitError;
+  }
+
+  /*
+   * Jason :
+   *
+   * On estime Châtelet -> Gare du Nord
+   * à 8 minutes pour éviter un septième
+   * appel PRIM.
+   *
+   * Puis l'API SNCF calcule l'attente
+   * et le TER jusqu'à Compiègne.
+   */
+  try {
+    if (!sncfApiKey) {
+      throw new Error(
+        "SNCF_API_KEY non configurée"
+      );
+    }
+
+    const chateletToGareDuNord = 8;
+    const correspondenceMinutes = 10;
+
+    const now =
+      getCurrentNavitiaDate();
+
+    const terSearchDateTime =
+      addMinutes(
+        now,
+        chateletToGareDuNord +
+          correspondenceMinutes
+      );
+
+    const ter =
+      await getSncfJourney(
+        sncfApiKey,
+        terSearchDateTime
+      );
+
+    times.jason =
+      chateletToGareDuNord +
+      correspondenceMinutes +
+      ter.minutes;
+
+    details.jason = {
+      chateletToGareDuNordMinutes:
+        chateletToGareDuNord,
+
+      correspondenceMinutes,
+
+      waitingAndTerMinutes:
+        ter.minutes,
+
+      sncfDataFreshness:
+        ter.freshness,
+
+      terDepartureDateTime:
+        ter.journey
+          .departure_date_time ||
+        null,
+
+      arrivalCompiegneDateTime:
+        ter.journey
+          .arrival_date_time ||
+        null,
+    };
+  } catch (error) {
+    /*
+     * Un problème SNCF ne bloque pas
+     * les sept autres personnes.
+     */
+    times.jason =
+      FALLBACK_TIMES.jason;
+
+    errors.jason =
+      error instanceof Error
+        ? error.message
+        : String(error);
+
+    details.jason = {
+      fallback: true,
+    };
+  }
+
+  return {
+    times,
+    errors,
+    details,
+
+    stale: false,
+    fallback: false,
+
+    updatedAt:
+      new Date().toISOString(),
+  };
+}
+
+export default async function handler(
+  req,
+  res
+) {
+  const IDFM_API_KEY =
+    process.env.IDFM_API_KEY;
+
+  const SNCF_API_KEY =
+    process.env.SNCF_API_KEY;
+
+  if (!IDFM_API_KEY) {
+    return res.status(500).json({
+      error:
+        "IDFM_API_KEY non configurée " +
+        "dans Vercel",
+    });
+  }
+
+  const cacheAge =
+    Date.now() -
+    memoryCache.timestamp;
+
+  /*
+   * Renvoie immédiatement le cache
+   * s'il a moins de 15 minutes.
+   */
+  if (
+    memoryCache.data &&
+    cacheAge < CACHE_DURATION_MS
+  ) {
     res.setHeader(
       "Cache-Control",
-
-      "s-maxage=240, " +
-        "stale-while-revalidate=30"
+      "public, s-maxage=900, " +
+        "stale-while-revalidate=3600"
     );
 
     return res.status(200).json({
-      times,
-      errors,
-      details,
+      ...memoryCache.data,
 
-      updatedAt:
-        new Date().toISOString(),
-    });
-  } catch (error) {
-    return res.status(500).json({
-      error:
-        "Erreur lors du calcul " +
-        "des trajets",
+      cache: true,
 
-      details:
-        error instanceof Error
-          ? error.message
-          : String(error),
+      cacheAgeSeconds:
+        Math.round(cacheAge / 1000),
     });
   }
+
+  /*
+   * Si un calcul est déjà lancé,
+   * les autres requêtes attendent
+   * le même résultat.
+   */
+  if (!calculationInProgress) {
+    calculationInProgress =
+      calculateAllJourneys(
+        IDFM_API_KEY,
+        SNCF_API_KEY
+      )
+        .then((data) => {
+          memoryCache = {
+            data,
+            timestamp: Date.now(),
+          };
+
+          return data;
+        })
+        .catch((error) => {
+          return getFallbackResponse(
+            error instanceof Error
+              ? error.message
+              : String(error),
+
+            memoryCache.data
+          );
+        })
+        .finally(() => {
+          calculationInProgress = null;
+        });
+  }
+
+  const result =
+    await calculationInProgress;
+
+  res.setHeader(
+    "Cache-Control",
+    "public, s-maxage=900, " +
+      "stale-while-revalidate=3600"
+  );
+
+  return res.status(200).json(result);
 }
