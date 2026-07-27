@@ -84,10 +84,6 @@ function hasPublicTransport(journey) {
   );
 }
 
-/*
- * Sélectionne le trajet qui arrive
- * le plus tôt parmi les propositions.
- */
 function selectBestJourney(
   data,
   referenceDateTime = null
@@ -143,9 +139,6 @@ function selectBestJourney(
   return ranked[0] || null;
 }
 
-/*
- * Lit la réponse des API.
- */
 async function readJsonResponse(
   response,
   serviceName
@@ -170,9 +163,6 @@ async function readJsonResponse(
   }
 }
 
-/*
- * Trajets franciliens avec PRIM.
- */
 async function getPrimJourney(
   apiKey,
   from,
@@ -202,11 +192,6 @@ async function getPrimJourney(
 
       headers: {
         Accept: "application/json",
-
-        /*
-         * PRIM utilise uniquement
-         * le header apikey.
-         */
         apikey: apiKey,
       },
     }
@@ -238,10 +223,6 @@ async function getPrimJourney(
   };
 }
 
-/*
- * Requête SNCF Paris-Nord
- * vers Compiègne.
- */
 async function requestSncfJourneys(
   apiKey,
   departureDateTime,
@@ -249,15 +230,9 @@ async function requestSncfJourneys(
 ) {
   const params =
     new URLSearchParams({
-      /*
-       * Paris Gare du Nord.
-       */
       from:
         "stop_area:SNCF:87271007",
 
-      /*
-       * Gare de Compiègne.
-       */
       to:
         "stop_area:SNCF:87276691",
 
@@ -270,10 +245,6 @@ async function requestSncfJourneys(
       count: "10",
     });
 
-  /*
-   * Le deuxième essai est réalisé
-   * sans ce paramètre.
-   */
   if (dataFreshness) {
     params.set(
       "data_freshness",
@@ -281,11 +252,6 @@ async function requestSncfJourneys(
     );
   }
 
-  /*
-   * API SNCF :
-   * identifiant = clé API
-   * mot de passe = vide
-   */
   const basicAuth =
     Buffer.from(
       `${apiKey}:`
@@ -311,11 +277,6 @@ async function requestSncfJourneys(
   );
 }
 
-/*
- * Premier essai en temps réel.
- * Deuxième essai avec les horaires
- * programmés si nécessaire.
- */
 async function getSncfJourney(
   apiKey,
   departureDateTime
@@ -400,10 +361,6 @@ export default async function handler(
   const SNCF_API_KEY =
     process.env.SNCF_API_KEY;
 
-  /*
-   * La clé PRIM est obligatoire
-   * pour les trajets franciliens.
-   */
   if (!IDFM_API_KEY) {
     return res.status(500).json({
       error:
@@ -412,69 +369,48 @@ export default async function handler(
     });
   }
 
-  /*
-   * Départ :
-   * Châtelet-Les Halles.
-   */
   const start = {
     lat: 48.8615,
     lon: 2.3465,
   };
 
-  /*
-   * Correspondance de Jason :
-   * Gare du Nord.
-   */
   const gareDuNord = {
     lat: 48.8809,
     lon: 2.3553,
   };
 
-  /*
-   * Destinations PRIM.
-   */
   const destinations = [
     {
       key: "ghulam",
-
       names: ["ghulam"],
-
       lat: 48.882222,
       lon: 2.704167,
     },
 
     {
       key: "nathan",
-
       names: ["nathan"],
-
       lat: 48.824744,
       lon: 2.318872,
     },
 
     {
       key: "michael",
-
       names: ["michael"],
-
       lat: 48.895631,
       lon: 2.223138,
     },
 
     {
       key: "cedric",
-
       names: ["cedric"],
-
       lat: 48.963873,
       lon: 2.372285,
     },
 
     {
       key: "liazide",
-
       names: ["liazide"],
-
       lat: 49.019392,
       lon: 2.153672,
     },
@@ -498,10 +434,6 @@ export default async function handler(
   const results = {};
 
   try {
-    /*
-     * Les six destinations PRIM
-     * et la Gare du Nord.
-     */
     const jobs = [
       ...destinations.map(
         (destination) => ({
@@ -516,10 +448,6 @@ export default async function handler(
       },
     ];
 
-    /*
-     * Trois appels PRIM simultanés
-     * maximum.
-     */
     for (
       let index = 0;
       index < jobs.length;
@@ -581,9 +509,6 @@ export default async function handler(
       }
     }
 
-    /*
-     * Enregistre les temps PRIM.
-     */
     for (
       const destination
       of destinations
@@ -610,15 +535,6 @@ export default async function handler(
       }
     }
 
-    /*
-     * Cas spécial Jason :
-     *
-     * Châtelet
-     * -> Gare du Nord
-     * -> correspondance
-     * -> TER
-     * -> Compiègne
-     */
     try {
       if (!SNCF_API_KEY) {
         throw new Error(
@@ -638,10 +554,6 @@ export default async function handler(
         );
       }
 
-      /*
-       * Temps prévu pour aller
-       * du RER jusqu'au quai TER.
-       */
       const transferMinutes = 10;
 
       const terSearchDateTime =
@@ -665,10 +577,6 @@ export default async function handler(
           terSearchDateTime
         );
 
-      /*
-       * Temps total depuis maintenant
-       * jusqu'à l'arrivée à Compiègne.
-       */
       const totalFromNow =
         minutesBetween(
           firstLeg.result
@@ -716,9 +624,6 @@ export default async function handler(
           : String(error);
     }
 
-    /*
-     * Cache d'environ quatre minutes.
-     */
     res.setHeader(
       "Cache-Control",
 
