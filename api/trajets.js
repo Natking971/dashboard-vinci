@@ -1,6 +1,6 @@
 // /api/trajets.js
-// Trajets PRIM avec limitation des appels
-// Jason calculé avec l'API SNCF
+// Trajets PRIM / IDFM avec cache de 30 minutes
+// Cas spécial Jason avec l'API SNCF
 
 const PRIM_URL =
   "https://prim.iledefrance-mobilites.fr/marketplace/v2/navitia/journeys";
@@ -9,36 +9,18 @@ const SNCF_URL =
   "https://api.sncf.com/v1/coverage/sncf/journeys";
 
 /*
- * Durée du cache serveur :
- * un nouveau calcul maximum toutes les 15 minutes.
+ * Un nouveau calcul complet est effectué
+ * au maximum toutes les 30 minutes.
  */
-const CACHE_DURATION_MS = 15 * 60 * 1000;
+const CACHE_DURATION_MS = 30 * 60 * 1000;
 
 /*
- * Petite pause entre chaque appel PRIM
- * pour éviter les rafales de requêtes.
+ * Pause entre les appels PRIM.
  */
 const PRIM_REQUEST_DELAY_MS = 1500;
 
 /*
- * Temps habituels utilisés uniquement :
- * - si PRIM est temporairement bloqué ;
- * - et si aucun ancien résultat valide n'existe.
- */
-const FALLBACK_TIMES = {
-  ghulam: 40,
-  nathan: 24,
-  michael: 12,
-  cedric: 24,
-  liazide: 41,
-  rachid: 41,
-  toufik: 41,
-  jason: 75,
-};
-
-/*
- * Cache conservé tant que l'instance
- * Vercel reste active.
+ * Cache mémoire de l'instance Vercel.
  */
 let memoryCache = {
   data: null,
@@ -46,8 +28,8 @@ let memoryCache = {
 };
 
 /*
- * Empêche plusieurs visiteurs de lancer
- * le même calcul en parallèle.
+ * Empêche plusieurs calculs identiques
+ * de se lancer en même temps.
  */
 let calculationInProgress = null;
 
@@ -87,6 +69,10 @@ function formatNavitiaDate(timestamp) {
   );
 }
 
+function getCurrentNavitiaDate() {
+  return formatNavitiaDate(Date.now());
+}
+
 function addMinutes(value, minutes) {
   const timestamp = parseNavitiaDate(value);
 
@@ -103,8 +89,11 @@ function minutesBetween(
   startValue,
   endValue
 ) {
-  const start = parseNavitiaDate(startValue);
-  const end = parseNavitiaDate(endValue);
+  const start =
+    parseNavitiaDate(startValue);
+
+  const end =
+    parseNavitiaDate(endValue);
 
   if (
     start === null ||
@@ -119,20 +108,17 @@ function minutesBetween(
   );
 }
 
-function getCurrentNavitiaDate() {
-  return formatNavitiaDate(Date.now());
-}
-
 function hasPublicTransport(journey) {
   return journey?.sections?.some(
     (section) =>
-      section.type === "public_transport"
+      section.type ===
+      "public_transport"
   );
 }
 
 /*
- * Choisit l'itinéraire qui arrive
- * réellement le plus tôt.
+ * Sélectionne le trajet qui arrive
+ * le plus tôt parmi les propositions.
  */
 function selectBestJourney(
   data,
@@ -162,7 +148,7 @@ function selectBestJourney(
     data?.context?.current_datetime ||
     candidates[0].departure_date_time;
 
-  const ranked = candidates
+  const rankedJourneys = candidates
     .map((journey) => {
       const totalMinutes =
         minutesBetween(
@@ -186,9 +172,12 @@ function selectBestJourney(
         first.minutes - second.minutes
     );
 
-  return ranked[0] || null;
+  return rankedJourneys[0] || null;
 }
 
+/*
+ * Lit proprement la réponse d'une API.
+ */
 async function readJsonResponse(
   response,
   serviceName
@@ -199,10 +188,11 @@ async function readJsonResponse(
     const error = new Error(
       `${serviceName} HTTP ` +
         `${response.status} : ` +
-        body.slice(0, 220)
+        body.slice(0, 250)
     );
 
     error.status = response.status;
+
     throw error;
   }
 
@@ -216,17 +206,32 @@ async function readJsonResponse(
   }
 }
 
+/*
+ * Appel PRIM pour un trajet francilien.
+ */
 async function getPrimJourney(
   apiKey,
   from,
   to
 ) {
   const params = new URLSearchParams({
-    from: `${from.lon};${from.lat}`,
-    to: `${to.lon};${to.lat}`,
+    /*
+     * Navitia utilise :
+     * longitude;latitude
+     */
+    from:
+      `${from.lon};${from.lat}`,
+
+    to:
+      `${to.lon};${to.lat}`,
+
     count: "10",
-    data_freshness: "realtime",
-    datetime_represents: "departure",
+
+    data_freshness:
+      "realtime",
+
+    datetime_represents:
+      "departure",
   });
 
   const response = await fetch(
@@ -236,60 +241,87 @@ async function getPrimJourney(
 
       headers: {
         Accept: "application/json",
+
+        /*
+         * Authentification PRIM.
+         */
         apikey: apiKey,
       },
     }
   );
 
-  const data = await readJsonResponse(
-    response,
-    "PRIM"
-  );
+  const data =
+    await readJsonResponse(
+      response,
+      "PRIM"
+    );
 
-  const selected = selectBestJourney(data);
+  const selected =
+    selectBestJourney(data);
 
   if (!selected) {
     throw new Error(
-      "PRIM : aucun trajet trouvé"
+      "PRIM : aucun trajet en " +
+        "transport en commun trouvé"
     );
   }
 
-  return selected;
+  return {
+    ...selected,
+
+    referenceDateTime:
+      data?.context?.current_datetime ||
+      selected.journey
+        .departure_date_time,
+  };
 }
 
-async function requestSncfJourney(
+/*
+ * Appel de l'API SNCF.
+ */
+async function requestSncfJourneys(
   apiKey,
   departureDateTime,
-  freshness
+  dataFreshness
 ) {
   const params = new URLSearchParams({
     /*
      * Paris Gare du Nord.
      */
-    from: "stop_area:SNCF:87271007",
+    from:
+      "stop_area:SNCF:87271007",
 
     /*
      * Gare de Compiègne.
      */
-    to: "stop_area:SNCF:87276691",
+    to:
+      "stop_area:SNCF:87276691",
 
-    datetime: departureDateTime,
+    datetime:
+      departureDateTime,
 
-    datetime_represents: "departure",
+    datetime_represents:
+      "departure",
 
     count: "10",
   });
 
-  if (freshness) {
+  if (dataFreshness) {
     params.set(
       "data_freshness",
-      freshness
+      dataFreshness
     );
   }
 
-  const basicAuth = Buffer.from(
-    `${apiKey}:`
-  ).toString("base64");
+  /*
+   * API SNCF :
+   * utilisateur = token
+   * mot de passe = vide
+   */
+  const basicAuth =
+    Buffer.from(
+      `${apiKey}:`
+    ).toString("base64");
 
   const response = await fetch(
     `${SNCF_URL}?${params.toString()}`,
@@ -311,19 +343,19 @@ async function requestSncfJourney(
   );
 }
 
+/*
+ * Premier essai SNCF en temps réel.
+ * Second essai avec les horaires programmés.
+ */
 async function getSncfJourney(
   apiKey,
   departureDateTime
 ) {
-  let firstError = null;
+  let realtimeError = null;
 
-  /*
-   * Premier essai avec les données
-   * en temps réel.
-   */
   try {
     const realtimeData =
-      await requestSncfJourney(
+      await requestSncfJourneys(
         apiKey,
         departureDateTime,
         "realtime"
@@ -342,16 +374,12 @@ async function getSncfJourney(
       };
     }
   } catch (error) {
-    firstError = error;
+    realtimeError = error;
   }
 
-  /*
-   * Deuxième essai avec les horaires
-   * programmés.
-   */
   try {
     const scheduledData =
-      await requestSncfJourney(
+      await requestSncfJourneys(
         apiKey,
         departureDateTime,
         null
@@ -366,18 +394,24 @@ async function getSncfJourney(
     if (selected) {
       return {
         ...selected,
-        freshness: "base_schedule",
+        freshness:
+          "base_schedule",
       };
     }
-  } catch (error) {
+  } catch (scheduledError) {
     const firstMessage =
-      firstError instanceof Error
-        ? firstError.message
+      realtimeError instanceof Error
+        ? realtimeError.message
         : "Temps réel indisponible";
+
+    const secondMessage =
+      scheduledError instanceof Error
+        ? scheduledError.message
+        : String(scheduledError);
 
     throw new Error(
       `${firstMessage} | ` +
-        `Second essai : ${error.message}`
+        `Second essai : ${secondMessage}`
     );
   }
 
@@ -387,14 +421,18 @@ async function getSncfJourney(
   );
 }
 
-function getFallbackResponse(
+/*
+ * Retourne une réponse sans fausses valeurs.
+ *
+ * Si une ancienne vraie réponse existe,
+ * elle est conservée.
+ *
+ * Sinon, les valeurs restent null.
+ */
+function buildUnavailableResponse(
   reason,
   previousData = null
 ) {
-  /*
-   * On privilégie les anciennes valeurs
-   * valides si elles existent.
-   */
   if (previousData?.times) {
     return {
       ...previousData,
@@ -402,7 +440,7 @@ function getFallbackResponse(
       stale: true,
 
       warning:
-        "Dernières valeurs conservées : " +
+        "Dernières vraies valeurs conservées : " +
         reason,
 
       servedAt:
@@ -410,77 +448,99 @@ function getFallbackResponse(
     };
   }
 
-  /*
-   * Sinon, on affiche les temps habituels
-   * plutôt que des tirets.
-   */
   return {
     times: {
-      ...FALLBACK_TIMES,
+      ghulam: null,
+      nathan: null,
+      michael: null,
+      cedric: null,
+      liazide: null,
+      rachid: null,
+      toufik: null,
+      jason: null,
     },
 
-    errors: {},
+    errors: {
+      service: reason,
+    },
 
     details: {},
 
     stale: true,
-
-    fallback: true,
+    fallback: false,
 
     warning:
-      "Temps habituels provisoires : " +
-      reason,
+      "Aucune donnée réelle disponible",
 
     updatedAt:
       new Date().toISOString(),
   };
 }
 
+/*
+ * Calcul complet de tous les trajets.
+ */
 async function calculateAllJourneys(
   idfmApiKey,
   sncfApiKey
 ) {
+  /*
+   * Point de départ :
+   * Châtelet-Les Halles.
+   */
   const start = {
     lat: 48.8615,
     lon: 2.3465,
   };
 
   /*
-   * Six destinations différentes.
-   * Rachid et Toufik partagent Poissy.
+   * Six destinations PRIM différentes.
+   *
+   * Poissy est calculé une seule fois
+   * pour Rachid et Toufik.
    */
   const destinations = [
     {
       key: "ghulam",
+
       names: ["ghulam"],
+
       lat: 48.882222,
       lon: 2.704167,
     },
 
     {
       key: "nathan",
+
       names: ["nathan"],
+
       lat: 48.824744,
       lon: 2.318872,
     },
 
     {
       key: "michael",
+
       names: ["michael"],
+
       lat: 48.895631,
       lon: 2.223138,
     },
 
     {
       key: "cedric",
+
       names: ["cedric"],
+
       lat: 48.963873,
       lon: 2.372285,
     },
 
     {
       key: "liazide",
+
       names: ["liazide"],
+
       lat: 49.019392,
       lon: 2.153672,
     },
@@ -502,11 +562,8 @@ async function calculateAllJourneys(
   const errors = {};
   const details = {};
 
-  let rateLimitDetected = false;
-
   /*
-   * Les appels sont effectués un par un,
-   * avec une pause entre chaque appel.
+   * Appels PRIM un par un.
    */
   for (
     let index = 0;
@@ -528,11 +585,23 @@ async function calculateAllJourneys(
         const name
         of destination.names
       ) {
-        times[name] = result.minutes;
+        times[name] =
+          result.minutes;
       }
     } catch (error) {
+      /*
+       * Dès qu'un 429 apparaît,
+       * on arrête tous les autres appels.
+       */
       if (error?.status === 429) {
-        rateLimitDetected = true;
+        const rateLimitError =
+          new Error(
+            "PRIM : limite de requêtes atteinte"
+          );
+
+        rateLimitError.status = 429;
+
+        throw rateLimitError;
       }
 
       for (
@@ -548,14 +617,6 @@ async function calculateAllJourneys(
       }
     }
 
-    /*
-     * Dès qu'un 429 apparaît, on arrête
-     * les autres appels PRIM.
-     */
-    if (rateLimitDetected) {
-      break;
-    }
-
     if (
       index <
       destinations.length - 1
@@ -567,27 +628,15 @@ async function calculateAllJourneys(
   }
 
   /*
-   * Si la limite est atteinte,
-   * on ne continue pas le calcul.
-   */
-  if (rateLimitDetected) {
-    const rateLimitError = new Error(
-      "PRIM : limite de requêtes atteinte"
-    );
-
-    rateLimitError.status = 429;
-    throw rateLimitError;
-  }
-
-  /*
    * Jason :
    *
-   * On estime Châtelet -> Gare du Nord
-   * à 8 minutes pour éviter un septième
-   * appel PRIM.
+   * Châtelet -> Gare du Nord
+   * estimé à 8 minutes.
    *
-   * Puis l'API SNCF calcule l'attente
-   * et le TER jusqu'à Compiègne.
+   * Correspondance jusqu'au quai TER :
+   * 10 minutes.
+   *
+   * Le reste est calculé par SNCF.
    */
   try {
     if (!sncfApiKey) {
@@ -596,18 +645,25 @@ async function calculateAllJourneys(
       );
     }
 
-    const chateletToGareDuNord = 8;
+    const chateletToGareDuNordMinutes = 8;
     const correspondenceMinutes = 10;
 
-    const now =
+    const currentDateTime =
       getCurrentNavitiaDate();
 
     const terSearchDateTime =
       addMinutes(
-        now,
-        chateletToGareDuNord +
+        currentDateTime,
+
+        chateletToGareDuNordMinutes +
           correspondenceMinutes
       );
+
+    if (!terSearchDateTime) {
+      throw new Error(
+        "Horaire de départ TER invalide"
+      );
+    }
 
     const ter =
       await getSncfJourney(
@@ -616,13 +672,12 @@ async function calculateAllJourneys(
       );
 
     times.jason =
-      chateletToGareDuNord +
+      chateletToGareDuNordMinutes +
       correspondenceMinutes +
       ter.minutes;
 
     details.jason = {
-      chateletToGareDuNordMinutes:
-        chateletToGareDuNord,
+      chateletToGareDuNordMinutes,
 
       correspondenceMinutes,
 
@@ -644,20 +699,15 @@ async function calculateAllJourneys(
     };
   } catch (error) {
     /*
-     * Un problème SNCF ne bloque pas
-     * les sept autres personnes.
+     * Une erreur SNCF ne bloque pas
+     * les autres trajets.
      */
-    times.jason =
-      FALLBACK_TIMES.jason;
+    times.jason = null;
 
     errors.jason =
       error instanceof Error
         ? error.message
         : String(error);
-
-    details.jason = {
-      fallback: true,
-    };
   }
 
   return {
@@ -696,8 +746,8 @@ export default async function handler(
     memoryCache.timestamp;
 
   /*
-   * Renvoie immédiatement le cache
-   * s'il a moins de 15 minutes.
+   * Renvoie les données déjà calculées
+   * si elles ont moins de 30 minutes.
    */
   if (
     memoryCache.data &&
@@ -705,8 +755,14 @@ export default async function handler(
   ) {
     res.setHeader(
       "Cache-Control",
-      "public, s-maxage=900, " +
-        "stale-while-revalidate=3600"
+      "public, s-maxage=1800, " +
+        "stale-while-revalidate=7200"
+    );
+
+    res.setHeader(
+      "CDN-Cache-Control",
+      "public, s-maxage=1800, " +
+        "stale-while-revalidate=7200"
     );
 
     return res.status(200).json({
@@ -720,8 +776,8 @@ export default async function handler(
   }
 
   /*
-   * Si un calcul est déjà lancé,
-   * les autres requêtes attendent
+   * Si un calcul est déjà en cours,
+   * toutes les requêtes attendent
    * le même résultat.
    */
   if (!calculationInProgress) {
@@ -739,7 +795,7 @@ export default async function handler(
           return data;
         })
         .catch((error) => {
-          return getFallbackResponse(
+          return buildUnavailableResponse(
             error instanceof Error
               ? error.message
               : String(error),
@@ -757,8 +813,14 @@ export default async function handler(
 
   res.setHeader(
     "Cache-Control",
-    "public, s-maxage=900, " +
-      "stale-while-revalidate=3600"
+    "public, s-maxage=1800, " +
+      "stale-while-revalidate=7200"
+  );
+
+  res.setHeader(
+    "CDN-Cache-Control",
+    "public, s-maxage=1800, " +
+      "stale-while-revalidate=7200"
   );
 
   return res.status(200).json(result);
