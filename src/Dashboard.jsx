@@ -287,6 +287,8 @@ const GOLDEN_RULES = [
 
 const SLIDES = [
   { id: "goldenRules", type: "goldenRules" },
+  { id: "ehpg", type: "ehpg", label: "EHPG", image: "/ehpg-electrisation.png", alt: "EHPG — Électrisation lors d’un dépannage" },
+  { id: "ehpg2", type: "ehpg", label: "EHPG 2", image: "/vat-regles-art.png", alt: "Faire une VAT dans les règles de l’art" },
   { id: "quote", type: "quote" },
   { id: "planning", type: "planning" },
   ...TENANTS.map(t => ({ id: t.id, type: "tenant", tenantId: t.id })),
@@ -1364,6 +1366,126 @@ function OneSiteSlide({ onesite }) {
 
 // ─── SLIDE RÈGLES D'OR ───────────────────────────────────────────────────────
 
+
+// ─── SLIDES EHPG + COMPTEUR AUTOMATIQUE ─────────────────────────────────────
+
+const LAST_ACCIDENT_DATE = { year: 2025, month: 7, day: 23 };
+
+function calculateDaysWithoutAccident() {
+  const now = new Date();
+
+  const todayUtc = Date.UTC(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  );
+
+  const accidentUtc = Date.UTC(
+    LAST_ACCIDENT_DATE.year,
+    LAST_ACCIDENT_DATE.month - 1,
+    LAST_ACCIDENT_DATE.day
+  );
+
+  return Math.max(
+    0,
+    Math.floor((todayUtc - accidentUtc) / (1000 * 60 * 60 * 24))
+  );
+}
+
+function EhpgSlide({ image, alt }) {
+  const [daysWithoutAccident, setDaysWithoutAccident] = useState(
+    calculateDaysWithoutAccident
+  );
+
+  useEffect(() => {
+    const refreshCounter = () => {
+      setDaysWithoutAccident(calculateDaysWithoutAccident());
+    };
+
+    refreshCounter();
+    const timer = setInterval(refreshCounter, 60 * 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div style={{
+      width: "100%",
+      height: "100%",
+      position: "relative",
+      overflow: "hidden",
+      backgroundColor: "#062B55",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    }}>
+      <img
+        src={image}
+        alt={alt}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "contain",
+          objectPosition: "center",
+          display: "block",
+        }}
+      />
+
+      <div style={{
+        position: "absolute",
+        right: 28,
+        bottom: 24,
+        minWidth: 260,
+        padding: "14px 20px",
+        borderRadius: 16,
+        background: "linear-gradient(135deg, rgba(5,25,54,.96), rgba(8,54,94,.96))",
+        border: "2px solid #10BFB2",
+        boxShadow: "0 10px 30px rgba(0,0,0,.35)",
+        color: "white",
+        textAlign: "center",
+        backdropFilter: "blur(6px)",
+      }}>
+        <div style={{
+          fontSize: 11,
+          fontWeight: 800,
+          letterSpacing: "0.16em",
+          color: "#5EEAD4",
+          marginBottom: 3,
+        }}>
+          GROUPE VINCI
+        </div>
+
+        <div style={{
+          fontSize: 52,
+          fontWeight: 800,
+          lineHeight: 1,
+          fontFamily: "'DM Mono', monospace",
+          textShadow: "0 3px 12px rgba(0,0,0,.35)",
+        }}>
+          {daysWithoutAccident}
+        </div>
+
+        <div style={{
+          fontSize: 13,
+          fontWeight: 800,
+          letterSpacing: "0.09em",
+          marginTop: 5,
+        }}>
+          JOURS SANS ACCIDENT
+        </div>
+
+        <div style={{
+          fontSize: 10,
+          color: "rgba(255,255,255,.65)",
+          marginTop: 5,
+        }}>
+          Depuis le 23/07/2025
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GoldenRulesSlide() {
   return (
     <div style={{
@@ -2312,6 +2434,8 @@ export default function Dashboard() {
   const isQuotes = currentSlide.type === "quotes";
   const headerAccent = currentSlide.type === "goldenRules"
     ? "#00A091"
+    : currentSlide.type === "ehpg"
+    ? "#10BFB2"
     : currentSlide.type === "onesite"
     ? ONESITE_ACCENT
     : currentTenant
@@ -2446,6 +2570,9 @@ export default function Dashboard() {
           if (s.type === "goldenRules") {
             label = "RÈGLES D'OR";
             accentColor = "#00A091";
+          } else if (s.type === "ehpg") {
+            label = s.label;
+            accentColor = "#10BFB2";
           } else if (s.type === "onesite") {
             label = "ONESITE";
             accentColor = ONESITE_ACCENT;
@@ -2491,6 +2618,9 @@ export default function Dashboard() {
         animation: "fadeIn 0.5s ease",
       }}>
         {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
+        {currentSlide.type === "ehpg" && (
+          <EhpgSlide image={currentSlide.image} alt={currentSlide.alt} />
+        )}
         {currentSlide.type === "weather" && <WeatherSlide weather={weather} />}
         {currentSlide.type === "quote" && <QuoteSlide quote={quote} />}
         {currentSlide.type === "trajetPerso" && <TrajetPersoSlide trajetTimes={trajetTimes} />}
