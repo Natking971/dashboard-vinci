@@ -287,8 +287,6 @@ const GOLDEN_RULES = [
 
 const SLIDES = [
   { id: "goldenRules", type: "goldenRules" },
-  { id: "ehpgIncident", type: "safetyImage", image: "/ehpg-electrisation.png", label: "EHPG" },
-  { id: "vatRules", type: "safetyImage", image: "/vat-regles-art.png", label: "EHPG 2" },
   { id: "quote", type: "quote" },
   { id: "planning", type: "planning" },
   ...TENANTS.map(t => ({ id: t.id, type: "tenant", tenantId: t.id })),
@@ -1364,36 +1362,6 @@ function OneSiteSlide({ onesite }) {
   );
 }
 
-// ─── SLIDES SÉCURITÉ EN IMAGE ────────────────────────────────────────────────
-
-function SafetyImageSlide({ src, alt }) {
-  return (
-    <div style={{
-      height: "100%",
-      width: "100%",
-      background: "linear-gradient(135deg, #06152F 0%, #07386A 100%)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "10px 18px 14px",
-      overflow: "hidden",
-    }}>
-      <img
-        src={src}
-        alt={alt}
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "contain",
-          display: "block",
-          borderRadius: 12,
-          boxShadow: "0 16px 40px rgba(0,0,0,0.28)",
-        }}
-      />
-    </div>
-  );
-}
-
 // ─── SLIDE RÈGLES D'OR ───────────────────────────────────────────────────────
 
 function GoldenRulesSlide() {
@@ -2344,8 +2312,6 @@ export default function Dashboard() {
   const isQuotes = currentSlide.type === "quotes";
   const headerAccent = currentSlide.type === "goldenRules"
     ? "#00A091"
-    : currentSlide.type === "safetyImage"
-    ? (currentSlide.id === "ehpgIncident" ? "#EF4444" : "#00A091")
     : currentSlide.type === "onesite"
     ? ONESITE_ACCENT
     : currentTenant
@@ -2480,9 +2446,6 @@ export default function Dashboard() {
           if (s.type === "goldenRules") {
             label = "RÈGLES D'OR";
             accentColor = "#00A091";
-          } else if (s.type === "safetyImage") {
-            label = s.label;
-            accentColor = s.id === "ehpgIncident" ? "#EF4444" : "#00A091";
           } else if (s.type === "onesite") {
             label = "ONESITE";
             accentColor = ONESITE_ACCENT;
@@ -2528,14 +2491,6 @@ export default function Dashboard() {
         animation: "fadeIn 0.5s ease",
       }}>
         {currentSlide.type === "goldenRules" && <GoldenRulesSlide />}
-        {currentSlide.type === "safetyImage" && (
-          <SafetyImageSlide
-            src={currentSlide.image}
-            alt={currentSlide.id === "ehpgIncident"
-              ? "EHPG — Électrisation lors d’un dépannage"
-              : "Faire une VAT dans les règles de l’art"}
-          />
-        )}
         {currentSlide.type === "weather" && <WeatherSlide weather={weather} />}
         {currentSlide.type === "quote" && <QuoteSlide quote={quote} />}
         {currentSlide.type === "trajetPerso" && <TrajetPersoSlide trajetTimes={trajetTimes} />}
