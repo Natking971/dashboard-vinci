@@ -1433,17 +1433,20 @@ function EhpgSlide({ image, alt }) {
 
       <div style={{
         position: "absolute",
-        right: 28,
-        bottom: 24,
-        minWidth: 260,
-        padding: "14px 20px",
-        borderRadius: 16,
+        right: "clamp(18px, 2.2vw, 42px)",
+        bottom: "clamp(42px, 5vh, 72px)",
+        minWidth: "clamp(190px, 14vw, 235px)",
+        padding: "clamp(9px, 1vw, 13px) clamp(13px, 1.2vw, 18px)",
+        borderRadius: 14,
         background: "linear-gradient(135deg, rgba(5,25,54,.96), rgba(8,54,94,.96))",
         border: "2px solid #10BFB2",
         boxShadow: "0 10px 30px rgba(0,0,0,.35)",
         color: "white",
         textAlign: "center",
         backdropFilter: "blur(6px)",
+        transform: "scale(0.9)",
+        transformOrigin: "bottom right",
+        zIndex: 5,
       }}>
         <div style={{
           fontSize: 11,
@@ -1456,7 +1459,7 @@ function EhpgSlide({ image, alt }) {
         </div>
 
         <div style={{
-          fontSize: 52,
+          fontSize: "clamp(36px, 3.2vw, 48px)",
           fontWeight: 800,
           lineHeight: 1,
           fontFamily: "'DM Mono', monospace",
@@ -1466,7 +1469,7 @@ function EhpgSlide({ image, alt }) {
         </div>
 
         <div style={{
-          fontSize: 13,
+          fontSize: "clamp(10px, 0.9vw, 12px)",
           fontWeight: 800,
           letterSpacing: "0.09em",
           marginTop: 5,
