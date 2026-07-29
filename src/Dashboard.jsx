@@ -1744,47 +1744,176 @@ function QuoteSlide({ quote }) {
 // ─── SLIDE TRANSPORT ─────────────────────────────────────────────────────────
 function TransportSlide({ lines, lastUpdate }) {
   const grouped = { M: [], RER: [], TER: [] };
+
+  // Détermine l'état d'une ligne :
+  // - rouge = perturbation
+  // - jaune = travaux
+  // - vert = trafic normal
+  // Lorsqu'une ligne a des travaux ET une perturbation, le rouge est prioritaire.
+  function getTransportStatus(disruptions = []) {
+    if (!Array.isArray(disruptions) || disruptions.length === 0) {
+      return {
+        status: "normal",
+        label: "Normal",
+        message: "",
+      };
+    }
+
+    const normalized = disruptions.map(item => {
+      const severity = String(item?.severity || "").toLowerCase();
+      const message = String(item?.message || "").toLowerCase();
+      const title = String(item?.title || item?.cause || "").toLowerCase();
+      const fullText = `${severity} ${title} ${message}`;
+
+      const isWorks =
+        fullText.includes("travaux") ||
+        fullText.includes("maintenance") ||
+        fullText.includes("chantier") ||
+        fullText.includes("modernisation") ||
+        fullText.includes("renouvellement") ||
+        fullText.includes("fermeture programmée") ||
+        fullText.includes("fermeture programmee") ||
+        fullText.includes("interruption programmée") ||
+        fullText.includes("interruption programmee");
+
+      const isPerturbation =
+        fullText.includes("perturb") ||
+        fullText.includes("incident") ||
+        fullText.includes("retard") ||
+        fullText.includes("ralenti") ||
+        fullText.includes("interrompu") ||
+        fullText.includes("interruption") ||
+        fullText.includes("accident") ||
+        fullText.includes("panne") ||
+        fullText.includes("malaise") ||
+        fullText.includes("signalisation") ||
+        fullText.includes("bagage") ||
+        fullText.includes("voyageur") ||
+        fullText.includes("trafic") ||
+        fullText.includes("manifestation") ||
+        fullText.includes("grève") ||
+        fullText.includes("greve");
+
+      return {
+        ...item,
+        isWorks,
+        isPerturbation: isPerturbation && !isWorks,
+      };
+    });
+
+    // Priorité absolue au rouge.
+    const perturbation = normalized.find(item => item.isPerturbation);
+    if (perturbation) {
+      return {
+        status: "perturbation",
+        label: perturbation.severity || "Perturbation",
+        message: perturbation.message || "",
+      };
+    }
+
+    const works = normalized.find(item => item.isWorks);
+    if (works) {
+      return {
+        status: "works",
+        label: "Travaux",
+        message: works.message || "",
+      };
+    }
+
+    // Si l'API signale une anomalie non reconnue, on la traite en rouge.
+    const first = normalized[0];
+    return {
+      status: "perturbation",
+      label: first?.severity || "Perturbation",
+      message: first?.message || "",
+    };
+  }
+
   METRO_CONFIG.forEach(cfg => {
     const data = (lines || []).find(l => l.code === cfg.code);
-    const disrupted = data ? data.disruptions.length > 0 : false;
-    const severity  = disrupted ? (data.disruptions[0]?.severity || "Perturbation") : "";
-    const message   = disrupted ? (data.disruptions[0]?.message || "") : "";
-    if (cfg.type === "M") grouped.M.push({ ...cfg, disrupted, severity, message });
-    else if (cfg.type === "RER") grouped.RER.push({ ...cfg, disrupted, severity, message });
-    else grouped.TER.push({ ...cfg, disrupted, severity, message });
+    const transportStatus = getTransportStatus(data?.disruptions || []);
+
+    const lineData = {
+      ...cfg,
+      ...transportStatus,
+    };
+
+    if (cfg.type === "M") grouped.M.push(lineData);
+    else if (cfg.type === "RER") grouped.RER.push(lineData);
+    else grouped.TER.push(lineData);
   });
 
-  const LineCard = ({ code, color, disrupted, severity, message, type }) => (
-    <div style={{
-      background: disrupted ? "rgba(239,83,80,0.14)" : "rgba(255,255,255,0.05)",
-      border: `1.5px solid ${disrupted ? "#EF5350" : "rgba(255,255,255,0.10)"}`,
-      borderRadius: 10,
-      padding: "8px 10px",
-      display: "flex",
-      alignItems: "flex-start",
-      gap: 8,
-      minHeight: 52,
-    }}>
+  const LineCard = ({ code, color, status, label, message }) => {
+    const isPerturbation = status === "perturbation";
+    const isWorks = status === "works";
+
+    const cardBackground = isPerturbation
+      ? "rgba(239,83,80,0.18)"
+      : isWorks
+      ? "rgba(245,158,11,0.18)"
+      : "rgba(255,255,255,0.05)";
+
+    const cardBorder = isPerturbation
+      ? "#EF5350"
+      : isWorks
+      ? "#F59E0B"
+      : "rgba(255,255,255,0.10)";
+
+    const statusColor = isPerturbation
+      ? "#F87171"
+      : isWorks
+      ? "#FBBF24"
+      : "#4ADE80";
+
+    return (
       <div style={{
-        width: 36, height: 36, flexShrink: 0,
-        borderRadius: "50%",
-        background: color,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontWeight: 900, fontSize: code.length > 2 ? 10 : 13,
-        color: "white", textShadow: "0 1px 3px rgba(0,0,0,0.6)",
-      }}>{code}</div>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 12, color: disrupted ? "#F87171" : "#4ADE80", fontWeight: 800, marginBottom: 2 }}>
-          {disrupted ? (severity || "Perturbe") : "Normal"}
-        </div>
-        {disrupted && message && (
-          <div style={{ fontSize: 11, color: "#D1D5DB", lineHeight: 1.3, wordBreak: "break-word" }}>
-            {message}
+        background: cardBackground,
+        border: `1.5px solid ${cardBorder}`,
+        borderRadius: 10,
+        padding: "8px 10px",
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 8,
+        minHeight: 52,
+        boxShadow: isPerturbation
+          ? "0 0 0 1px rgba(239,83,80,0.10)"
+          : isWorks
+          ? "0 0 0 1px rgba(245,158,11,0.10)"
+          : "none",
+      }}>
+        <div style={{
+          width: 36, height: 36, flexShrink: 0,
+          borderRadius: "50%",
+          background: color,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontWeight: 900, fontSize: code.length > 2 ? 10 : 13,
+          color: "white", textShadow: "0 1px 3px rgba(0,0,0,0.6)",
+        }}>{code}</div>
+
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{
+            fontSize: 12,
+            color: statusColor,
+            fontWeight: 800,
+            marginBottom: 2,
+          }}>
+            {status === "normal" ? "Normal" : label}
           </div>
-        )}
+
+          {status !== "normal" && message && (
+            <div style={{
+              fontSize: 11,
+              color: "#D1D5DB",
+              lineHeight: 1.3,
+              wordBreak: "break-word",
+            }}>
+              {message}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const updStr = lastUpdate ? new Date(lastUpdate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : null;
 
