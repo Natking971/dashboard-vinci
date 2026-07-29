@@ -17,6 +17,7 @@ const SHEET_URLS = {
   devis: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=49286593&single=true&output=csv",
   // Onglet ONESITE — le gid est découvert automatiquement au chargement
   onesite: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=1993330783&single=true&output=csv",
+  citations: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=314910372&single=true&output=csv",
 };
 
 // Étapes pour la slide Devis (différentes des affaires, plus orientées client)
@@ -372,6 +373,58 @@ const FRENCH_QUOTES = [
 ];
 
 // ─── UTILITAIRES ────────────────────────────────────────────────────────────
+
+// Répartition quotidienne des citations : 70 % équipe / 30 % Internet.
+// Les citations de l'équipe deviennent disponibles 2 mois après leur date d'ajout.
+function parseCitationDate(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+
+  // Format français JJ/MM/AAAA
+  const frMatch = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+  if (frMatch) {
+    const [, day, month, year] = frMatch;
+    const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  // Format ISO AAAA-MM-JJ
+  const isoMatch = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function getDailySeed(date = new Date()) {
+  return Number(
+    `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`
+  );
+}
+
+function seededIndex(seed, length, salt = 0) {
+  if (length <= 0) return 0;
+  const value = Math.abs(Math.sin(seed * 12.9898 + salt * 78.233) * 43758.5453);
+  return Math.floor((value - Math.floor(value)) * length);
+}
+
+function selectDailyQuote(teamQuotes, date = new Date()) {
+  const seed = getDailySeed(date);
+
+  // Valeur stable pour toute la journée : 0 à 99.
+  const ratioValue = seededIndex(seed, 100, 1);
+  const useTeamQuote = teamQuotes.length > 0 && ratioValue < 70;
+
+  if (useTeamQuote) {
+    return teamQuotes[seededIndex(seed, teamQuotes.length, 2)];
+  }
+
+  return FRENCH_QUOTES[seededIndex(seed, FRENCH_QUOTES.length, 3)];
+}
 
 function getWeekDates() {
   const today = new Date();
@@ -2109,7 +2162,7 @@ export default function Dashboard() {
     ghulam: 44, nathan: 27, michael: 12, jason: 77, cedric: 28, liazide: 35, rachid: 30, toufik: 30
   });
   const [transportLastUpdate, setTransportLastUpdate] = useState(null);
-  const [quote, setQuote] = useState(() => FRENCH_QUOTES[Math.floor(Date.now() / 86400000) % FRENCH_QUOTES.length]);
+  const [quote, setQuote] = useState(() => selectDailyQuote([]));
 
   // Charger les données depuis Google Sheets
   useEffect(() => {
@@ -2117,11 +2170,12 @@ export default function Dashboard() {
 
     async function fetchAllData() {
       try {
-        const [planningRes, affairsRes, subsRes, onesiteRes] = await Promise.all([
+        const [planningRes, affairsRes, subsRes, onesiteRes, citationsRes] = await Promise.all([
           fetch(SHEET_URLS.planning).then(r => r.text()),
           fetch(SHEET_URLS.affaires).then(r => r.text()),
           fetch(SHEET_URLS.soustraitants).then(r => r.text()),
           fetch(SHEET_URLS.onesite).then(r => r.text()).catch(() => ""),
+          fetch(SHEET_URLS.citations).then(r => r.text()).catch(() => ""),
         ]);
 
         if (cancelled) return;
@@ -2285,6 +2339,31 @@ export default function Dashboard() {
         console.log("✅ PAT:", newPat.length, "QHS:", newQhs.length);
         setOnesite({ pat: newPat, qhs: newQhs });
 
+        // Parser les citations de l'équipe.
+        // Colonnes attendues dans Google Sheets : citation, auteur, date_ajout.
+        const citationRows = citationsRes ? parseCSV(citationsRes) : [];
+        const today = new Date();
+        const eligibleTeamQuotes = citationRows
+          .map(row => {
+            const text = row.citation || row.texte || row.text || "";
+            const author = row.auteur || row.author || "Équipe VINCI";
+            const addedAt = parseCitationDate(
+              row.date_ajout || row.dateajout || row.date || ""
+            );
+
+            return { text, author, addedAt };
+          })
+          .filter(item => {
+            if (!item.text || !item.addedAt) return false;
+
+            const availableAt = new Date(item.addedAt);
+            availableAt.setMonth(availableAt.getMonth() + 2);
+
+            return availableAt <= today;
+          });
+
+        setQuote(selectDailyQuote(eligibleTeamQuotes, today));
+
         setDataStatus("ok");
         setLastUpdate(new Date());
       } catch (err) {
@@ -2306,6 +2385,10 @@ export default function Dashboard() {
     const t = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Le chargement Sheets est relancé toutes les 5 minutes.
+  // La citation reste donc stable pendant la journée et change automatiquement le lendemain.
+
 
   useEffect(() => {
     async function fetchWeather() {
