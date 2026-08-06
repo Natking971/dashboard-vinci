@@ -442,6 +442,105 @@ function getWeekDates() {
 const fmt = d => d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
 const getTodayIndex = () => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; };
 
+// Lit une date provenant de Google Sheets.
+// Formats acceptés : JJ/MM/AAAA, JJ-MM-AAAA, AAAA-MM-JJ
+// et nombre de série Excel/Google Sheets.
+function parseAffairDate(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+
+  // Nombre de série Excel / Google Sheets
+  if (/^\d+(?:[.,]\d+)?$/.test(raw)) {
+    const serial = Number(raw.replace(",", "."));
+    if (Number.isFinite(serial) && serial > 20000) {
+      const excelEpoch = Date.UTC(1899, 11, 30);
+      const parsed = new Date(excelEpoch + Math.floor(serial) * 86400000);
+      return new Date(
+        parsed.getUTCFullYear(),
+        parsed.getUTCMonth(),
+        parsed.getUTCDate()
+      );
+    }
+  }
+
+  // Format français : JJ/MM/AAAA ou JJ-MM-AAAA
+  const frenchMatch = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2}|\d{4})$/);
+  if (frenchMatch) {
+    let [, day, month, year] = frenchMatch;
+    if (year.length === 2) year = `20${year}`;
+
+    const parsed = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day)
+    );
+
+    if (
+      parsed.getFullYear() === Number(year) &&
+      parsed.getMonth() === Number(month) - 1 &&
+      parsed.getDate() === Number(day)
+    ) {
+      return parsed;
+    }
+  }
+
+  // Format ISO : AAAA-MM-JJ
+  const isoMatch = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    const parsed = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day)
+    );
+
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+
+  const fallback = new Date(raw);
+  if (Number.isNaN(fallback.getTime())) return null;
+
+  return new Date(
+    fallback.getFullYear(),
+    fallback.getMonth(),
+    fallback.getDate()
+  );
+}
+
+function getAffairDays(startDate) {
+  if (!(startDate instanceof Date) || Number.isNaN(startDate.getTime())) {
+    return null;
+  }
+
+  const today = new Date();
+
+  const todayUtc = Date.UTC(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  );
+
+  const startUtc = Date.UTC(
+    startDate.getFullYear(),
+    startDate.getMonth(),
+    startDate.getDate()
+  );
+
+  return Math.floor((todayUtc - startUtc) / 86400000);
+}
+
+function getAffairAgeLabel(startDate) {
+  const days = getAffairDays(startDate);
+
+  if (days === null) return "Date absente";
+  if (days === 0) return "Aujourd'hui";
+  if (days === 1) return "J+1";
+  if (days > 1) return `J+${days}`;
+  if (days === -1) return "Demain";
+
+  return `Dans ${Math.abs(days)} j`;
+}
+
 // ─── COMPOSANTS ─────────────────────────────────────────────────────────────
 
 function AffairCard({ affair, index, total }) {
@@ -540,8 +639,19 @@ function AffairCard({ affair, index, total }) {
               backgroundColor: "#FEF3C7", padding: "3px 8px", borderRadius: 6,
             }}>→ {affair.validator}</span>
           )}
-          <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 600 }}>
-            {affair.days === 0 ? "Aujourd'hui" : `J+${affair.days}`}
+          <span
+            title={
+              affair.startDate
+                ? `Date de départ : ${affair.startDate.toLocaleDateString("fr-FR")}`
+                : "Aucune date renseignée"
+            }
+            style={{
+              fontSize: 11,
+              color: "#9CA3AF",
+              fontWeight: 600,
+            }}
+          >
+            {getAffairAgeLabel(affair.startDate)}
           </span>
         </div>
       </div>
@@ -2713,7 +2823,9 @@ export default function Dashboard() {
           tasks: planningByTechNext[t.id] || [],
         }));
 
-        // Parser Affaires : locataire, reference, titre, etape, technicien, validateur, jours, urgent
+        // Parser Affaires : locataire, reference, titre, etape, technicien,
+        // validateur, date, urgent.
+        // La date sert à calculer automatiquement l'ancienneté de l'affaire.
         // Le champ technicien peut contenir plusieurs noms séparés par virgule
         const affairsRows = parseCSV(affairsRes);
         const newAffairs = { voodoo: [], laposte: [], logistique: [], louvre: [], iad: [], communes: [] };
@@ -2737,7 +2849,15 @@ export default function Dashboard() {
             tech: techIds[0] || 1,        // 1er technicien (compatibilité ancien code)
             techIds: techIds.length > 0 ? techIds : [1], // tableau complet
             validator: row.validateur || undefined,
-            days: parseInt(row.jours, 10) || 0,
+            startDate: parseAffairDate(
+              row.date ||
+              row.date_creation ||
+              row["date création"] ||
+              row.date_debut ||
+              row["date début"] ||
+              row.jours ||
+              ""
+            ),
             urgent: ["oui", "yes", "true", "1"].includes((row.urgent || "").toLowerCase()),
             isQuote: false,
           });
