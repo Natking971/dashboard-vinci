@@ -1649,47 +1649,338 @@ function UVBadge({ uv }) {
   );
 }
 
+function getWeatherEmoji(code, isDay = true) {
+  const n = Number(code);
+
+  if ([95, 96, 99].includes(n)) return "⛈️";
+  if ([71, 73, 75, 77, 85, 86].includes(n)) return "❄️";
+  if ([61, 63, 65, 80, 81, 82].includes(n)) return "🌧️";
+  if ([51, 53, 55].includes(n)) return "🌦️";
+  if ([45, 48].includes(n)) return "🌫️";
+  if (n === 3) return "☁️";
+  if (n === 2) return isDay ? "⛅" : "☁️";
+  if (n <= 1) return isDay ? "☀️" : "🌙";
+
+  return "🌤️";
+}
+
 function WeatherSlide({ weather }) {
-  const hour = new Date().getHours();
-  if (!weather) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", background: getTimeGradient(hour), color: "white", fontSize: 20 }}>
-      Chargement météo…
-    </div>
-  );
-  const { current, daily } = weather;
-  const wmo     = WMO[current.weather_code] || { fr: "—" };
-  const phrase  = getWeatherPhrase(current.weather_code, hour);
-  const sunrise = daily.sunrise?.[0] ? new Date(daily.sunrise[0]).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "--:--";
-  const sunset  = daily.sunset?.[0]  ? new Date(daily.sunset[0]).toLocaleTimeString("fr-FR",  { hour: "2-digit", minute: "2-digit" }) : "--:--";
+  const now = new Date();
+  const hour = now.getHours();
+
+  if (!weather) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          background: getTimeGradient(hour),
+          color: "white",
+          fontSize: 20,
+        }}
+      >
+        Chargement météo…
+      </div>
+    );
+  }
+
+  const { current, daily, hourly } = weather;
+  const wmo = WMO[current.weather_code] || { fr: "—" };
+  const phrase = getWeatherPhrase(current.weather_code, hour);
+
+  const sunrise = daily.sunrise?.[0]
+    ? new Date(daily.sunrise[0]).toLocaleTimeString("fr-FR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "--:--";
+
+  const sunset = daily.sunset?.[0]
+    ? new Date(daily.sunset[0]).toLocaleTimeString("fr-FR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "--:--";
+
   const uvToday = daily.uv_index_max?.[0];
-  const bg      = getTimeGradient(hour);
+  const maxToday = daily.temperature_2m_max?.[0];
+  const minToday = daily.temperature_2m_min?.[0];
+  const bg = getTimeGradient(hour);
+
+  // On prend les 4 prochaines échéances espacées d'environ 3 heures.
+  const hourlyTimes = Array.isArray(hourly?.time) ? hourly.time : [];
+  const nextHourIndex = hourlyTimes.findIndex(
+    (value) => new Date(value).getTime() >= now.getTime()
+  );
+
+  const baseIndex = nextHourIndex >= 0 ? nextHourIndex : 0;
+  const hourlyIndexes = [0, 3, 6, 9]
+    .map((offset) => baseIndex + offset)
+    .filter((index) => index < hourlyTimes.length);
 
   return (
-    <div style={{ height: "100%", background: bg, color: "white", display: "flex", flexDirection: "column", padding: "20px 32px" }}>
+    <div
+      style={{
+        height: "100%",
+        background: bg,
+        color: "white",
+        display: "flex",
+        flexDirection: "column",
+        padding: "20px 32px",
+      }}
+    >
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-        <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.05em", color: "rgba(255,255,255,0.9)" }}>METEO</span>
-        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 18 }}>· Paris</span>
-        <div style={{ marginLeft: "auto" }}><UVBadge uv={uvToday}/></div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          marginBottom: 14,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 20,
+            fontWeight: 800,
+            letterSpacing: "0.05em",
+            color: "rgba(255,255,255,0.9)",
+          }}
+        >
+          METEO
+        </span>
+        <span
+          style={{
+            color: "rgba(255,255,255,0.5)",
+            fontSize: 18,
+          }}
+        >
+          · Paris
+        </span>
+
+        <div style={{ marginLeft: "auto" }}>
+          <UVBadge uv={uvToday} />
+        </div>
       </div>
 
-      {/* Température principale */}
-      <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 10 }}>
-        <div style={{fontSize:80}}>{current.weather_code <= 3 ? "☀️" : current.weather_code <= 45 ? "☁️" : current.weather_code <= 80 ? "🌧️" : "⛈️"}</div>
-        <div>
-          <div style={{ fontSize: 86, fontWeight: 900, lineHeight: 1, letterSpacing: "-2px" }}>{Math.round(current.temperature_2m)}°C</div>
-          <div style={{ fontSize: 18, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>Ressenti {Math.round(current.apparent_temperature)}°C</div>
-          <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{wmo.fr}</div>
+      {/* Météo actuelle + prévisions horaires */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(400px, 0.9fr) minmax(620px, 1.45fr)",
+          gap: 22,
+          alignItems: "stretch",
+          marginBottom: 12,
+        }}
+      >
+        {/* Température actuelle */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 22,
+            minWidth: 0,
+          }}
+        >
+          <div style={{ fontSize: 78, flexShrink: 0 }}>
+            {getWeatherEmoji(current.weather_code, current.is_day !== 0)}
+          </div>
+
+          <div style={{ minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: 82,
+                fontWeight: 900,
+                lineHeight: 0.95,
+                letterSpacing: "-2px",
+              }}
+            >
+              {Math.round(current.temperature_2m)}°C
+            </div>
+
+            <div
+              style={{
+                fontSize: 17,
+                color: "rgba(255,255,255,0.65)",
+                marginTop: 5,
+              }}
+            >
+              Ressenti {Math.round(current.apparent_temperature)}°C
+            </div>
+
+            <div
+              style={{
+                fontSize: 23,
+                fontWeight: 700,
+                marginTop: 3,
+              }}
+            >
+              {wmo.fr}
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                marginTop: 9,
+                fontSize: 16,
+                fontWeight: 800,
+              }}
+            >
+              <span style={{ color: "#FCA5A5" }}>
+                Max {maxToday != null ? Math.round(maxToday) : "—"}°C
+              </span>
+              <span
+                style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: "50%",
+                  background: "rgba(255,255,255,0.45)",
+                }}
+              />
+              <span style={{ color: "#BFDBFE" }}>
+                Min {minToday != null ? Math.round(minToday) : "—"}°C
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Prévisions des prochaines heures */}
+        <div
+          style={{
+            background: "rgba(255,255,255,0.10)",
+            border: "1px solid rgba(255,255,255,0.16)",
+            borderRadius: 16,
+            padding: "12px 15px 14px",
+            minWidth: 0,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 800,
+              letterSpacing: "0.11em",
+              color: "rgba(255,255,255,0.76)",
+              marginBottom: 9,
+            }}
+          >
+            HEURES À VENIR
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: `repeat(${Math.max(hourlyIndexes.length, 1)}, 1fr)`,
+              gap: 9,
+            }}
+          >
+            {hourlyIndexes.map((index) => {
+              const forecastDate = new Date(hourly.time[index]);
+              const forecastCode = hourly.weather_code?.[index];
+              const forecastTemp = hourly.temperature_2m?.[index];
+              const forecastRain =
+                hourly.precipitation_probability?.[index];
+              const forecastWind = hourly.wind_speed_10m?.[index];
+              const isDay = hourly.is_day?.[index] !== 0;
+
+              return (
+                <div
+                  key={`${hourly.time[index]}-${index}`}
+                  style={{
+                    minWidth: 0,
+                    background: "rgba(8,37,105,0.28)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: 12,
+                    padding: "9px 7px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 3,
+                    textAlign: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 800,
+                      color: "rgba(255,255,255,0.86)",
+                    }}
+                  >
+                    {forecastDate.toLocaleTimeString("fr-FR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+
+                  <div style={{ fontSize: 31, lineHeight: 1.15 }}>
+                    {getWeatherEmoji(forecastCode, isDay)}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 900,
+                    }}
+                  >
+                    {forecastTemp != null
+                      ? Math.round(forecastTemp)
+                      : "—"}
+                    °
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 7,
+                      justifyContent: "center",
+                      flexWrap: "wrap",
+                      fontSize: 10,
+                      color: "rgba(255,255,255,0.62)",
+                    }}
+                  >
+                    {forecastRain != null && (
+                      <span>Pluie {Math.round(forecastRain)}%</span>
+                    )}
+                    {forecastWind != null && (
+                      <span>Vent {Math.round(forecastWind)} km/h</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {/* Phrase du jour */}
-      <div style={{ background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: "10px 16px", marginBottom: 14, fontSize: 16, fontStyle: "italic", color: "rgba(255,255,255,0.9)", borderLeft: "3px solid rgba(255,255,255,0.4)" }}>
+      <div
+        style={{
+          background: "rgba(255,255,255,0.12)",
+          borderRadius: 12,
+          padding: "9px 16px",
+          marginBottom: 12,
+          fontSize: 16,
+          fontStyle: "italic",
+          color: "rgba(255,255,255,0.9)",
+          borderLeft: "3px solid rgba(255,255,255,0.4)",
+        }}
+      >
         {phrase}
       </div>
 
       {/* Détails */}
-      <div style={{ display: "flex", gap: 28, marginBottom: 16, fontSize: 15, color: "rgba(255,255,255,0.7)" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 28,
+          marginBottom: 14,
+          fontSize: 15,
+          color: "rgba(255,255,255,0.7)",
+        }}
+      >
         <span>Hum. {current.relative_humidity_2m}%</span>
         <span>Vent {Math.round(current.wind_speed_10m)} km/h</span>
         <span>Lever {sunrise}</span>
@@ -1699,24 +1990,106 @@ function WeatherSlide({ weather }) {
       {/* Prévisions 3 jours */}
       <div style={{ display: "flex", gap: 12, flex: 1 }}>
         {(daily.time || []).slice(1, 4).map((date, i) => {
-          const d     = new Date(date);
-          const dWmo  = WMO[daily.weather_code[i + 1]] || { fr: "" };
-          const wind  = daily.wind_speed_10m_max?.[i + 1];
-          const rain  = daily.precipitation_probability_max?.[i + 1];
-          const uv    = daily.uv_index_max?.[i + 1];
+          const d = new Date(date);
+          const code = daily.weather_code[i + 1];
+          const dWmo = WMO[code] || { fr: "" };
+          const wind = daily.wind_speed_10m_max?.[i + 1];
+          const rain = daily.precipitation_probability_max?.[i + 1];
+          const uv = daily.uv_index_max?.[i + 1];
+
           return (
-            <div key={i} style={{ flex: 1, background: "rgba(255,255,255,0.1)", backdropFilter: "blur(4px)", borderRadius: 16, padding: "14px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 7, border: "1px solid rgba(255,255,255,0.15)" }}>
-              <div style={{ fontSize: 15, color: "rgba(255,255,255,0.8)", fontWeight: 700 }}>{DAYS_FR[d.getDay()]}</div>
-              <div style={{fontSize:48}}>{daily.weather_code[i + 1] <= 3 ? "☀️" : daily.weather_code[i + 1] <= 45 ? "☁️" : daily.weather_code[i + 1] <= 80 ? "🌧️" : "⛈️"}</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", textAlign: "center" }}>{dWmo.fr}</div>
-              <div style={{ display: "flex", gap: 10, fontSize: 22, fontWeight: 800 }}>
-                <span style={{ color: "#FCA5A5" }}>{Math.round(daily.temperature_2m_max[i + 1])}°</span>
-                <span style={{ color: "rgba(255,255,255,0.5)" }}>{Math.round(daily.temperature_2m_min[i + 1])}°</span>
+            <div
+              key={i}
+              style={{
+                flex: 1,
+                background: "rgba(255,255,255,0.1)",
+                backdropFilter: "blur(4px)",
+                borderRadius: 16,
+                padding: "12px 16px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 5,
+                border: "1px solid rgba(255,255,255,0.15)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 15,
+                  color: "rgba(255,255,255,0.8)",
+                  fontWeight: 700,
+                }}
+              >
+                {DAYS_FR[d.getDay()]}
               </div>
-              <div style={{ display: "flex", gap: 12, fontSize: 12, color: "rgba(255,255,255,0.6)", flexWrap: "wrap", justifyContent: "center" }}>
-                {rain != null && <span style={{ color: rain > 50 ? "#60A5FA" : "rgba(255,255,255,0.55)" }}>Pluie {rain}%</span>}
-                {wind != null && <span>Vent {Math.round(wind)} km/h</span>}
-                {uv  != null && <span style={{ color: uv > 5 ? "#FACC15" : "rgba(255,255,255,0.55)" }}>UV {Math.round(uv)}</span>}
+
+              <div style={{ fontSize: 43 }}>
+                {getWeatherEmoji(code, true)}
+              </div>
+
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.65)",
+                  textAlign: "center",
+                }}
+              >
+                {dWmo.fr}
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  fontSize: 21,
+                  fontWeight: 800,
+                }}
+              >
+                <span style={{ color: "#FCA5A5" }}>
+                  {Math.round(daily.temperature_2m_max[i + 1])}°
+                </span>
+                <span style={{ color: "rgba(255,255,255,0.5)" }}>
+                  {Math.round(daily.temperature_2m_min[i + 1])}°
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.6)",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                }}
+              >
+                {rain != null && (
+                  <span
+                    style={{
+                      color:
+                        rain > 50
+                          ? "#60A5FA"
+                          : "rgba(255,255,255,0.55)",
+                    }}
+                  >
+                    Pluie {rain}%
+                  </span>
+                )}
+                {wind != null && (
+                  <span>Vent {Math.round(wind)} km/h</span>
+                )}
+                {uv != null && (
+                  <span
+                    style={{
+                      color:
+                        uv > 5
+                          ? "#FACC15"
+                          : "rgba(255,255,255,0.55)",
+                    }}
+                  >
+                    UV {Math.round(uv)}
+                  </span>
+                )}
               </div>
             </div>
           );
@@ -2524,7 +2897,8 @@ export default function Dashboard() {
       try {
         const res = await fetch(
           "https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522" +
-          "&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m" +
+          "&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m,is_day" +
+          "&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m,is_day" +
           "&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,wind_speed_10m_max,uv_index_max,precipitation_probability_max" +
           "&timezone=Europe/Paris&forecast_days=4"
         );
