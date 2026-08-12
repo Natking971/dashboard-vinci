@@ -1476,7 +1476,7 @@ function OneSiteSlide({ onesite }) {
           display: "flex", flexDirection: "column", gap: 20,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-            <div style={{ width: 6, height: 40, borderRadius: 3, backgroundColor: "#10B981" }} />
+            <div style={{ width: 6, height: 38, borderRadius: 3, backgroundColor: "#10B981" }} />
             <div>
               <div style={{ fontSize: 20, fontWeight: 800, color: "white" }}>Presque Accidents (PAT)</div>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{patDone} / {ONESITE_TOTAL} réalisés</div>
@@ -2354,7 +2354,7 @@ function EclipseSlide() {
           gap: 14,
           flex: 1,
           minHeight: 0,
-          maxHeight: "calc(100% - 150px)",
+          maxHeight: "calc(100% - 135px)",
         }}
       >
         {/* Colonne infos */}
@@ -2466,40 +2466,10 @@ function EclipseSlide() {
             </div>
           </div>
 
-          <div
-            style={{
-              borderRadius: 14,
-              border: "1px solid rgba(255,255,255,.12)",
-              background: "rgba(255,255,255,.055)",
-              padding: "12px 14px",
-            }}
-          >
-            <div
-              style={{
-                color: "#FBBF24",
-                fontSize: 13,
-                fontWeight: 900,
-                letterSpacing: ".08em",
-                marginBottom: 8,
-              }}
-            >
-              OBSERVATION
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                lineHeight: 1.4,
-                color: "rgba(255,255,255,.78)",
-              }}
-            >
-              Horizon ouest bien dégagé recommandé. Ne jamais observer le
-              Soleil sans protection adaptée.
-            </div>
-          </div>
 
           <div
             style={{
-              marginTop: "auto",
+              marginTop: 10,
               borderRadius: 14,
               border: "1px solid rgba(245,158,11,.28)",
               background:
@@ -2621,8 +2591,8 @@ function EclipseSlide() {
               left: `${sunX}%`,
               top: `${sunY}%`,
               transform: "translate(-50%, -50%)",
-              width: 88,
-              height: 88,
+              width: 84,
+              height: 84,
               borderRadius: "50%",
               zIndex: 6,
               transition: "left 1s linear, top 1s linear",
@@ -2631,7 +2601,7 @@ function EclipseSlide() {
             <div
               style={{
                 position: "absolute",
-                inset: 8,
+                inset: 7,
                 borderRadius: "50%",
                 background:
                   "radial-gradient(circle at 35% 35%, #FFF7C2 0%, #FFD45C 36%, #FFAA18 72%, #F97316 100%)",
@@ -2644,8 +2614,8 @@ function EclipseSlide() {
               <div
                 style={{
                   position: "absolute",
-                  width: 68,
-                  height: 68,
+                  width: 65,
+                  height: 65,
                   borderRadius: "50%",
                   background:
                     "radial-gradient(circle at 35% 30%, #141923, #020407 72%)",
@@ -2755,7 +2725,7 @@ function EclipseSlide() {
         style={{
           marginTop: 10,
           display: "grid",
-          gridTemplateColumns: "1.22fr .72fr 1.06fr",
+          gridTemplateColumns: "1fr 1fr",
           gap: 14,
         }}
       >
@@ -2857,41 +2827,6 @@ function EclipseSlide() {
           )}
         </div>
 
-        <div
-          style={{
-            borderRadius: 15,
-            border: "1px solid rgba(255,255,255,.12)",
-            background: "rgba(255,255,255,.045)",
-            padding: "12px 14px",
-            minHeight: 128,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            style={{
-              color: "#FBBF24",
-              fontSize: 13,
-              fontWeight: 900,
-              letterSpacing: ".08em",
-            }}
-          >
-            INFORMATIONS
-          </div>
-          <div
-            style={{
-              marginTop: 8,
-              fontSize: 13,
-              lineHeight: 1.6,
-              color: "rgba(255,255,255,.74)",
-            }}
-          >
-            <div>Type : Partielle à Paris</div>
-            <div>Maximum : 92 %</div>
-            <div>Heure max : 20:17</div>
-          </div>
-        </div>
 
         <div
           style={{
@@ -2925,8 +2860,8 @@ function EclipseSlide() {
           >
             <div
               style={{
-                width: 48,
-                height: 48,
+                width: 46,
+                height: 46,
                 borderRadius: "50%",
                 background:
                   "radial-gradient(circle at 35% 35%, #FFF7C2, #F59E0B 72%)",
@@ -2936,8 +2871,8 @@ function EclipseSlide() {
             />
             <div
               style={{
-                width: 24,
-                height: 24,
+                width: 23,
+                height: 23,
                 borderRadius: "50%",
                 background: "#05070B",
                 flexShrink: 0,
@@ -2953,8 +2888,8 @@ function EclipseSlide() {
             />
             <div
               style={{
-                width: 40,
-                height: 40,
+                width: 38,
+                height: 38,
                 borderRadius: "50%",
                 background:
                   "radial-gradient(circle at 35% 35%, #65A9FF, #2563EB 55%, #17376B 100%)",
