@@ -298,6 +298,7 @@ const SLIDES = [
   { id: "planningNext", type: "planning", week: "next" },
   { id: "onesite", type: "onesite" },
   { id: "weather", type: "weather" },
+  { id: "eclipse", type: "eclipse" },
   { id: "trajetPerso", type: "trajetPerso" },
   { id: "transport", type: "transport" },
 ];
@@ -2209,6 +2210,761 @@ function WeatherSlide({ weather }) {
   );
 }
 
+
+// ─── SLIDE ÉCLIPSE SOLAIRE — 12 AOÛT 2026 ────────────────────────────────────
+// Données Paris (heure locale CEST) :
+// début 19:22, maximum 20:17, obscuration ~92 %, fin 21:09.
+
+const ECLIPSE_DATA = {
+  dateLabel: "Mercredi 12 août 2026",
+  location: "Paris, France",
+  start: new Date("2026-08-12T19:22:00+02:00"),
+  maximum: new Date("2026-08-12T20:17:00+02:00"),
+  end: new Date("2026-08-12T21:09:00+02:00"),
+  maxObscuration: 92,
+};
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function formatCountdown(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+
+  return {
+    days: String(days).padStart(2, "0"),
+    hours: String(hours).padStart(2, "0"),
+    minutes: String(minutes).padStart(2, "0"),
+    seconds: String(seconds).padStart(2, "0"),
+  };
+}
+
+function EclipseSlide() {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const { start, maximum, end } = ECLIPSE_DATA;
+
+  let phase = "Avant l’éclipse";
+  let target = start;
+  let targetLabel = "jusqu’au début de l’éclipse";
+
+  if (now >= start && now < maximum) {
+    phase = "Éclipse en cours";
+    target = maximum;
+    targetLabel = "jusqu’au maximum";
+  } else if (now >= maximum && now < end) {
+    phase = "Après le maximum";
+    target = end;
+    targetLabel = "jusqu’à la fin";
+  } else if (now >= end) {
+    phase = "Éclipse terminée";
+    target = end;
+    targetLabel = "phénomène terminé";
+  }
+
+  const countdown = formatCountdown(target.getTime() - now.getTime());
+
+  const eclipseDuration = end.getTime() - start.getTime();
+  const eclipseProgress = clamp(
+    (now.getTime() - start.getTime()) / eclipseDuration,
+    0,
+    1
+  );
+
+  const maxProgress =
+    (maximum.getTime() - start.getTime()) / eclipseDuration;
+
+  let obscuration = 0;
+  if (now >= start && now <= maximum) {
+    const p =
+      (now.getTime() - start.getTime()) /
+      (maximum.getTime() - start.getTime());
+    obscuration = ECLIPSE_DATA.maxObscuration * clamp(p, 0, 1);
+  } else if (now > maximum && now <= end) {
+    const p =
+      (end.getTime() - now.getTime()) /
+      (end.getTime() - maximum.getTime());
+    obscuration = ECLIPSE_DATA.maxObscuration * clamp(p, 0, 1);
+  }
+
+  const dayStart = new Date("2026-08-12T11:00:00+02:00");
+  const dayEnd = new Date("2026-08-12T21:30:00+02:00");
+  const dayProgress = clamp(
+    (now.getTime() - dayStart.getTime()) /
+      (dayEnd.getTime() - dayStart.getTime()),
+    0,
+    1
+  );
+
+  // Trajectoire visuelle du Soleil sur un arc.
+  const sunX = 8 + dayProgress * 84;
+  const sunY = 73 - Math.sin(dayProgress * Math.PI) * 52;
+
+  // La Lune traverse le disque solaire uniquement pendant la phase d’éclipse.
+  const moonTravel = clamp(
+    (now.getTime() - start.getTime()) /
+      (end.getTime() - start.getTime()),
+    0,
+    1
+  );
+
+  // À 0 : lune à droite du Soleil, à 0.5 quasi centrée, à 1 : à gauche.
+  const moonOffset = 58 - moonTravel * 116;
+  const isEclipseActive = now >= start && now <= end;
+
+  const currentTimeLabel = now.toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+  const progressPct =
+    now < start
+      ? 0
+      : now > end
+      ? 100
+      : Math.round(eclipseProgress * 100);
+
+  return (
+    <div
+      style={{
+        height: "100%",
+        padding: "20px 28px",
+        display: "flex",
+        flexDirection: "column",
+        background:
+          "radial-gradient(circle at 68% 45%, #173A6B 0%, #091C38 44%, #041020 100%)",
+        color: "white",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "320px 1fr",
+          gap: 18,
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
+        {/* Colonne infos */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: 34,
+                fontWeight: 900,
+                letterSpacing: "-0.8px",
+                lineHeight: 1,
+              }}
+            >
+              ÉCLIPSE SOLAIRE
+            </div>
+            <div
+              style={{
+                marginTop: 7,
+                fontSize: 22,
+                fontWeight: 900,
+                color: "#FBBF24",
+              }}
+            >
+              12 AOÛT 2026
+            </div>
+            <div
+              style={{
+                marginTop: 6,
+                fontSize: 15,
+                color: "rgba(255,255,255,.72)",
+              }}
+            >
+              Paris, France · Éclipse partielle
+            </div>
+          </div>
+
+          <div
+            style={{
+              borderRadius: 14,
+              border: "1px solid rgba(255,255,255,.12)",
+              background: "rgba(255,255,255,.055)",
+              padding: "14px 16px",
+            }}
+          >
+            <div
+              style={{
+                color: "#FBBF24",
+                fontSize: 13,
+                fontWeight: 900,
+                letterSpacing: ".08em",
+                marginBottom: 10,
+              }}
+            >
+              TEMPS CLÉS
+            </div>
+
+            {[
+              ["Début", "19:22"],
+              ["Maximum", "20:17"],
+              ["Fin", "21:09"],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "8px 0",
+                  borderBottom:
+                    label !== "Fin"
+                      ? "1px solid rgba(255,255,255,.09)"
+                      : "none",
+                }}
+              >
+                <span style={{ fontSize: 15, fontWeight: 700 }}>
+                  {label}
+                </span>
+                <span
+                  style={{
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: 17,
+                    fontWeight: 900,
+                  }}
+                >
+                  {value}
+                </span>
+              </div>
+            ))}
+
+            <div
+              style={{
+                marginTop: 10,
+                borderRadius: 10,
+                background: "rgba(251,191,36,.13)",
+                border: "1px solid rgba(251,191,36,.22)",
+                padding: "9px 11px",
+                color: "#FCD34D",
+                fontSize: 13,
+                fontWeight: 800,
+              }}
+            >
+              Maximum : 92 % à 20:17
+            </div>
+          </div>
+
+          <div
+            style={{
+              borderRadius: 14,
+              border: "1px solid rgba(255,255,255,.12)",
+              background: "rgba(255,255,255,.055)",
+              padding: "14px 16px",
+            }}
+          >
+            <div
+              style={{
+                color: "#FBBF24",
+                fontSize: 13,
+                fontWeight: 900,
+                letterSpacing: ".08em",
+                marginBottom: 8,
+              }}
+            >
+              OBSERVATION
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                lineHeight: 1.45,
+                color: "rgba(255,255,255,.78)",
+              }}
+            >
+              Horizon ouest bien dégagé recommandé. Ne jamais observer le
+              Soleil sans protection adaptée.
+            </div>
+          </div>
+
+          <div
+            style={{
+              marginTop: "auto",
+              borderRadius: 14,
+              border: "1px solid rgba(245,158,11,.28)",
+              background:
+                "linear-gradient(135deg, rgba(245,158,11,.12), rgba(251,191,36,.05))",
+              padding: "14px 16px",
+            }}
+          >
+            <div
+              style={{
+                color: "#FBBF24",
+                fontSize: 12,
+                fontWeight: 900,
+                letterSpacing: ".08em",
+              }}
+            >
+              ÉTAT ACTUEL
+            </div>
+            <div
+              style={{
+                fontSize: 22,
+                fontWeight: 900,
+                marginTop: 5,
+              }}
+            >
+              {phase}
+            </div>
+            <div
+              style={{
+                marginTop: 6,
+                fontFamily: "'DM Mono', monospace",
+                fontSize: 15,
+                color: "rgba(255,255,255,.72)",
+              }}
+            >
+              {currentTimeLabel}
+            </div>
+          </div>
+        </div>
+
+        {/* Zone animation */}
+        <div
+          style={{
+            position: "relative",
+            borderRadius: 18,
+            border: "1px solid rgba(255,255,255,.13)",
+            overflow: "hidden",
+            background:
+              "linear-gradient(180deg, #061B38 0%, #17385E 54%, #B45D29 96%, #172033 100%)",
+            minHeight: 0,
+          }}
+        >
+          {/* étoiles / ambiance */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "radial-gradient(circle at 15% 20%, rgba(255,255,255,.45) 0 1px, transparent 1.5px), radial-gradient(circle at 67% 15%, rgba(255,255,255,.32) 0 1px, transparent 1.5px), radial-gradient(circle at 83% 32%, rgba(255,255,255,.25) 0 1px, transparent 1.5px)",
+              opacity: 0.55,
+              pointerEvents: "none",
+            }}
+          />
+
+          <div
+            style={{
+              position: "absolute",
+              left: 20,
+              top: 16,
+              zIndex: 5,
+              fontSize: 13,
+              fontWeight: 900,
+              letterSpacing: ".08em",
+              color: "rgba(255,255,255,.68)",
+            }}
+          >
+            POSITION DU SOLEIL AU COURS DE LA JOURNÉE
+          </div>
+
+          {/* Arc */}
+          <svg
+            viewBox="0 0 1000 520"
+            preserveAspectRatio="none"
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+            }}
+          >
+            <path
+              d="M 70 390 Q 500 40 930 390"
+              fill="none"
+              stroke="rgba(255,255,255,.75)"
+              strokeWidth="2"
+              strokeDasharray="8 9"
+            />
+            <line
+              x1="75"
+              y1="430"
+              x2="925"
+              y2="430"
+              stroke="rgba(255,255,255,.55)"
+              strokeWidth="2"
+            />
+            <line
+              x1="500"
+              y1="421"
+              x2="500"
+              y2="439"
+              stroke="white"
+              strokeWidth="2"
+            />
+          </svg>
+
+          {/* Soleil + Lune animés */}
+          <div
+            style={{
+              position: "absolute",
+              left: `${sunX}%`,
+              top: `${sunY}%`,
+              transform: "translate(-50%, -50%)",
+              width: 100,
+              height: 100,
+              borderRadius: "50%",
+              zIndex: 6,
+              transition: "left 1s linear, top 1s linear",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                inset: 10,
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle at 35% 35%, #FFF7C2 0%, #FFD45C 36%, #FFAA18 72%, #F97316 100%)",
+                boxShadow:
+                  "0 0 20px #FBBF24, 0 0 42px rgba(251,191,36,.8), 0 0 72px rgba(249,115,22,.45)",
+              }}
+            />
+
+            {isEclipseActive && (
+              <div
+                style={{
+                  position: "absolute",
+                  width: 78,
+                  height: 78,
+                  borderRadius: "50%",
+                  background:
+                    "radial-gradient(circle at 35% 30%, #141923, #020407 72%)",
+                  left: `calc(50% + ${moonOffset}px)`,
+                  top: "50%",
+                  transform: "translate(-50%, -50%)",
+                  boxShadow: "0 0 4px rgba(255,255,255,.16)",
+                  transition: "left 1s linear",
+                }}
+              />
+            )}
+          </div>
+
+          {/* Informations centrales */}
+          <div
+            style={{
+              position: "absolute",
+              top: 55,
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 7,
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 15,
+                fontWeight: 900,
+                color: "#FBBF24",
+                letterSpacing: ".08em",
+              }}
+            >
+              OBSCURATION ESTIMÉE
+            </div>
+            <div
+              style={{
+                fontSize: 52,
+                fontWeight: 900,
+                color: "#FCD34D",
+                lineHeight: 1,
+                marginTop: 4,
+              }}
+            >
+              {Math.round(obscuration)}%
+            </div>
+          </div>
+
+          {/* jalons */}
+          <div
+            style={{
+              position: "absolute",
+              left: 28,
+              right: 28,
+              bottom: 42,
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              zIndex: 7,
+              color: "rgba(255,255,255,.82)",
+              fontSize: 12,
+              fontWeight: 800,
+            }}
+          >
+            <div style={{ textAlign: "left" }}>
+              <div style={{ color: "#FBBF24" }}>19:22</div>
+              Début
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ color: "#FBBF24" }}>20:17</div>
+              Maximum · 92 %
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ color: "#FBBF24" }}>21:09</div>
+              Fin
+            </div>
+          </div>
+
+          {/* barre de progression */}
+          <div
+            style={{
+              position: "absolute",
+              left: 28,
+              right: 28,
+              bottom: 18,
+              height: 6,
+              borderRadius: 10,
+              background: "rgba(255,255,255,.13)",
+              overflow: "hidden",
+              zIndex: 7,
+            }}
+          >
+            <div
+              style={{
+                width: `${progressPct}%`,
+                height: "100%",
+                borderRadius: 10,
+                background:
+                  "linear-gradient(90deg, #F59E0B, #FBBF24, #F97316)",
+                transition: "width 1s linear",
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Compte à rebours */}
+      <div
+        style={{
+          marginTop: 14,
+          display: "grid",
+          gridTemplateColumns: "1.35fr .75fr 1fr",
+          gap: 14,
+        }}
+      >
+        <div
+          style={{
+            borderRadius: 15,
+            border: "1px solid rgba(255,255,255,.12)",
+            background: "rgba(255,255,255,.045)",
+            padding: "13px 17px",
+          }}
+        >
+          <div
+            style={{
+              color: "#FBBF24",
+              fontSize: 13,
+              fontWeight: 900,
+              letterSpacing: ".08em",
+            }}
+          >
+            COMPTE À REBOURS
+          </div>
+
+          {now < end ? (
+            <>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, 1fr)",
+                  gap: 10,
+                  marginTop: 8,
+                }}
+              >
+                {[
+                  ["JOURS", countdown.days],
+                  ["HEURES", countdown.hours],
+                  ["MINUTES", countdown.minutes],
+                  ["SECONDES", countdown.seconds],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    style={{
+                      textAlign: "center",
+                      borderRight:
+                        label !== "SECONDES"
+                          ? "1px solid rgba(255,255,255,.2)"
+                          : "none",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 38,
+                        fontWeight: 300,
+                        fontFamily: "'DM Mono', monospace",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {value}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: "rgba(255,255,255,.62)",
+                        marginTop: 5,
+                        fontWeight: 800,
+                        letterSpacing: ".08em",
+                      }}
+                    >
+                      {label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div
+                style={{
+                  marginTop: 8,
+                  textAlign: "center",
+                  color: "rgba(255,255,255,.58)",
+                  fontSize: 12,
+                }}
+              >
+                {targetLabel}
+              </div>
+            </>
+          ) : (
+            <div
+              style={{
+                marginTop: 12,
+                fontSize: 24,
+                fontWeight: 900,
+              }}
+            >
+              ÉCLIPSE TERMINÉE
+            </div>
+          )}
+        </div>
+
+        <div
+          style={{
+            borderRadius: 15,
+            border: "1px solid rgba(255,255,255,.12)",
+            background: "rgba(255,255,255,.045)",
+            padding: "13px 17px",
+          }}
+        >
+          <div
+            style={{
+              color: "#FBBF24",
+              fontSize: 13,
+              fontWeight: 900,
+              letterSpacing: ".08em",
+            }}
+          >
+            INFORMATIONS
+          </div>
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 13,
+              lineHeight: 1.7,
+              color: "rgba(255,255,255,.74)",
+            }}
+          >
+            <div>Type : Partielle à Paris</div>
+            <div>Maximum : 92 %</div>
+            <div>Heure max : 20:17</div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            borderRadius: 15,
+            border: "1px solid rgba(255,255,255,.12)",
+            background: "rgba(255,255,255,.045)",
+            padding: "13px 17px",
+          }}
+        >
+          <div
+            style={{
+              color: "#FBBF24",
+              fontSize: 13,
+              fontWeight: 900,
+              letterSpacing: ".08em",
+            }}
+          >
+            COMMENT ÇA MARCHE ?
+          </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              marginTop: 9,
+            }}
+          >
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle at 35% 35%, #FFF7C2, #F59E0B 72%)",
+                boxShadow: "0 0 18px rgba(251,191,36,.55)",
+                flexShrink: 0,
+              }}
+            />
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                background: "#05070B",
+                flexShrink: 0,
+              }}
+            />
+            <div
+              style={{
+                flex: 1,
+                height: 1,
+                background:
+                  "linear-gradient(90deg, rgba(255,255,255,.65), rgba(255,255,255,.08))",
+              }}
+            />
+            <div
+              style={{
+                width: 46,
+                height: 46,
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle at 35% 35%, #65A9FF, #2563EB 55%, #17376B 100%)",
+                flexShrink: 0,
+              }}
+            />
+          </div>
+          <div
+            style={{
+              marginTop: 9,
+              fontSize: 12,
+              color: "rgba(255,255,255,.66)",
+              lineHeight: 1.4,
+            }}
+          >
+            La Lune passe entre le Soleil et la Terre et masque
+            partiellement le disque solaire depuis Paris.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── SLIDE CITATION ──────────────────────────────────────────────────────────
 function QuoteSlide({ quote }) {
   return (
@@ -3152,6 +3908,7 @@ export default function Dashboard() {
     : isSubcontractors ? SUBCONTRACTORS_ACCENT
     : isQuotes ? QUOTES_ACCENT
     : currentSlide.type === "weather" ? "#0EA5E9"
+    : currentSlide.type === "eclipse" ? "#D9A928"
     : currentSlide.type === "quote" ? "#8B5CF6"
     : currentSlide.type === "transport" ? "#10B981"
     : "#1D4ED8";
@@ -3294,6 +4051,9 @@ export default function Dashboard() {
           } else if (s.type === "weather") {
             label = "MÉTÉO";
             accentColor = "#0EA5E9";
+          } else if (s.type === "eclipse") {
+            label = "ÉCLIPSE";
+            accentColor = "#D9A928";
           } else if (s.type === "quote") {
             label = "CITATION";
             accentColor = "#8B5CF6";
@@ -3331,6 +4091,7 @@ export default function Dashboard() {
           <EhpgSlide image={currentSlide.image} alt={currentSlide.alt} />
         )}
         {currentSlide.type === "weather" && <WeatherSlide weather={weather} />}
+        {currentSlide.type === "eclipse" && <EclipseSlide />}
         {currentSlide.type === "quote" && <QuoteSlide quote={quote} />}
         {currentSlide.type === "trajetPerso" && <TrajetPersoSlide trajetTimes={trajetTimes} />}
         {currentSlide.type === "transport" && <TransportSlide lines={transportLines} lastUpdate={transportLastUpdate} />}
