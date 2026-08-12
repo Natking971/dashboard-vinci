@@ -1698,7 +1698,7 @@ function GoldenRulesSlide() {
             border: "1px solid rgba(255,255,255,0.12)",
             borderLeft: `5px solid ${idx % 2 === 0 ? "#00A091" : "#3BB5E8"}`,
             borderRadius: "0 14px 14px 0",
-            padding: "16px 22px",
+            padding: "14px 20px 16px",
           }}>
             <div style={{
               minWidth: 52, height: 52, borderRadius: "50%",
@@ -2350,10 +2350,11 @@ function EclipseSlide() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "290px 1fr",
+          gridTemplateColumns: "280px 1fr",
           gap: 14,
           flex: 1,
           minHeight: 0,
+          maxHeight: "calc(100% - 150px)",
         }}
       >
         {/* Colonne infos */}
@@ -2367,7 +2368,7 @@ function EclipseSlide() {
           <div>
             <div
               style={{
-                fontSize: 32,
+                fontSize: 34,
                 fontWeight: 900,
                 letterSpacing: "-0.8px",
                 lineHeight: 1,
@@ -2754,7 +2755,7 @@ function EclipseSlide() {
         style={{
           marginTop: 10,
           display: "grid",
-          gridTemplateColumns: "1.25fr .72fr .95fr",
+          gridTemplateColumns: "1.22fr .72fr 1.06fr",
           gap: 14,
         }}
       >
@@ -2763,7 +2764,11 @@ function EclipseSlide() {
             borderRadius: 15,
             border: "1px solid rgba(255,255,255,.12)",
             background: "rgba(255,255,255,.045)",
-            padding: "11px 14px",
+            padding: "12px 14px",
+            minHeight: 128,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
           }}
         >
           <div
@@ -2784,7 +2789,8 @@ function EclipseSlide() {
                   display: "grid",
                   gridTemplateColumns: "repeat(4, 1fr)",
                   gap: 8,
-                  marginTop: 6,
+                  marginTop: 8,
+                  alignItems: "center",
                 }}
               >
                 {[
@@ -2815,8 +2821,8 @@ function EclipseSlide() {
                     </div>
                     <div
                       style={{
-                        fontSize: 9,
-                        color: "rgba(255,255,255,.62)",
+                        fontSize: 10,
+                        color: "rgba(255,255,255,.68)",
                         marginTop: 5,
                         fontWeight: 800,
                         letterSpacing: ".08em",
@@ -2829,7 +2835,7 @@ function EclipseSlide() {
               </div>
               <div
                 style={{
-                  marginTop: 6,
+                  marginTop: 8,
                   textAlign: "center",
                   color: "rgba(255,255,255,.58)",
                   fontSize: 12,
@@ -2856,7 +2862,11 @@ function EclipseSlide() {
             borderRadius: 15,
             border: "1px solid rgba(255,255,255,.12)",
             background: "rgba(255,255,255,.045)",
-            padding: "11px 14px",
+            padding: "12px 14px",
+            minHeight: 128,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
           }}
         >
           <div
@@ -2872,8 +2882,8 @@ function EclipseSlide() {
           <div
             style={{
               marginTop: 8,
-              fontSize: 12,
-              lineHeight: 1.55,
+              fontSize: 13,
+              lineHeight: 1.6,
               color: "rgba(255,255,255,.74)",
             }}
           >
@@ -2888,7 +2898,11 @@ function EclipseSlide() {
             borderRadius: 15,
             border: "1px solid rgba(255,255,255,.12)",
             background: "rgba(255,255,255,.045)",
-            padding: "11px 14px",
+            padding: "12px 14px",
+            minHeight: 128,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
           }}
         >
           <div
@@ -2951,7 +2965,7 @@ function EclipseSlide() {
           <div
             style={{
               marginTop: 8,
-              fontSize: 11,
+              fontSize: 12,
               color: "rgba(255,255,255,.66)",
               lineHeight: 1.4,
             }}
