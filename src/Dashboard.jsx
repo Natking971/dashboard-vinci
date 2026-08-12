@@ -558,7 +558,7 @@ function AffairCard({ affair, index, total }) {
       border: affair.urgent ? "2px solid #FCA5A5" : "1px solid #E5E7EB",
       borderRadius: 14,
       padding: "20px 22px 18px 28px",
-      display: "flex", flexDirection: "column", gap: 12,
+      display: "flex", flexDirection: "column", gap: 10,
       position: "relative",
       boxShadow: affair.urgent ? "0 4px 16px rgba(239,68,68,.15)" : "0 2px 6px rgba(0,0,0,.05)",
       overflow: "hidden",
@@ -593,7 +593,7 @@ function AffairCard({ affair, index, total }) {
         )}
       </div>
 
-      <div style={{ fontSize: 17, fontWeight: 700, color: "#111827", lineHeight: 1.3, minHeight: 44 }}>
+      <div style={{ fontSize: 16, fontWeight: 700, color: "#111827", lineHeight: 1.3, minHeight: 44 }}>
         {affair.title}
       </div>
 
@@ -821,7 +821,7 @@ function PlanningSlide({ planning, week = "current" }) {
               borderRadius: "12px 12px 0 0",
               backgroundColor: holiday ? "#9CA3AF" : (isToday ? "#1D4ED8" : "#E5E7EB"),
               color: (holiday || isToday) ? "white" : "#6B7280",
-              fontWeight: 700, fontSize: 17,
+              fontWeight: 700, fontSize: 16,
             }}>
               <div>{day}</div>
               <div style={{ fontSize: 13, fontWeight: 500, opacity: 0.75, marginTop: 3 }}>{fmt(weekDates[i])}</div>
@@ -870,7 +870,7 @@ function PlanningSlide({ planning, week = "current" }) {
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 20, fontWeight: 800,
                 }}>{tech.name[0]}</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: "#111827" }}>{tech.name}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "#111827" }}>{tech.name}</div>
               </div>
               {DAY_NAMES.map((_, dayIdx) => {
                 const dayTasks = tasks.filter(t => t.day === dayIdx);
@@ -944,7 +944,7 @@ function PlanningSlide({ planning, week = "current" }) {
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 20, fontWeight: 800,
                 }}>{tech.name[0]}</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: "#111827" }}>{tech.name}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "#111827" }}>{tech.name}</div>
               </div>
               {DAY_NAMES.map((_, dayIdx) => {
                 const dayTasks = tasks.filter(t => t.day === dayIdx);
@@ -1082,7 +1082,7 @@ function QuotesSlide({ quotes }) {
         {sorted.length === 0 ? (
           <div style={{
             height: "100%", display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#9CA3AF", fontSize: 22, fontWeight: 500,
+            color: "#9CA3AF", fontSize: 20, fontWeight: 500,
           }}>
             Aucun devis en cours actuellement
           </div>
@@ -1090,7 +1090,7 @@ function QuotesSlide({ quotes }) {
           <div style={{
             display: "flex",
             flexDirection: "column",
-            gap: 12,
+            gap: 10,
             // Animation : défile en boucle infinie. Vitesse adaptée au nombre de devis.
             // 5s par devis = pour 17 devis, boucle complète en ~85s (la slide dure 60s, donc on voit ~70% de la liste)
             animation: sorted.length > 5 ? `scrollQuotes ${sorted.length * 5}s linear infinite` : "none",
@@ -1137,7 +1137,7 @@ function QuotesSlide({ quotes }) {
                       {quote.client}
                     </div>
                     <div style={{
-                      fontSize: 17, fontWeight: 500, color: "#374151", lineHeight: 1.3,
+                      fontSize: 16, fontWeight: 500, color: "#374151", lineHeight: 1.3,
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     }}>
                       {quote.title}
@@ -1151,7 +1151,7 @@ function QuotesSlide({ quotes }) {
                       textAlign: "right", flexShrink: 0,
                     }}>
                       <div style={{ fontSize: 11, color: "#9CA3AF", letterSpacing: "0.05em", textTransform: "uppercase" }}>Envoyé</div>
-                      <div style={{ fontSize: 17, color: "#111827", fontWeight: 700, marginTop: 3 }}>{quote.dateLabel}</div>
+                      <div style={{ fontSize: 16, color: "#111827", fontWeight: 700, marginTop: 3 }}>{quote.dateLabel}</div>
                     </div>
                   )}
 
@@ -1255,7 +1255,7 @@ function SubcontractorsSlide({ subcontractors, week = "next" }) {
       <div style={{
         display: "grid",
         gridTemplateColumns: "repeat(5, 1fr)",
-        gap: 12,
+        gap: 10,
         flex: 1,
       }}>
         {DAY_NAMES.map((day, dayIdx) => {
@@ -1475,7 +1475,7 @@ function OneSiteSlide({ onesite }) {
           border: "1px solid rgba(255,255,255,0.14)", padding: "24px 28px",
           display: "flex", flexDirection: "column", gap: 20,
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
             <div style={{ width: 6, height: 40, borderRadius: 3, backgroundColor: "#10B981" }} />
             <div>
               <div style={{ fontSize: 20, fontWeight: 800, color: "white" }}>Presque Accidents (PAT)</div>
@@ -1502,7 +1502,7 @@ function OneSiteSlide({ onesite }) {
           border: "1px solid rgba(255,255,255,0.14)", padding: "24px 28px",
           display: "flex", flexDirection: "column", gap: 20,
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
             <div style={{ width: 6, height: 40, borderRadius: 3, backgroundColor: ONESITE_ACCENT }} />
             <div>
               <div style={{ fontSize: 20, fontWeight: 800, color: "white" }}>Quarts d'heure Sécurité</div>
@@ -1912,7 +1912,7 @@ function WeatherSlide({ weather }) {
 
             <div
               style={{
-                fontSize: 17,
+                fontSize: 16,
                 color: "rgba(255,255,255,0.65)",
                 marginTop: 5,
               }}
@@ -2032,7 +2032,7 @@ function WeatherSlide({ weather }) {
 
                   <div
                     style={{
-                      fontSize: 22,
+                      fontSize: 20,
                       fontWeight: 900,
                     }}
                   >
@@ -2099,7 +2099,7 @@ function WeatherSlide({ weather }) {
       </div>
 
       {/* Prévisions 3 jours */}
-      <div style={{ display: "flex", gap: 12, flex: 1 }}>
+      <div style={{ display: "flex", gap: 10, flex: 1 }}>
         {(daily.time || []).slice(1, 4).map((date, i) => {
           const d = new Date(date);
           const code = daily.weather_code[i + 1];
@@ -2167,7 +2167,7 @@ function WeatherSlide({ weather }) {
               <div
                 style={{
                   display: "flex",
-                  gap: 12,
+                  gap: 10,
                   fontSize: 12,
                   color: "rgba(255,255,255,0.6)",
                   flexWrap: "wrap",
@@ -2338,7 +2338,7 @@ function EclipseSlide() {
     <div
       style={{
         height: "100%",
-        padding: "20px 28px",
+        padding: "16px 22px",
         display: "flex",
         flexDirection: "column",
         background:
@@ -2350,8 +2350,8 @@ function EclipseSlide() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "320px 1fr",
-          gap: 18,
+          gridTemplateColumns: "290px 1fr",
+          gap: 14,
           flex: 1,
           minHeight: 0,
         }}
@@ -2361,13 +2361,13 @@ function EclipseSlide() {
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: 12,
+            gap: 10,
           }}
         >
           <div>
             <div
               style={{
-                fontSize: 34,
+                fontSize: 32,
                 fontWeight: 900,
                 letterSpacing: "-0.8px",
                 lineHeight: 1,
@@ -2378,7 +2378,7 @@ function EclipseSlide() {
             <div
               style={{
                 marginTop: 7,
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: 900,
                 color: "#FBBF24",
               }}
@@ -2401,7 +2401,7 @@ function EclipseSlide() {
               borderRadius: 14,
               border: "1px solid rgba(255,255,255,.12)",
               background: "rgba(255,255,255,.055)",
-              padding: "14px 16px",
+              padding: "12px 14px",
             }}
           >
             <div
@@ -2427,7 +2427,7 @@ function EclipseSlide() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  padding: "8px 0",
+                  padding: "6px 0",
                   borderBottom:
                     label !== "Fin"
                       ? "1px solid rgba(255,255,255,.09)"
@@ -2440,7 +2440,7 @@ function EclipseSlide() {
                 <span
                   style={{
                     fontFamily: "'DM Mono', monospace",
-                    fontSize: 17,
+                    fontSize: 16,
                     fontWeight: 900,
                   }}
                 >
@@ -2455,7 +2455,7 @@ function EclipseSlide() {
                 borderRadius: 10,
                 background: "rgba(251,191,36,.13)",
                 border: "1px solid rgba(251,191,36,.22)",
-                padding: "9px 11px",
+                padding: "8px 10px",
                 color: "#FCD34D",
                 fontSize: 13,
                 fontWeight: 800,
@@ -2470,7 +2470,7 @@ function EclipseSlide() {
               borderRadius: 14,
               border: "1px solid rgba(255,255,255,.12)",
               background: "rgba(255,255,255,.055)",
-              padding: "14px 16px",
+              padding: "12px 14px",
             }}
           >
             <div
@@ -2486,8 +2486,8 @@ function EclipseSlide() {
             </div>
             <div
               style={{
-                fontSize: 13,
-                lineHeight: 1.45,
+                fontSize: 12,
+                lineHeight: 1.4,
                 color: "rgba(255,255,255,.78)",
               }}
             >
@@ -2503,7 +2503,7 @@ function EclipseSlide() {
               border: "1px solid rgba(245,158,11,.28)",
               background:
                 "linear-gradient(135deg, rgba(245,158,11,.12), rgba(251,191,36,.05))",
-              padding: "14px 16px",
+              padding: "12px 14px",
             }}
           >
             <div
@@ -2518,7 +2518,7 @@ function EclipseSlide() {
             </div>
             <div
               style={{
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: 900,
                 marginTop: 5,
               }}
@@ -2620,8 +2620,8 @@ function EclipseSlide() {
               left: `${sunX}%`,
               top: `${sunY}%`,
               transform: "translate(-50%, -50%)",
-              width: 100,
-              height: 100,
+              width: 88,
+              height: 88,
               borderRadius: "50%",
               zIndex: 6,
               transition: "left 1s linear, top 1s linear",
@@ -2630,7 +2630,7 @@ function EclipseSlide() {
             <div
               style={{
                 position: "absolute",
-                inset: 10,
+                inset: 8,
                 borderRadius: "50%",
                 background:
                   "radial-gradient(circle at 35% 35%, #FFF7C2 0%, #FFD45C 36%, #FFAA18 72%, #F97316 100%)",
@@ -2643,8 +2643,8 @@ function EclipseSlide() {
               <div
                 style={{
                   position: "absolute",
-                  width: 78,
-                  height: 78,
+                  width: 68,
+                  height: 68,
                   borderRadius: "50%",
                   background:
                     "radial-gradient(circle at 35% 30%, #141923, #020407 72%)",
@@ -2681,7 +2681,7 @@ function EclipseSlide() {
             </div>
             <div
               style={{
-                fontSize: 52,
+                fontSize: 46,
                 fontWeight: 900,
                 color: "#FCD34D",
                 lineHeight: 1,
@@ -2698,7 +2698,7 @@ function EclipseSlide() {
               position: "absolute",
               left: 28,
               right: 28,
-              bottom: 42,
+              bottom: 56,
               display: "grid",
               gridTemplateColumns: "repeat(3, 1fr)",
               zIndex: 7,
@@ -2727,7 +2727,7 @@ function EclipseSlide() {
               position: "absolute",
               left: 28,
               right: 28,
-              bottom: 18,
+              bottom: 26,
               height: 6,
               borderRadius: 10,
               background: "rgba(255,255,255,.13)",
@@ -2752,9 +2752,9 @@ function EclipseSlide() {
       {/* Compte à rebours */}
       <div
         style={{
-          marginTop: 14,
+          marginTop: 10,
           display: "grid",
-          gridTemplateColumns: "1.35fr .75fr 1fr",
+          gridTemplateColumns: "1.25fr .72fr .95fr",
           gap: 14,
         }}
       >
@@ -2763,7 +2763,7 @@ function EclipseSlide() {
             borderRadius: 15,
             border: "1px solid rgba(255,255,255,.12)",
             background: "rgba(255,255,255,.045)",
-            padding: "13px 17px",
+            padding: "11px 14px",
           }}
         >
           <div
@@ -2783,8 +2783,8 @@ function EclipseSlide() {
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(4, 1fr)",
-                  gap: 10,
-                  marginTop: 8,
+                  gap: 8,
+                  marginTop: 6,
                 }}
               >
                 {[
@@ -2805,7 +2805,7 @@ function EclipseSlide() {
                   >
                     <div
                       style={{
-                        fontSize: 38,
+                        fontSize: 32,
                         fontWeight: 300,
                         fontFamily: "'DM Mono', monospace",
                         lineHeight: 1,
@@ -2815,7 +2815,7 @@ function EclipseSlide() {
                     </div>
                     <div
                       style={{
-                        fontSize: 10,
+                        fontSize: 9,
                         color: "rgba(255,255,255,.62)",
                         marginTop: 5,
                         fontWeight: 800,
@@ -2829,7 +2829,7 @@ function EclipseSlide() {
               </div>
               <div
                 style={{
-                  marginTop: 8,
+                  marginTop: 6,
                   textAlign: "center",
                   color: "rgba(255,255,255,.58)",
                   fontSize: 12,
@@ -2856,7 +2856,7 @@ function EclipseSlide() {
             borderRadius: 15,
             border: "1px solid rgba(255,255,255,.12)",
             background: "rgba(255,255,255,.045)",
-            padding: "13px 17px",
+            padding: "11px 14px",
           }}
         >
           <div
@@ -2872,8 +2872,8 @@ function EclipseSlide() {
           <div
             style={{
               marginTop: 8,
-              fontSize: 13,
-              lineHeight: 1.7,
+              fontSize: 12,
+              lineHeight: 1.55,
               color: "rgba(255,255,255,.74)",
             }}
           >
@@ -2888,7 +2888,7 @@ function EclipseSlide() {
             borderRadius: 15,
             border: "1px solid rgba(255,255,255,.12)",
             background: "rgba(255,255,255,.045)",
-            padding: "13px 17px",
+            padding: "11px 14px",
           }}
         >
           <div
@@ -2905,14 +2905,14 @@ function EclipseSlide() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 12,
+              gap: 10,
               marginTop: 9,
             }}
           >
             <div
               style={{
-                width: 56,
-                height: 56,
+                width: 48,
+                height: 48,
                 borderRadius: "50%",
                 background:
                   "radial-gradient(circle at 35% 35%, #FFF7C2, #F59E0B 72%)",
@@ -2922,8 +2922,8 @@ function EclipseSlide() {
             />
             <div
               style={{
-                width: 28,
-                height: 28,
+                width: 24,
+                height: 24,
                 borderRadius: "50%",
                 background: "#05070B",
                 flexShrink: 0,
@@ -2939,8 +2939,8 @@ function EclipseSlide() {
             />
             <div
               style={{
-                width: 46,
-                height: 46,
+                width: 40,
+                height: 40,
                 borderRadius: "50%",
                 background:
                   "radial-gradient(circle at 35% 35%, #65A9FF, #2563EB 55%, #17376B 100%)",
@@ -2950,8 +2950,8 @@ function EclipseSlide() {
           </div>
           <div
             style={{
-              marginTop: 9,
-              fontSize: 12,
+              marginTop: 8,
+              fontSize: 11,
               color: "rgba(255,255,255,.66)",
               lineHeight: 1.4,
             }}
@@ -3353,7 +3353,7 @@ function TrajetPersoSlide({ trajetTimes }) {
           flex: 1,
           display: "grid",
           gridTemplateColumns: "repeat(4, 1fr)",
-          gap: 12,
+          gap: 10,
           overflow: "hidden",
         }}
       >
@@ -3972,7 +3972,7 @@ export default function Dashboard() {
             lineHeight: 1,
           }}>
             <div style={{
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: 800,
               color: "#003C71",
               letterSpacing: "0.05em",
