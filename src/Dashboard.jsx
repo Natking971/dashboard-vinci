@@ -2224,7 +2224,7 @@ const ECLIPSE_DATA = {
   maxObscuration: 92,
 };
 
-function clamp(value, min, max) {
+function clampEclipse(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
@@ -2274,7 +2274,7 @@ function EclipseSlide() {
   const countdown = formatCountdown(target.getTime() - now.getTime());
 
   const eclipseDuration = end.getTime() - start.getTime();
-  const eclipseProgress = clamp(
+  const eclipseProgress = clampEclipse(
     (now.getTime() - start.getTime()) / eclipseDuration,
     0,
     1
@@ -2288,17 +2288,17 @@ function EclipseSlide() {
     const p =
       (now.getTime() - start.getTime()) /
       (maximum.getTime() - start.getTime());
-    obscuration = ECLIPSE_DATA.maxObscuration * clamp(p, 0, 1);
+    obscuration = ECLIPSE_DATA.maxObscuration * clampEclipse(p, 0, 1);
   } else if (now > maximum && now <= end) {
     const p =
       (end.getTime() - now.getTime()) /
       (end.getTime() - maximum.getTime());
-    obscuration = ECLIPSE_DATA.maxObscuration * clamp(p, 0, 1);
+    obscuration = ECLIPSE_DATA.maxObscuration * clampEclipse(p, 0, 1);
   }
 
   const dayStart = new Date("2026-08-12T11:00:00+02:00");
   const dayEnd = new Date("2026-08-12T21:30:00+02:00");
-  const dayProgress = clamp(
+  const dayProgress = clampEclipse(
     (now.getTime() - dayStart.getTime()) /
       (dayEnd.getTime() - dayStart.getTime()),
     0,
@@ -2310,7 +2310,7 @@ function EclipseSlide() {
   const sunY = 73 - Math.sin(dayProgress * Math.PI) * 52;
 
   // La Lune traverse le disque solaire uniquement pendant la phase d’éclipse.
-  const moonTravel = clamp(
+  const moonTravel = clampEclipse(
     (now.getTime() - start.getTime()) /
       (end.getTime() - start.getTime()),
     0,
