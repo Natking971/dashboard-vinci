@@ -1,4 +1,3 @@
-```
 import { useState, useEffect, useRef } from "react";
 import { getSiteConfig } from "./siteConfig";
 
@@ -190,7 +189,7 @@ if (SITE.id === "lpdl") {
 // Devine automatiquement le locataire pour les éventuels devis LPDL.
 function guessTenantForQuote(client, ref, title) {
   const clientLower = (client || "").toLowerCase().trim();
-  const fullText = `${ref || ""} ${title || ""}`.toUpperCase();
+  const fullText = ((ref || "") + " " + (title || "")).toUpperCase();
 
   if (SITE.id === "lpdl" && (clientLower.includes("telm") || clientLower.includes("thelm"))) {
     if (fullText.includes("ELU")) return "logistique";
@@ -3440,5 +3439,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-```
