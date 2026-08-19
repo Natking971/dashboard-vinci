@@ -1,4 +1,6 @@
+```
 import { useState, useEffect, useRef } from "react";
+import { getSiteConfig } from "./siteConfig";
 
 
 // ─── CONFIGURATION ──────────────────────────────────────────────────────────
@@ -8,19 +10,11 @@ const QUOTES_SLIDE_DURATION = 60000; // Plus long pour laisser défiler tous les
 const PLANNING_SLIDE_DURATION = 45000; // Plus long quand le planning défile
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
-// URLs Google Sheets publiées en CSV
-const SHEET_URLS = {
-  planning: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=0&single=true&output=csv",
-  affaires: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=584135097&single=true&output=csv",
-  soustraitants: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=1074854777&single=true&output=csv",
-  // À remplacer par la vraie URL une fois l'onglet Devis créé et publié
-  devis: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=49286593&single=true&output=csv",
-  // Onglet ONESITE — le gid est découvert automatiquement au chargement
-  onesite: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=1993330783&single=true&output=csv",
-  citations: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=314910372&single=true&output=csv",
-};
+// Configuration du site sélectionné via Vercel : VITE_SITE=lpdl ou chateaudun
+const SITE = getSiteConfig();
+const SHEET_URLS = SITE.sheets || {};
 
-// Étapes pour la slide Devis (différentes des affaires, plus orientées client)
+// Étapes pour la slide Devis (conservées pour compatibilité avec LPDL)
 const QUOTE_STAGES = {
   chiffrage:   { label: "À chiffrer",       short: "EN COURS",  color: "#6B7280", bg: "#F3F4F6" },
   envoye:      { label: "Envoyé au client", short: "ENVOYÉ",    color: "#1D4ED8", bg: "#DBEAFE" },
@@ -29,21 +23,103 @@ const QUOTE_STAGES = {
   travaux:     { label: "Travaux planifiés",short: "PLANIFIÉ",  color: "#5B21B6", bg: "#EDE9FE" },
 };
 
-// Ordre d'affichage : Jason, Cédric, Ghulam (Ghulam est alternant, en dernier)
-const TECHNICIANS = [
-  { id: 3, name: "Jason",  color: "#B45309", light: "#FEF3C7", dot: "#F59E0B" },
-  { id: 2, name: "Cédric", color: "#047857", light: "#D1FAE5", dot: "#10B981" },
-  { id: 1, name: "Ghulam", color: "#1D4ED8", light: "#DBEAFE", dot: "#3B82F6" },
+// Couleurs des techniciens. Les noms/IDs viennent de siteConfig.js.
+const TECH_PALETTE = [
+  { color: "#DC2626", light: "#FEE2E2", dot: "#EF4444" },
+  { color: "#1D4ED8", light: "#DBEAFE", dot: "#3B82F6" },
+  { color: "#047857", light: "#D1FAE5", dot: "#10B981" },
+  { color: "#B45309", light: "#FEF3C7", dot: "#F59E0B" },
+  { color: "#7C3AED", light: "#EDE9FE", dot: "#8B5CF6" },
 ];
 
-const TENANTS = [
-  { id: "communes",   name: "Parties communes",      short: "PC",  accent: "#475569", accentLight: "#F1F5F9" },
-  { id: "voodoo",     name: "Voodoo",                short: "VDO", accent: "#7C3AED", accentLight: "#EDE9FE" },
-  { id: "laposte",    name: "La Poste Enseigne",     short: "LPE", accent: "#D97706", accentLight: "#FEF3C7" },
-  { id: "logistique", name: "Logistique Urbaine",    short: "LOG", accent: "#059669", accentLight: "#D1FAE5" },
-  { id: "louvre",     name: "Louvre Banque Privée",  short: "LBP", accent: "#7B2C3B", accentLight: "#FCE7F3" },
-  { id: "iad",        name: "IAD",                   short: "IAD", accent: "#0EA5E9", accentLight: "#E0F2FE" },
+function techColors(name, index) {
+  const n = String(name || "").toLowerCase();
+  // On conserve les couleurs historiques de LPDL.
+  if (n === "jason" || n === "jayson") return { color: "#B45309", light: "#FEF3C7", dot: "#F59E0B" };
+  if (n === "cédric" || n === "cedric") return { color: "#047857", light: "#D1FAE5", dot: "#10B981" };
+  if (n === "ghulam") return { color: "#1D4ED8", light: "#DBEAFE", dot: "#3B82F6" };
+  // 44 Châteaudun : Michael rouge, Kamal bleu.
+  if (n === "michael") return { color: "#B91C1C", light: "#FEE2E2", dot: "#EF4444" };
+  if (n === "kamal") return { color: "#1D4ED8", light: "#DBEAFE", dot: "#3B82F6" };
+  return TECH_PALETTE[index % TECH_PALETTE.length];
+}
+
+const TECHNICIANS = (SITE.technicians || []).map((t, index) => ({
+  ...t,
+  ...techColors(t.name, index),
+}));
+
+function tenantIdFromName(name) {
+  const n = String(name || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+  const known = {
+    "parties communes": "communes",
+    "communes": "communes",
+    "voodoo": "voodoo",
+    "la poste enseigne": "laposte",
+    "laposte": "laposte",
+    "logistique urbaine": "logistique",
+    "logistique": "logistique",
+    "louvre banque privee": "louvre",
+    "louvre": "louvre",
+    "iad": "iad",
+    "paris match": "parismatch",
+    "commerzbank": "commerzbank",
+    "equativ": "equativ",
+    "snowflake": "snowflake",
+    "checkout": "checkout",
+  };
+  return known[n] || n.replace(/[^a-z0-9]+/g, "");
+}
+
+const TENANT_PALETTE = [
+  { accent: "#475569", accentLight: "#F1F5F9" },
+  { accent: "#7C3AED", accentLight: "#EDE9FE" },
+  { accent: "#D97706", accentLight: "#FEF3C7" },
+  { accent: "#059669", accentLight: "#D1FAE5" },
+  { accent: "#7B2C3B", accentLight: "#FCE7F3" },
+  { accent: "#0EA5E9", accentLight: "#E0F2FE" },
+  { accent: "#DC2626", accentLight: "#FEE2E2" },
+  { accent: "#0891B2", accentLight: "#CFFAFE" },
 ];
+
+function tenantShort(name) {
+  const special = {
+    "Parties communes": "PC",
+    "Voodoo": "VDO",
+    "La Poste Enseigne": "LPE",
+    "Logistique Urbaine": "LOG",
+    "Louvre Banque Privée": "LBP",
+    "IAD": "IAD",
+    "Paris Match": "PM",
+    "Commerzbank": "CB",
+    "Equativ": "EQ",
+    "Snowflake": "SF",
+    "Checkout": "CO",
+  };
+  if (special[name]) return special[name];
+  return String(name || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .map(x => x[0])
+    .join("")
+    .toUpperCase();
+}
+
+const TENANTS = (SITE.tenants || []).map((name, index) => {
+  const base = TENANT_PALETTE[index % TENANT_PALETTE.length];
+  return {
+    id: tenantIdFromName(name),
+    name,
+    short: tenantShort(name),
+    ...base,
+  };
+});
 
 const STAGES = {
   diagnostic: { label: "Diagnostic",          short: "DIAG",     color: "#6B7280", bg: "#F3F4F6", order: 1 },
@@ -56,7 +132,7 @@ const STAGES = {
 
 const DAY_NAMES = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 
-// Mapping des couleurs pour les sous-traitants (cycle automatique)
+// Mapping des couleurs pour les événements / sous-traitants (cycle automatique)
 const SUB_COLORS = [
   { color: "#1D4ED8", light: "#DBEAFE" },
   { color: "#0891B2", light: "#CFFAFE" },
@@ -66,59 +142,67 @@ const SUB_COLORS = [
   { color: "#059669", light: "#D1FAE5" },
 ];
 
-// Mapping nom technicien → ID
-// Mapping nom technicien → ID
-// "vinci" est un ID spécial pour le stagiaire Vinci (utilisé sur les affaires uniquement)
-const TECH_NAME_TO_ID = {
-  "ghulam": 1,
-  "cédric": 2, "cedric": 2,
-  "jason": 3, "jayson": 3,
-  "vinci": 4,
-};
+// Mapping dynamique nom technicien → ID
+const TECH_NAME_TO_ID = {};
+TECHNICIANS.forEach(t => {
+  const normalized = String(t.name || "").toLowerCase().trim();
+  TECH_NAME_TO_ID[normalized] = t.id;
+  if (normalized === "cédric") TECH_NAME_TO_ID["cedric"] = t.id;
+  if (normalized === "jason") TECH_NAME_TO_ID["jayson"] = t.id;
+});
 
-// Liste étendue avec Vinci (utilisé pour les affaires, pas pour le planning)
-const ALL_PEOPLE = {
-  1: { name: "Ghulam", color: "#1D4ED8", light: "#DBEAFE" },
-  2: { name: "Cédric", color: "#047857", light: "#D1FAE5" },
-  3: { name: "Jason",  color: "#B45309", light: "#FEF3C7" },
-  4: { name: "Vinci",  color: "#DA291C", light: "#FEE2E2" },
-};
+// "Vinci" reste disponible dans les affaires LPDL si besoin.
+if (SITE.id === "lpdl") TECH_NAME_TO_ID["vinci"] = 4;
 
-// Mapping nom locataire → ID
-const TENANT_NAME_TO_ID = {
-  "voodoo": "voodoo",
-  "la poste enseigne": "laposte", "laposte": "laposte",
-  "logistique urbaine": "logistique", "logistique": "logistique",
-  "louvre banque privée": "louvre", "louvre banque privee": "louvre", "louvre": "louvre",
-  "iad": "iad",
-  "parties communes": "communes", "communes": "communes",
-  // Telmma est un client externe rattaché par défaut à Parties communes (sauf ELU = Logistique)
-  "telmma": "communes", "thelma": "communes", "telma": "communes",
-};
+// Liste des personnes utilisable dans les cartes Affaires
+const ALL_PEOPLE = {};
+TECHNICIANS.forEach(t => {
+  ALL_PEOPLE[t.id] = { name: t.name, color: t.color, light: t.light };
+});
+if (SITE.id === "lpdl") {
+  ALL_PEOPLE[4] = { name: "Vinci", color: "#DA291C", light: "#FEE2E2" };
+}
 
-// Devine automatiquement le locataire pour un devis Telmma : si "ELU" est dans la ref/titre → Logistique
+// Mapping dynamique nom locataire → ID
+const TENANT_NAME_TO_ID = {};
+TENANTS.forEach(t => {
+  TENANT_NAME_TO_ID[t.name.toLowerCase().trim()] = t.id;
+  TENANT_NAME_TO_ID[
+    t.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()
+  ] = t.id;
+});
+TENANT_NAME_TO_ID["communes"] = "communes";
+TENANT_NAME_TO_ID["parties communes"] = "communes";
+
+// Alias historiques LPDL
+if (SITE.id === "lpdl") {
+  Object.assign(TENANT_NAME_TO_ID, {
+    "laposte": "laposte",
+    "logistique": "logistique",
+    "louvre": "louvre",
+    "louvre banque privee": "louvre",
+    "telmma": "communes",
+    "thelma": "communes",
+    "telma": "communes",
+  });
+}
+
+// Devine automatiquement le locataire pour les éventuels devis LPDL.
 function guessTenantForQuote(client, ref, title) {
   const clientLower = (client || "").toLowerCase().trim();
   const fullText = `${ref || ""} ${title || ""}`.toUpperCase();
 
-  // Cas Telmma : ELU = Logistique, sinon Parties communes
-  if (clientLower.includes("telm") || clientLower.includes("thelm")) {
+  if (SITE.id === "lpdl" && (clientLower.includes("telm") || clientLower.includes("thelm"))) {
     if (fullText.includes("ELU")) return "logistique";
     return "communes";
   }
 
-  // Pour les autres clients, on essaie le mapping direct
   if (TENANT_NAME_TO_ID[clientLower]) return TENANT_NAME_TO_ID[clientLower];
 
-  // Si rien trouvé, on tente quelques mots-clés dans le client
-  if (clientLower.includes("voodoo")) return "voodoo";
-  if (clientLower.includes("iad")) return "iad";
-  if (clientLower.includes("poste")) return "laposte";
-  if (clientLower.includes("logistique")) return "logistique";
-  if (clientLower.includes("louvre")) return "louvre";
+  const normalized = clientLower.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (TENANT_NAME_TO_ID[normalized]) return TENANT_NAME_TO_ID[normalized];
 
-  // Par défaut : Parties communes
-  return "communes";
+  return TENANTS[0]?.id || "communes";
 }
 
 // Mapping jour → index
@@ -222,12 +306,11 @@ function parseCSV(text, forceSep = null) {
 
 // ─── FALLBACK (données de secours si Sheets indisponible) ───────────────────
 
-const FALLBACK_PLANNING = [
-  { techId: 3, tasks: [{ day: 0, label: "—", client: "Aucune donnée" }] },
-  { techId: 2, tasks: [{ day: 0, label: "—", client: "Aucune donnée" }] },
-  { techId: 1, tasks: [{ day: 0, label: "—", client: "Aucune donnée" }] },
-];
-const FALLBACK_AFFAIRS = { voodoo: [], laposte: [], logistique: [], louvre: [], iad: [], communes: [] };
+const FALLBACK_PLANNING = TECHNICIANS.map(t => ({
+  techId: t.id,
+  tasks: [{ day: 0, label: "—", client: "Aucune donnée" }],
+}));
+const FALLBACK_AFFAIRS = Object.fromEntries(TENANTS.map(t => [t.id, []]));
 const FALLBACK_SUBCONTRACTORS = [];
 const FALLBACK_QUOTES = [];
 const FALLBACK_ONESITE = { pat: [], qhs: [] };
@@ -298,7 +381,7 @@ const SLIDES = [
   { id: "planningNext", type: "planning", week: "next" },
   { id: "onesite", type: "onesite" },
   { id: "weather", type: "weather" },
-  { id: "trajetPerso", type: "trajetPerso" },
+  ...(SITE.id === "lpdl" ? [{ id: "trajetPerso", type: "trajetPerso" }] : []),
   { id: "transport", type: "transport" },
 ];
 
@@ -2786,7 +2869,7 @@ export default function Dashboard() {
         const [planningRes, affairsRes, subsRes, onesiteRes, citationsRes] = await Promise.all([
           fetch(SHEET_URLS.planning).then(r => r.text()),
           fetch(SHEET_URLS.affaires).then(r => r.text()),
-          fetch(SHEET_URLS.soustraitants).then(r => r.text()),
+          fetch(SHEET_URLS.evenement || SHEET_URLS.soustraitants).then(r => r.text()),
           fetch(SHEET_URLS.onesite).then(r => r.text()).catch(() => ""),
           fetch(SHEET_URLS.citations).then(r => r.text()).catch(() => ""),
         ]);
@@ -2829,9 +2912,11 @@ export default function Dashboard() {
         // La date sert à calculer automatiquement l'ancienneté de l'affaire.
         // Le champ technicien peut contenir plusieurs noms séparés par virgule
         const affairsRows = parseCSV(affairsRes);
-        const newAffairs = { voodoo: [], laposte: [], logistique: [], louvre: [], iad: [], communes: [] };
+        const newAffairs = Object.fromEntries(TENANTS.map(t => [t.id, []]));
         affairsRows.forEach((row, idx) => {
-          const tenantId = TENANT_NAME_TO_ID[(row.locataire || "").toLowerCase().trim()];
+          const rawTenant = (row.locataire || "").toLowerCase().trim();
+          const normalizedTenant = rawTenant.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          const tenantId = TENANT_NAME_TO_ID[rawTenant] || TENANT_NAME_TO_ID[normalizedTenant];
           const stage = (row.etape || "").toLowerCase().trim();
           if (!tenantId || !STAGES[stage]) return;
           // Multi-techniciens : split par virgule, slash, ou "et"
@@ -2847,8 +2932,8 @@ export default function Dashboard() {
             ref: row.reference || "",
             title: row.titre || "",
             stage: stage,
-            tech: techIds[0] || 1,        // 1er technicien (compatibilité ancien code)
-            techIds: techIds.length > 0 ? techIds : [1], // tableau complet
+            tech: techIds[0] || TECHNICIANS[0]?.id,
+            techIds: techIds.length > 0 ? techIds : (TECHNICIANS[0] ? [TECHNICIANS[0].id] : []),
             validator: row.validateur || undefined,
             startDate: parseAffairDate(
               row.date ||
@@ -2864,7 +2949,7 @@ export default function Dashboard() {
           });
         });
 
-        // Parser SousTraitants : jour, entreprise, domaine, lieu, semaine
+        // Parser Événements : jour, entreprise, domaine, lieu, semaine
         const subsRows = parseCSV(subsRes);
         const newSubsCurrent = [];
         const newSubsNext = [];
@@ -3104,6 +3189,8 @@ export default function Dashboard() {
   }, [slideIdx, planning, planningNext, affairs, subcontractorsCurrent, subcontractorsNext, quotes]);
 
   useEffect(() => {
+    if (SITE.id !== "lpdl") return;
+
     let cancelled = false;
 
     async function fetchTrajetTimes() {
@@ -3201,7 +3288,7 @@ export default function Dashboard() {
           <div>
             <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.5px" }}>TABLEAU DE BORD</div>
             <div style={{ fontSize: 13, color: "#9CA3AF", fontWeight: 500, marginTop: 3 }}>
-              Slide {slideIdx + 1} / {SLIDES.length} · rotation auto 30s
+              {SITE.name} · Slide {slideIdx + 1} / {SLIDES.length} · rotation auto 30s
             </div>
           </div>
           <div style={{
@@ -3353,3 +3440,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+```
