@@ -924,9 +924,10 @@ function PlanningSlide({ planning, week = "current" }) {
           display: "flex",
           flexDirection: "column",
           gap: 6,
-          // Animation de défilement si plus de 3 techniciens OU si trop de tâches au total
-          animation: planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12
-            ? `scrollPlanning 40s linear infinite`
+          // Rhapsody : défilement automatique pour afficher les 6 techniciens sur la TV.
+          // Les autres sites gardent le comportement existant.
+          animation: ((SITE.id === "rhapsody" && planning.length > 3) || planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12)
+            ? `scrollPlanning ${SITE.id === "rhapsody" ? 22 : 40}s linear infinite`
             : "none",
         }}>
         {planning.map(({ techId, tasks }) => {
@@ -1003,7 +1004,7 @@ function PlanningSlide({ planning, week = "current" }) {
         })}
 
         {/* Duplication pour effet de boucle infinie - uniquement si on défile */}
-        {planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12 && planning.map(({ techId, tasks }) => {
+        {(((SITE.id === "rhapsody" && planning.length > 3) || planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12)) && planning.map(({ techId, tasks }) => {
           const tech = TECHNICIANS.find(t => t.id === techId);
           return (
             <div key={`loop-${techId}`} style={{
