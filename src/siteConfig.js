@@ -73,6 +73,43 @@ export const SITE_CONFIGS = {
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vQDih9gaVsrVuSLay_YrWHYG71kDsFuszy-qp1sixB5TIy7KfxuEwWD1NBMGdgbC2gOiKDI79H95x6b/pub?gid=1813783748&single=true&output=csv",
     },
   },
+
+  rhapsody: {
+    id: "rhapsody",
+    name: "Rhapsody",
+    city: "Saint-Ouen",
+
+    technicians: [
+      { id: 1, name: "Nicodame" },
+      { id: 2, name: "Yoan" },
+      { id: 3, name: "Alvaro" },
+      { id: 4, name: "Mamadou" },
+      { id: 5, name: "Jean-Yvener" },
+      { id: 6, name: "Geoffroy" },
+    ],
+
+    tenants: [
+      "Parties communes",
+      "L'Oréal",
+    ],
+
+    sheets: {
+      planning:
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCEygKx7kzM4VMJigOI53Q1_XMZ4sKQ5iaz0g2SjtQXafAyXgXeyMiEX7xC5RJsQ/pub?gid=1648324257&single=true&output=csv",
+
+      affaires:
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCEygKx7kzM4VMJigOI53Q1_XMZ4sKQ5iaz0g2SjtQXafAyXgXeyMiEX7xC5RJsQ/pub?gid=562082106&single=true&output=csv",
+
+      evenement:
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCEygKx7kzM4VMJigOI53Q1_XMZ4sKQ5iaz0g2SjtQXafAyXgXeyMiEX7xC5RJsQ/pub?gid=1327033522&single=true&output=csv",
+
+      onesite:
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCEygKx7kzM4VMJigOI53Q1_XMZ4sKQ5iaz0g2SjtQXafAyXgXeyMiEX7xC5RJsQ/pub?gid=65064982&single=true&output=csv",
+
+      citations:
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCEygKx7kzM4VMJigOI53Q1_XMZ4sKQ5iaz0g2SjtQXafAyXgXeyMiEX7xC5RJsQ/pub?gid=1430293833&single=true&output=csv",
+    },
+  },
 };
 
 export function getSiteConfig() {
