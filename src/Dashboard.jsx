@@ -1,3 +1,4 @@
+// BUILD FIX CHATEAUDUN 2026-08-20 - VERSION NOUVELLE
 import { useState, useEffect, useRef } from "react";
 import { getSiteConfig } from "./siteConfig";
 
