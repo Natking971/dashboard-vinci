@@ -1,3 +1,4 @@
+// BUILD 2026-08-25 - DATES AUTOMATIQUES PLANNING + EVENEMENTS - 3 SITES
 // BUILD FIX CHATEAUDUN 2026-08-20 - VERSION NOUVELLE
 import { useState, useEffect, useRef } from "react";
 import { getSiteConfig } from "./siteConfig";
@@ -524,6 +525,44 @@ function getWeekDates() {
 
 const fmt = d => d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
 const getTodayIndex = () => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1; };
+
+// Retourne le lundi d'une semaine, à minuit.
+function getMonday(date = new Date()) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+// Classe automatiquement une date dans la semaine actuelle ou la suivante.
+// Les dates plus anciennes ou plus lointaines ne sont pas affichées.
+function getRelativeWeek(date, now = new Date()) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+
+  const currentMonday = getMonday(now);
+  const nextMonday = new Date(currentMonday);
+  nextMonday.setDate(currentMonday.getDate() + 7);
+  const afterNextMonday = new Date(currentMonday);
+  afterNextMonday.setDate(currentMonday.getDate() + 14);
+
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+
+  if (d >= currentMonday && d < nextMonday) return "current";
+  if (d >= nextMonday && d < afterNextMonday) return "next";
+  return "other";
+}
+
+// Convertit une date en colonne du planning : lundi=0 ... vendredi=4.
+// Les samedis et dimanches ne sont pas affichés sur les slides actuelles.
+function getPlanningDayIndex(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return undefined;
+  const day = date.getDay();
+  if (day < 1 || day > 5) return undefined;
+  return day - 1;
+}
 
 // Lit une date provenant de Google Sheets.
 // Formats acceptés : JJ/MM/AAAA, JJ-MM-AAAA, AAAA-MM-JJ
@@ -2877,24 +2916,62 @@ export default function Dashboard() {
 
         if (cancelled) return;
 
-        // Parser Planning : technicien, jour, tache, client, semaine
-        // La colonne "semaine" peut être "actuelle" ou "prochaine" (vide = actuelle par défaut)
+        // Parser Planning.
+        // NOUVEAU : si une colonne "date" est renseignée, le dashboard détermine
+        // automatiquement le jour ET la semaine (actuelle / prochaine).
+        // Une ligne datée d'une ancienne semaine disparaît automatiquement.
+        // Compatibilité : si aucune date n'est présente, les anciennes colonnes
+        // "jour" + "semaine" continuent de fonctionner.
         const planningRows = parseCSV(planningRes);
         const planningByTechCurrent = {};
         const planningByTechNext = {};
         planningRows.forEach(row => {
           const techId = TECH_NAME_TO_ID[(row.technicien || "").toLowerCase()];
-          const dayIdx = DAY_NAME_TO_INDEX[(row.jour || "").toLowerCase()];
-          if (techId === undefined || dayIdx === undefined) return;
+          if (techId === undefined) return;
+
+          const interventionDate = parseAffairDate(
+            row.date ||
+            row.date_intervention ||
+            row["date intervention"] ||
+            row.date_planning ||
+            row["date planning"] ||
+            ""
+          );
+
+          let dayIdx;
+          let target;
+
+          if (interventionDate) {
+            const relativeWeek = getRelativeWeek(interventionDate);
+            // Ancienne semaine ou au-delà de la semaine prochaine : ne pas afficher.
+            if (relativeWeek === "other" || relativeWeek === null) return;
+
+            dayIdx = getPlanningDayIndex(interventionDate);
+            if (dayIdx === undefined) return;
+
+            target = relativeWeek === "next"
+              ? planningByTechNext
+              : planningByTechCurrent;
+          } else {
+            // Ancien fonctionnement conservé pour les lignes sans date.
+            dayIdx = DAY_NAME_TO_INDEX[(row.jour || "").toLowerCase()];
+            if (dayIdx === undefined) return;
+
+            const semaine = (row.semaine || "").toLowerCase().trim();
+            const isNext =
+              semaine === "prochaine" ||
+              semaine === "next" ||
+              semaine === "suivante";
+
+            target = isNext ? planningByTechNext : planningByTechCurrent;
+          }
+
           const task = {
             day: dayIdx,
             label: row.tache || "",
             client: row.client || "",
           };
-          // Détermination de la semaine
-          const semaine = (row.semaine || "").toLowerCase().trim();
-          const isNext = semaine === "prochaine" || semaine === "next" || semaine === "suivante";
-          const target = isNext ? planningByTechNext : planningByTechCurrent;
+
           if (!target[techId]) target[techId] = [];
           target[techId].push(task);
         });
@@ -2950,10 +3027,17 @@ export default function Dashboard() {
           });
         });
 
-        // Parser Événements : jour, entreprise, domaine, lieu, semaine
+        // Parser Événements.
+        // NOUVEAU : la colonne "date" pilote automatiquement le jour et la semaine.
+        // - date dans la semaine actuelle  -> ÉVÉN. CETTE SEM.
+        // - date dans la semaine suivante -> ÉVÉN. SEM. PROCH.
+        // - date passée d'une ancienne semaine -> disparaît automatiquement
+        // Compatibilité : les anciennes colonnes "jour" + "semaine" restent acceptées
+        // lorsque la date est vide.
         const subsRows = parseCSV(subsRes);
         const newSubsCurrent = [];
         const newSubsNext = [];
+
         // Map entreprise → couleur (pour cohérence entre jours/semaines)
         const companyColorMap = {};
         let nextColorIdx = 0;
@@ -2964,11 +3048,44 @@ export default function Dashboard() {
             nextColorIdx++;
           }
         });
+
         subsRows.forEach(row => {
-          const dayIdx = DAY_NAME_TO_INDEX[(row.jour || "").toLowerCase()];
-          if (dayIdx === undefined) return;
           const company = (row.entreprise || "").trim();
           const colorIdx = companyColorMap[company.toLowerCase()] ?? 0;
+
+          const eventDate = parseAffairDate(
+            row.date ||
+            row.date_intervention ||
+            row["date intervention"] ||
+            row.date_evenement ||
+            row["date evenement"] ||
+            row["date événement"] ||
+            ""
+          );
+
+          let dayIdx;
+          let relativeWeek;
+
+          if (eventDate) {
+            relativeWeek = getRelativeWeek(eventDate);
+            if (relativeWeek === "other" || relativeWeek === null) return;
+
+            dayIdx = getPlanningDayIndex(eventDate);
+            if (dayIdx === undefined) return;
+          } else {
+            // Ancien fonctionnement pour les lignes sans date.
+            dayIdx = DAY_NAME_TO_INDEX[(row.jour || "").toLowerCase()];
+            if (dayIdx === undefined) return;
+
+            const semaine = (row.semaine || "").toLowerCase().trim();
+            relativeWeek =
+              semaine === "actuelle" ||
+              semaine === "current" ||
+              semaine === "cette"
+                ? "current"
+                : "next";
+          }
+
           const sub = {
             day: dayIdx,
             company: company,
@@ -2977,12 +3094,10 @@ export default function Dashboard() {
             color: SUB_COLORS[colorIdx].color,
             light: SUB_COLORS[colorIdx].light,
           };
-          // Tri par colonne "semaine" : actuelle / prochaine
-          // Si la colonne est vide ou non reconnue, on met dans "prochaine" (compatibilité ascendante)
-          const semaine = (row.semaine || "").toLowerCase().trim();
-          if (semaine === "actuelle" || semaine === "current" || semaine === "cette") {
+
+          if (relativeWeek === "current") {
             newSubsCurrent.push(sub);
-          } else {
+          } else if (relativeWeek === "next") {
             newSubsNext.push(sub);
           }
         });
