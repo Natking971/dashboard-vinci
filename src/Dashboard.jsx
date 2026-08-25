@@ -1,3 +1,4 @@
+// BUILD 2026-08-25 - JASON GARE DE COMPIEGNE + RHAPSODY PLANNING 45S
 // BUILD 2026-08-25 - RHAPSODY PLANNING 45 SECONDES
 // BUILD FIX CHATEAUDUN 2026-08-20 - VERSION NOUVELLE
 import { useState, useEffect, useRef } from "react";
@@ -2562,7 +2563,7 @@ const TRAJETS_CONFIG = [
   { key: "ghulam", nom: "Ghulam", dest: "Lagny" },
   { key: "nathan", nom: "Nathan", dest: "Jean Moulin" },
   { key: "michael", nom: "Michael", dest: "Nanterre" },
-  { key: "jason", nom: "Jason", dest: "Chez tata" },
+  { key: "jason", nom: "Jason", dest: "Gare de Compiègne" },
   { key: "cedric", nom: "Cedric", dest: "Pierrefitte" },
   { key: "liazide", nom: "Liazide", dest: "Pierrelaye" },
   { key: "rachid", nom: "Rachid", dest: "Poissy" },
