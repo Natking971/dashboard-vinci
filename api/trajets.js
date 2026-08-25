@@ -1,305 +1,576 @@
-// api/trajets.js
-// Calcul des temps de trajet en transports en commun avec l'API PRIM
-// Île-de-France Mobilités.
-//
-// Variable requise dans Vercel :
-// IDFM_API_KEY
+// /api/trajets.js
+// PRIM / Île-de-France Mobilités + TER SNCF pour Jason
 
-const PRIM_API_URL =
+const PRIM_URL =
   "https://prim.iledefrance-mobilites.fr/marketplace/v2/navitia/journeys";
 
-// Point de départ : secteur La Poste du Louvre / Châtelet
-const START_POINT = {
-  lat: 48.864725,
-  lon: 2.343634,
-  label: "La Poste du Louvre",
-};
+const SNCF_URL =
+  "https://api.sncf.com/v1/journeys";
 
-// Destinations de l'équipe
-const DESTINATIONS = [
-  {
-    key: "ghulam",
-    names: ["ghulam"],
-    label: "Lagny-Thorigny",
-    lat: 48.882222,
-    lon: 2.704167,
-  },
-  {
-    key: "nathan",
-    names: ["nathan"],
-    label: "Jean Moulin",
-    lat: 48.824744,
-    lon: 2.318872,
-  },
-  {
-    key: "michael",
-    names: ["michael"],
-    label: "Nanterre",
-    lat: 48.895631,
-    lon: 2.223138,
-  },
-  {
-    key: "jason",
-    names: ["jason"],
-    label: "Chez tata",
-    lat: 48.9621042,
-    lon: 2.336431,
-  },
-  {
-    key: "cedric",
-    names: ["cedric"],
-    label: "Pierrefitte",
-    lat: 48.963873,
-    lon: 2.372285,
-  },
-  {
-    key: "liazide",
-    names: ["liazide"],
-    label: "Pierrelaye",
-    lat: 49.019392,
-    lon: 2.153672,
-  },
-  {
-    key: "poissy",
-    names: ["rachid", "toufik"],
-    label: "Poissy",
-    lat: 48.933,
-    lon: 2.04,
-  },
-];
+const pause = (ms) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
-const wait = (milliseconds) =>
-  new Promise((resolve) => setTimeout(resolve, milliseconds));
+function parseDate(value) {
+  if (!/^\d{8}T\d{6}$/.test(value || "")) return null;
 
-function parseNavitiaDate(value) {
-  if (!value || !/^\d{8}T\d{6}$/.test(value)) {
+  return Date.UTC(
+    Number(value.slice(0, 4)),
+    Number(value.slice(4, 6)) - 1,
+    Number(value.slice(6, 8)),
+    Number(value.slice(9, 11)),
+    Number(value.slice(11, 13)),
+    Number(value.slice(13, 15))
+  );
+}
+
+function formatDate(timestamp) {
+  const date = new Date(timestamp);
+  const pad = (number) =>
+    String(number).padStart(2, "0");
+
+  return (
+    `${date.getUTCFullYear()}` +
+    `${pad(date.getUTCMonth() + 1)}` +
+    `${pad(date.getUTCDate())}T` +
+    `${pad(date.getUTCHours())}` +
+    `${pad(date.getUTCMinutes())}` +
+    `${pad(date.getUTCSeconds())}`
+  );
+}
+
+function addMinutes(value, minutes) {
+  const timestamp = parseDate(value);
+
+  return timestamp === null
+    ? null
+    : formatDate(
+        timestamp + minutes * 60_000
+      );
+}
+
+function minutesBetween(startValue, endValue) {
+  const start = parseDate(startValue);
+  const end = parseDate(endValue);
+
+  if (
+    start === null ||
+    end === null ||
+    end < start
+  ) {
     return null;
   }
 
-  const year = Number(value.slice(0, 4));
-  const month = Number(value.slice(4, 6)) - 1;
-  const day = Number(value.slice(6, 8));
-  const hour = Number(value.slice(9, 11));
-  const minute = Number(value.slice(11, 13));
-  const second = Number(value.slice(13, 15));
-
-  return Date.UTC(year, month, day, hour, minute, second);
+  return Math.round(
+    (end - start) / 60_000
+  );
 }
 
-function getMinutesBetween(startValue, endValue) {
-  const start = parseNavitiaDate(startValue);
-  const end = parseNavitiaDate(endValue);
-
-  if (start === null || end === null || end < start) {
-    return null;
-  }
-
-  return Math.round((end - start) / 60000);
+function hasPublicTransport(journey) {
+  return journey?.sections?.some(
+    (section) =>
+      section.type === "public_transport"
+  );
 }
 
-function journeyContainsPublicTransport(journey) {
-  return Array.isArray(journey?.sections)
-    ? journey.sections.some(
-        (section) => section.type === "public_transport"
+function hasTer(journey) {
+  return journey?.sections?.some(
+    (section) => {
+      if (
+        section.type !==
+        "public_transport"
+      ) {
+        return false;
+      }
+
+      return JSON.stringify(
+        section.display_informations || {}
       )
-    : false;
+        .toUpperCase()
+        .includes("TER");
+    }
+  );
 }
 
-function getJourneyDurationMinutes(journey) {
-  const duration = Number(journey?.duration);
+function selectBestJourney(
+  data,
+  requestedDateTime = null,
+  terOnly = false
+) {
+  let journeys =
+    Array.isArray(data?.journeys)
+      ? data.journeys
+      : [];
 
-  if (Number.isFinite(duration) && duration > 0) {
-    return Math.round(duration / 60);
-  }
-
-  const calculatedDuration = getMinutesBetween(
-    journey?.departure_date_time,
-    journey?.arrival_date_time
+  journeys = journeys.filter(
+    (journey) =>
+      hasPublicTransport(journey) &&
+      journey.arrival_date_time &&
+      Number.isFinite(
+        Number(journey.duration)
+      )
   );
 
-  return calculatedDuration;
-}
+  if (terOnly) {
+    const terJourneys =
+      journeys.filter(hasTer);
 
-function selectBestJourney(data) {
-  if (!Array.isArray(data?.journeys)) {
+    if (terJourneys.length > 0) {
+      journeys = terJourneys;
+    }
+  }
+
+  if (journeys.length === 0) {
     return null;
   }
 
-  const validJourneys = data.journeys
-    .filter((journey) => journeyContainsPublicTransport(journey))
+  const reference =
+    requestedDateTime ||
+    data?.context?.current_datetime ||
+    journeys[0].departure_date_time;
+
+  return journeys
     .map((journey) => ({
       journey,
-      durationMinutes: getJourneyDurationMinutes(journey),
+      minutes:
+        minutesBetween(
+          reference,
+          journey.arrival_date_time
+        ) ??
+        Math.round(
+          Number(journey.duration) / 60
+        ),
     }))
-    .filter(
-      (item) =>
-        Number.isFinite(item.durationMinutes) &&
-        item.durationMinutes > 0
-    )
-    .sort((a, b) => a.durationMinutes - b.durationMinutes);
-
-  return validJourneys[0] || null;
+    .sort(
+      (a, b) =>
+        a.minutes - b.minutes
+    )[0];
 }
 
-async function readJsonResponse(response, serviceName) {
-  const body = await response.text();
+async function getJson(
+  response,
+  service
+) {
+  const body =
+    await response.text();
 
   if (!response.ok) {
     throw new Error(
-      `${serviceName} HTTP ${response.status} : ${body.slice(0, 250)}`
+      `${service} HTTP ${response.status} : ${body.slice(
+        0,
+        180
+      )}`
     );
   }
 
   try {
     return JSON.parse(body);
   } catch {
-    throw new Error(`${serviceName} a renvoyé une réponse invalide`);
+    throw new Error(
+      `${service} a renvoyé un JSON invalide`
+    );
   }
 }
 
-async function calculatePrimJourney(apiKey, destination) {
-  const query = new URLSearchParams({
-    from: `${START_POINT.lon};${START_POINT.lat}`,
-    to: `${destination.lon};${destination.lat}`,
-    data_freshness: "realtime",
-    datetime_represents: "departure",
-    count: "10",
-  });
+async function getPrimJourney(
+  apiKey,
+  from,
+  to
+) {
+  const params =
+    new URLSearchParams({
+      from: `${from.lon};${from.lat}`,
+      to: `${to.lon};${to.lat}`,
+      data_freshness: "realtime",
+      datetime_represents:
+        "departure",
+      count: "10",
+    });
 
   const response = await fetch(
-    `${PRIM_API_URL}?${query.toString()}`,
+    `${PRIM_URL}?${params.toString()}`,
     {
-      method: "GET",
       headers: {
         Accept: "application/json",
+        Authorization: `apikey ${apiKey}`,
         apikey: apiKey,
       },
     }
   );
 
-  const data = await readJsonResponse(response, "PRIM");
-  const selectedJourney = selectBestJourney(data);
+  const data =
+    await getJson(
+      response,
+      "PRIM"
+    );
 
-  if (!selectedJourney) {
+  const result =
+    selectBestJourney(data);
+
+  if (!result) {
     throw new Error(
-      `Aucun trajet trouvé vers ${destination.label}`
+      "PRIM : aucun trajet trouvé"
     );
   }
 
-  return {
-    durationMinutes: selectedJourney.durationMinutes,
-    departure:
-      selectedJourney.journey.departure_date_time || null,
-    arrival:
-      selectedJourney.journey.arrival_date_time || null,
-  };
+  return result;
 }
 
-export default async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({
-      error: "Méthode non autorisée",
+async function getSncfTer(
+  apiKey,
+  departureDateTime
+) {
+  const params =
+    new URLSearchParams({
+      from:
+        "stop_area:SNCF:87271007",
+      to:
+        "stop_area:SNCF:87276691",
+      datetime:
+        departureDateTime,
+      datetime_represents:
+        "departure",
+      data_freshness:
+        "realtime",
+      count: "10",
     });
+
+  const basicAuth =
+    Buffer.from(
+      `${apiKey}:`
+    ).toString("base64");
+
+  const response =
+    await fetch(
+      `${SNCF_URL}?${params.toString()}`,
+      {
+        headers: {
+          Accept:
+            "application/json",
+          Authorization:
+            `Basic ${basicAuth}`,
+        },
+      }
+    );
+
+  const data =
+    await getJson(
+      response,
+      "SNCF"
+    );
+
+  const result =
+    selectBestJourney(
+      data,
+      departureDateTime,
+      true
+    );
+
+  if (!result) {
+    throw new Error(
+      "SNCF : aucun TER trouvé"
+    );
   }
 
-  const apiKey = process.env.IDFM_API_KEY;
+  return result;
+}
 
-  if (!apiKey) {
-    return res.status(500).json({
-      error:
-        "La variable IDFM_API_KEY n'est pas configurée dans Vercel.",
-    });
+export default async function handler(
+  req,
+  res
+) {
+  const IDFM_API_KEY =
+    process.env.IDFM_API_KEY;
+
+  const SNCF_API_KEY =
+    process.env.SNCF_API_KEY;
+
+  if (
+    !IDFM_API_KEY ||
+    !SNCF_API_KEY
+  ) {
+    return res
+      .status(500)
+      .json({
+        error:
+          "IDFM_API_KEY ou SNCF_API_KEY non configurée dans Vercel",
+      });
   }
+
+  // Départ :
+  // Châtelet - Les Halles
+  const start = {
+    lat: 48.8615,
+    lon: 2.3465,
+  };
+
+  // Gare du Nord
+  const gareDuNord = {
+    lat: 48.8809,
+    lon: 2.3553,
+  };
+
+  const destinations = [
+    {
+      key: "ghulam",
+      names: ["ghulam"],
+      lat: 48.882222,
+      lon: 2.704167,
+    },
+    {
+      key: "nathan",
+      names: ["nathan"],
+      lat: 48.824744,
+      lon: 2.318872,
+    },
+    {
+      key: "michael",
+      names: ["michael"],
+      lat: 48.895631,
+      lon: 2.223138,
+    },
+    {
+      key: "cedric",
+      names: ["cedric"],
+      lat: 48.963873,
+      lon: 2.372285,
+    },
+    {
+      key: "liazide",
+      names: ["liazide"],
+      lat: 49.019392,
+      lon: 2.153672,
+    },
+    {
+      key: "poissy",
+      names: [
+        "rachid",
+        "toufik",
+      ],
+      lat: 48.933,
+      lon: 2.04,
+    },
+  ];
 
   const times = {};
   const errors = {};
   const details = {};
 
   try {
-    /*
-     * On traite les destinations par petits groupes.
-     * Cela évite d'envoyer trop de demandes simultanées à PRIM.
-     */
-    for (let index = 0; index < DESTINATIONS.length; index += 3) {
-      const batch = DESTINATIONS.slice(index, index + 3);
-
-      const results = await Promise.all(
-        batch.map(async (destination) => {
-          try {
-            const journey = await calculatePrimJourney(
-              apiKey,
-              destination
-            );
-
-            return {
-              destination,
-              journey,
-              error: null,
-            };
-          } catch (error) {
-            return {
-              destination,
-              journey: null,
-              error:
-                error instanceof Error
-                  ? error.message
-                  : String(error),
-            };
-          }
+    const jobs = [
+      ...destinations.map(
+        (destination) => ({
+          key: destination.key,
+          destination,
         })
+      ),
+
+      {
+        key: "gareDuNord",
+        destination:
+          gareDuNord,
+      },
+    ];
+
+    const results = {};
+
+    // Maximum 4 appels PRIM à la fois
+    for (
+      let index = 0;
+      index < jobs.length;
+      index += 4
+    ) {
+      const batch =
+        jobs.slice(
+          index,
+          index + 4
+        );
+
+      const batchResults =
+        await Promise.all(
+          batch.map(
+            async ({
+              key,
+              destination,
+            }) => {
+              try {
+                const result =
+                  await getPrimJourney(
+                    IDFM_API_KEY,
+                    start,
+                    destination
+                  );
+
+                return {
+                  key,
+                  result,
+                  error: null,
+                };
+              } catch (error) {
+                return {
+                  key,
+                  result: null,
+                  error:
+                    error instanceof
+                    Error
+                      ? error.message
+                      : String(error),
+                };
+              }
+            }
+          )
+        );
+
+      batchResults.forEach(
+        (item) => {
+          results[item.key] =
+            item;
+        }
       );
 
-      results.forEach(({ destination, journey, error }) => {
-        destination.names.forEach((personName) => {
-          if (journey) {
-            times[personName] = journey.durationMinutes;
-
-            details[personName] = {
-              destination: destination.label,
-              latitude: destination.lat,
-              longitude: destination.lon,
-              departure: journey.departure,
-              arrival: journey.arrival,
-              durationMinutes: journey.durationMinutes,
-            };
-          } else {
-            times[personName] = null;
-            errors[personName] =
-              error || "Temps de trajet indisponible";
-          }
-        });
-      });
-
-      if (index + 3 < DESTINATIONS.length) {
-        await wait(1000);
+      if (
+        index + 4 <
+        jobs.length
+      ) {
+        await pause(1100);
       }
     }
 
-    /*
-     * Cache de 5 minutes.
-     * Le dashboard peut donc se mettre à jour régulièrement
-     * sans dépasser inutilement le quota de l'API.
-     */
-    res.setHeader(
-      "Cache-Control",
-      "s-maxage=300, stale-while-revalidate=60"
+    // Autres techniciens
+    destinations.forEach(
+      (destination) => {
+        const selected =
+          results[
+            destination.key
+          ];
+
+        destination.names.forEach(
+          (name) => {
+            if (
+              !selected?.result
+            ) {
+              times[name] =
+                null;
+
+              errors[name] =
+                selected?.error ||
+                "Trajet indisponible";
+
+              return;
+            }
+
+            times[name] =
+              selected.result.minutes;
+          }
+        );
+      }
     );
 
-    return res.status(200).json({
-      times,
-      errors,
-      details,
-      updatedAt: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("Erreur générale API trajets :", error);
+    // =========================
+    // JASON
+    // Châtelet
+    // → Gare du Nord
+    // → correspondance 10 min
+    // → TER
+    // → Gare de Compiègne
+    // =========================
 
-    return res.status(500).json({
-      error: "Impossible de calculer les trajets",
-      details:
+    try {
+      const firstLeg =
+        results.gareDuNord;
+
+      if (
+        !firstLeg?.result
+      ) {
+        throw new Error(
+          firstLeg?.error ||
+            "Trajet vers Gare du Nord indisponible"
+        );
+      }
+
+      // Temps de marche /
+      // correspondance dans la gare
+      const transferMinutes = 10;
+
+      const terSearchTime =
+        addMinutes(
+          firstLeg.result
+            .journey
+            .arrival_date_time,
+          transferMinutes
+        );
+
+      if (!terSearchTime) {
+        throw new Error(
+          "Horaire Gare du Nord invalide"
+        );
+      }
+
+      const ter =
+        await getSncfTer(
+          SNCF_API_KEY,
+          terSearchTime
+        );
+
+      // Temps total réel Jason
+      times.jason =
+        firstLeg.result.minutes +
+        transferMinutes +
+        ter.minutes;
+
+      details.jason = {
+        chateletToGareDuNord:
+          firstLeg.result.minutes,
+
+        correspondence:
+          transferMinutes,
+
+        waitingAndTer:
+          ter.minutes,
+
+        terDeparture:
+          ter.journey
+            .departure_date_time ||
+          null,
+
+        arrivalCompiegne:
+          ter.journey
+            .arrival_date_time ||
+          null,
+      };
+    } catch (error) {
+      times.jason = null;
+
+      errors.jason =
         error instanceof Error
           ? error.message
-          : String(error),
-    });
+          : String(error);
+    }
+
+    res.setHeader(
+      "Cache-Control",
+      "s-maxage=300, stale-while-revalidate=30"
+    );
+
+    return res
+      .status(200)
+      .json({
+        times,
+        errors,
+        details,
+        updatedAt:
+          new Date().toISOString(),
+      });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({
+        error:
+          "Erreur lors du calcul des trajets",
+
+        details:
+          error instanceof Error
+            ? error.message
+            : String(error),
+      });
   }
 }
