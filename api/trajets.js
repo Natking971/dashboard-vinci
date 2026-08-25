@@ -7,7 +7,7 @@ const PRIM_URL =
   "https://prim.iledefrance-mobilites.fr/marketplace/v2/navitia/journeys";
 
 const SNCF_URL =
-  "https://api.sncf.com/v1/journeys";
+  "https://api.sncf.com/v1/coverage/sncf/journeys";
 
 const pause = (ms) =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -55,15 +55,9 @@ function addMinutes(value, minutes) {
   );
 }
 
-function minutesBetween(
-  startValue,
-  endValue
-) {
-  const start =
-    parseDate(startValue);
-
-  const end =
-    parseDate(endValue);
+function minutesBetween(startValue, endValue) {
+  const start = parseDate(startValue);
+  const end = parseDate(endValue);
 
   if (
     start === null ||
@@ -78,13 +72,10 @@ function minutesBetween(
   );
 }
 
-function hasPublicTransport(
-  journey
-) {
+function hasPublicTransport(journey) {
   return journey?.sections?.some(
     (section) =>
-      section.type ===
-      "public_transport"
+      section.type === "public_transport"
   );
 }
 
@@ -100,13 +91,10 @@ function hasTer(journey) {
 
       const informations =
         JSON.stringify(
-          section.display_informations ||
-            {}
+          section.display_informations || {}
         ).toUpperCase();
 
-      return informations.includes(
-        "TER"
-      );
+      return informations.includes("TER");
     }
   );
 }
@@ -121,44 +109,32 @@ function selectBestJourney(
       ? data.journeys
       : [];
 
-  journeys =
-    journeys.filter(
-      (journey) =>
-        hasPublicTransport(
-          journey
-        ) &&
-        journey.arrival_date_time &&
-        Number.isFinite(
-          Number(
-            journey.duration
-          )
-        )
-    );
+  journeys = journeys.filter(
+    (journey) =>
+      hasPublicTransport(journey) &&
+      journey.arrival_date_time &&
+      Number.isFinite(
+        Number(journey.duration)
+      )
+  );
 
   if (terOnly) {
     const terJourneys =
       journeys.filter(hasTer);
 
-    if (
-      terJourneys.length > 0
-    ) {
-      journeys =
-        terJourneys;
+    if (terJourneys.length > 0) {
+      journeys = terJourneys;
     }
   }
 
-  if (
-    journeys.length === 0
-  ) {
+  if (journeys.length === 0) {
     return null;
   }
 
   const reference =
     requestedDateTime ||
-    data?.context
-      ?.current_datetime ||
-    journeys[0]
-      .departure_date_time;
+    data?.context?.current_datetime ||
+    journeys[0].departure_date_time;
 
   return journeys
     .map((journey) => ({
@@ -170,9 +146,7 @@ function selectBestJourney(
           journey.arrival_date_time
         ) ??
         Math.round(
-          Number(
-            journey.duration
-          ) / 60
+          Number(journey.duration) / 60
         ),
     }))
 
@@ -199,9 +173,7 @@ async function getJson(
   }
 
   try {
-    return JSON.parse(
-      body
-    );
+    return JSON.parse(body);
   } catch {
     throw new Error(
       `${service} a renvoyé un JSON invalide`
@@ -228,7 +200,8 @@ async function getPrimJourney(
       datetime_represents:
         "departure",
 
-      count: "10",
+      count:
+        "10",
     });
 
   const response =
@@ -239,9 +212,8 @@ async function getPrimJourney(
           Accept:
             "application/json",
 
-          // IMPORTANT :
-          // uniquement le header apikey
-          apikey: apiKey,
+          apikey:
+            apiKey,
         },
       }
     );
@@ -253,9 +225,7 @@ async function getPrimJourney(
     );
 
   const result =
-    selectBestJourney(
-      data
-    );
+    selectBestJourney(data);
 
   if (!result) {
     throw new Error(
@@ -272,7 +242,7 @@ async function getSncfTer(
 ) {
   const params =
     new URLSearchParams({
-      // Paris Gare du Nord
+      // Gare du Nord
       from:
         "stop_area:SNCF:87271007",
 
@@ -289,15 +259,14 @@ async function getSncfTer(
       data_freshness:
         "realtime",
 
-      count: "10",
+      count:
+        "10",
     });
 
   const basicAuth =
     Buffer.from(
       `${apiKey}:`
-    ).toString(
-      "base64"
-    );
+    ).toString("base64");
 
   const response =
     await fetch(
@@ -340,14 +309,12 @@ export default async function handler(
   res
 ) {
   const IDFM_API_KEY =
-    process.env
-      .IDFM_API_KEY;
+    process.env.IDFM_API_KEY;
 
   const SNCF_API_KEY =
-    process.env
-      .SNCF_API_KEY;
+    process.env.SNCF_API_KEY;
 
-  // IDFM est obligatoire
+  // IDFM obligatoire
   if (!IDFM_API_KEY) {
     return res
       .status(500)
@@ -358,7 +325,7 @@ export default async function handler(
   }
 
   // =========================
-  // DÉPART
+  // DÉPART RÉEL
   // La Poste du Louvre
   // 50 rue du Louvre
   // =========================
@@ -370,7 +337,6 @@ export default async function handler(
 
   // =========================
   // GARE DU NORD
-  // pour Jason
   // =========================
 
   const gareDuNord = {
@@ -379,51 +345,61 @@ export default async function handler(
   };
 
   // =========================
-  // DESTINATIONS
+  // DESTINATIONS IDFM
   // =========================
 
   const destinations = [
     {
       key: "ghulam",
+
       names: [
         "ghulam",
       ],
+
       lat: 48.882222,
       lon: 2.704167,
     },
 
     {
       key: "nathan",
+
       names: [
         "nathan",
       ],
+
       lat: 48.824744,
       lon: 2.318872,
     },
 
     {
       key: "michael",
+
       names: [
         "michael",
       ],
+
       lat: 48.895631,
       lon: 2.223138,
     },
 
     {
       key: "cedric",
+
       names: [
         "cedric",
       ],
+
       lat: 48.963873,
       lon: 2.372285,
     },
 
     {
       key: "liazide",
+
       names: [
         "liazide",
       ],
+
       lat: 49.019392,
       lon: 2.153672,
     },
@@ -447,7 +423,7 @@ export default async function handler(
 
   try {
     // =========================
-    // REQUÊTES IDFM
+    // APPELS IDFM
     // =========================
 
     const jobs = [
@@ -471,8 +447,7 @@ export default async function handler(
 
     const results = {};
 
-    // Maximum 4 requêtes
-    // simultanées
+    // Maximum 4 requêtes simultanées
     for (
       let index = 0;
       index < jobs.length;
@@ -502,21 +477,20 @@ export default async function handler(
                 return {
                   key,
                   result,
-                  error: null,
+                  error:
+                    null,
                 };
               } catch (error) {
                 return {
                   key,
 
-                  result: null,
+                  result:
+                    null,
 
                   error:
-                    error instanceof
-                    Error
+                    error instanceof Error
                       ? error.message
-                      : String(
-                          error
-                        ),
+                      : String(error),
                 };
               }
             }
@@ -527,12 +501,11 @@ export default async function handler(
         (item) => {
           results[
             item.key
-          ] = item;
+          ] =
+            item;
         }
       );
 
-      // Petite pause
-      // anti limitation API
       if (
         index + 4 <
         jobs.length
@@ -544,7 +517,7 @@ export default async function handler(
     }
 
     // =========================
-    // TEMPS AUTRES PERSONNES
+    // AUTRES PERSONNES
     // =========================
 
     destinations.forEach(
@@ -557,18 +530,17 @@ export default async function handler(
         destination.names.forEach(
           (name) => {
             if (
-              !selected
-                ?.result
+              !selected?.result
             ) {
               times[
                 name
-              ] = null;
+              ] =
+                null;
 
               errors[
                 name
               ] =
-                selected
-                  ?.error ||
+                selected?.error ||
                 "Trajet indisponible";
 
               return;
@@ -619,21 +591,17 @@ export default async function handler(
     // =========================
 
     try {
-      if (
-        !SNCF_API_KEY
-      ) {
+      if (!SNCF_API_KEY) {
         throw new Error(
           "SNCF_API_KEY non configurée dans Vercel"
         );
       }
 
       const firstLeg =
-        results
-          .gareDuNord;
+        results.gareDuNord;
 
       if (
-        !firstLeg
-          ?.result
+        !firstLeg?.result
       ) {
         throw new Error(
           firstLeg?.error ||
@@ -641,8 +609,6 @@ export default async function handler(
         );
       }
 
-      // Temps pour changer
-      // métro / quai TER
       const transferMinutes =
         10;
 
@@ -658,9 +624,7 @@ export default async function handler(
           transferMinutes
         );
 
-      if (
-        !terSearchTime
-      ) {
+      if (!terSearchTime) {
         throw new Error(
           "Horaire Gare du Nord invalide"
         );
@@ -672,7 +636,10 @@ export default async function handler(
           terSearchTime
         );
 
-      // Temps total
+      // =========================
+      // TOTAL JASON
+      // =========================
+
       times.jason =
         firstLeg
           .result
@@ -711,22 +678,18 @@ export default async function handler(
           times.jason,
       };
     } catch (error) {
-      // Jason seulement
-      // passe indisponible
+      // Seulement Jason est impacté
       times.jason =
         null;
 
       errors.jason =
-        error instanceof
-        Error
+        error instanceof Error
           ? error.message
-          : String(
-              error
-            );
+          : String(error);
     }
 
     // =========================
-    // RÉPONSE API
+    // RÉPONSE
     // =========================
 
     res.setHeader(
@@ -753,12 +716,9 @@ export default async function handler(
           "Erreur lors du calcul des trajets",
 
         details:
-          error instanceof
-          Error
+          error instanceof Error
             ? error.message
-            : String(
-                error
-              ),
+            : String(error),
       });
   }
 }
