@@ -1,9 +1,7 @@
 // /api/trajets.js
-// Départ réel : La Poste du Louvre, 50 rue du Louvre, Paris
-// PRIM / Île-de-France Mobilités pour tous
-// + TER SNCF pour Jason vers Gare de Compiègne
-// IMPORTANT : si SNCF_API_KEY manque ou échoue,
-// seuls les trajets de Jason sont impactés.
+// Départ : La Poste du Louvre, 50 rue du Louvre, Paris
+// PRIM / Île-de-France Mobilités pour tous les trajets
+// + SNCF / TER pour Jason vers Gare de Compiègne
 
 const PRIM_URL =
   "https://prim.iledefrance-mobilites.fr/marketplace/v2/navitia/journeys";
@@ -15,7 +13,9 @@ const pause = (ms) =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
 function parseDate(value) {
-  if (!/^\d{8}T\d{6}$/.test(value || "")) return null;
+  if (!/^\d{8}T\d{6}$/.test(value || "")) {
+    return null;
+  }
 
   return Date.UTC(
     Number(value.slice(0, 4)),
@@ -29,6 +29,7 @@ function parseDate(value) {
 
 function formatDate(timestamp) {
   const date = new Date(timestamp);
+
   const pad = (number) =>
     String(number).padStart(2, "0");
 
@@ -45,16 +46,24 @@ function formatDate(timestamp) {
 function addMinutes(value, minutes) {
   const timestamp = parseDate(value);
 
-  return timestamp === null
-    ? null
-    : formatDate(
-        timestamp + minutes * 60_000
-      );
+  if (timestamp === null) {
+    return null;
+  }
+
+  return formatDate(
+    timestamp + minutes * 60_000
+  );
 }
 
-function minutesBetween(startValue, endValue) {
-  const start = parseDate(startValue);
-  const end = parseDate(endValue);
+function minutesBetween(
+  startValue,
+  endValue
+) {
+  const start =
+    parseDate(startValue);
+
+  const end =
+    parseDate(endValue);
 
   if (
     start === null ||
@@ -69,10 +78,13 @@ function minutesBetween(startValue, endValue) {
   );
 }
 
-function hasPublicTransport(journey) {
+function hasPublicTransport(
+  journey
+) {
   return journey?.sections?.some(
     (section) =>
-      section.type === "public_transport"
+      section.type ===
+      "public_transport"
   );
 }
 
@@ -86,11 +98,15 @@ function hasTer(journey) {
         return false;
       }
 
-      return JSON.stringify(
-        section.display_informations || {}
-      )
-        .toUpperCase()
-        .includes("TER");
+      const informations =
+        JSON.stringify(
+          section.display_informations ||
+            {}
+        ).toUpperCase();
+
+      return informations.includes(
+        "TER"
+      );
     }
   );
 }
@@ -105,45 +121,61 @@ function selectBestJourney(
       ? data.journeys
       : [];
 
-  journeys = journeys.filter(
-    (journey) =>
-      hasPublicTransport(journey) &&
-      journey.arrival_date_time &&
-      Number.isFinite(
-        Number(journey.duration)
-      )
-  );
+  journeys =
+    journeys.filter(
+      (journey) =>
+        hasPublicTransport(
+          journey
+        ) &&
+        journey.arrival_date_time &&
+        Number.isFinite(
+          Number(
+            journey.duration
+          )
+        )
+    );
 
   if (terOnly) {
     const terJourneys =
       journeys.filter(hasTer);
 
-    if (terJourneys.length > 0) {
-      journeys = terJourneys;
+    if (
+      terJourneys.length > 0
+    ) {
+      journeys =
+        terJourneys;
     }
   }
 
-  if (journeys.length === 0) {
+  if (
+    journeys.length === 0
+  ) {
     return null;
   }
 
   const reference =
     requestedDateTime ||
-    data?.context?.current_datetime ||
-    journeys[0].departure_date_time;
+    data?.context
+      ?.current_datetime ||
+    journeys[0]
+      .departure_date_time;
 
   return journeys
     .map((journey) => ({
       journey,
+
       minutes:
         minutesBetween(
           reference,
           journey.arrival_date_time
         ) ??
         Math.round(
-          Number(journey.duration) / 60
+          Number(
+            journey.duration
+          ) / 60
         ),
     }))
+
     .sort(
       (a, b) =>
         a.minutes - b.minutes
@@ -167,7 +199,9 @@ async function getJson(
   }
 
   try {
-    return JSON.parse(body);
+    return JSON.parse(
+      body
+    );
   } catch {
     throw new Error(
       `${service} a renvoyé un JSON invalide`
@@ -182,24 +216,35 @@ async function getPrimJourney(
 ) {
   const params =
     new URLSearchParams({
-      from: `${from.lon};${from.lat}`,
-      to: `${to.lon};${to.lat}`,
-      data_freshness: "realtime",
+      from:
+        `${from.lon};${from.lat}`,
+
+      to:
+        `${to.lon};${to.lat}`,
+
+      data_freshness:
+        "realtime",
+
       datetime_represents:
         "departure",
+
       count: "10",
     });
 
-  const response = await fetch(
-    `${PRIM_URL}?${params.toString()}`,
-    {
-      headers: {
-        Accept: "application/json",
-        Authorization: `apikey ${apiKey}`,
-        apikey: apiKey,
-      },
-    }
-  );
+  const response =
+    await fetch(
+      `${PRIM_URL}?${params.toString()}`,
+      {
+        headers: {
+          Accept:
+            "application/json",
+
+          // IMPORTANT :
+          // uniquement le header apikey
+          apikey: apiKey,
+        },
+      }
+    );
 
   const data =
     await getJson(
@@ -208,7 +253,9 @@ async function getPrimJourney(
     );
 
   const result =
-    selectBestJourney(data);
+    selectBestJourney(
+      data
+    );
 
   if (!result) {
     throw new Error(
@@ -225,23 +272,32 @@ async function getSncfTer(
 ) {
   const params =
     new URLSearchParams({
+      // Paris Gare du Nord
       from:
         "stop_area:SNCF:87271007",
+
+      // Gare de Compiègne
       to:
         "stop_area:SNCF:87276691",
+
       datetime:
         departureDateTime,
+
       datetime_represents:
         "departure",
+
       data_freshness:
         "realtime",
+
       count: "10",
     });
 
   const basicAuth =
     Buffer.from(
       `${apiKey}:`
-    ).toString("base64");
+    ).toString(
+      "base64"
+    );
 
   const response =
     await fetch(
@@ -250,6 +306,7 @@ async function getSncfTer(
         headers: {
           Accept:
             "application/json",
+
           Authorization:
             `Basic ${basicAuth}`,
         },
@@ -283,13 +340,14 @@ export default async function handler(
   res
 ) {
   const IDFM_API_KEY =
-    process.env.IDFM_API_KEY;
+    process.env
+      .IDFM_API_KEY;
 
   const SNCF_API_KEY =
-    process.env.SNCF_API_KEY;
+    process.env
+      .SNCF_API_KEY;
 
-  // Seule la clé IDFM est obligatoire
-  // pour les autres trajets
+  // IDFM est obligatoire
   if (!IDFM_API_KEY) {
     return res
       .status(500)
@@ -299,57 +357,85 @@ export default async function handler(
       });
   }
 
-  // Départ réel :
+  // =========================
+  // DÉPART
   // La Poste du Louvre
-  // 50 rue du Louvre, 75001 Paris
+  // 50 rue du Louvre
+  // =========================
+
   const start = {
     lat: 48.864725,
     lon: 2.343634,
   };
 
-  // Gare du Nord
+  // =========================
+  // GARE DU NORD
+  // pour Jason
+  // =========================
+
   const gareDuNord = {
     lat: 48.8809,
     lon: 2.3553,
   };
 
+  // =========================
+  // DESTINATIONS
+  // =========================
+
   const destinations = [
     {
       key: "ghulam",
-      names: ["ghulam"],
+      names: [
+        "ghulam",
+      ],
       lat: 48.882222,
       lon: 2.704167,
     },
+
     {
       key: "nathan",
-      names: ["nathan"],
+      names: [
+        "nathan",
+      ],
       lat: 48.824744,
       lon: 2.318872,
     },
+
     {
       key: "michael",
-      names: ["michael"],
+      names: [
+        "michael",
+      ],
       lat: 48.895631,
       lon: 2.223138,
     },
+
     {
       key: "cedric",
-      names: ["cedric"],
+      names: [
+        "cedric",
+      ],
       lat: 48.963873,
       lon: 2.372285,
     },
+
     {
       key: "liazide",
-      names: ["liazide"],
+      names: [
+        "liazide",
+      ],
       lat: 49.019392,
       lon: 2.153672,
     },
+
     {
       key: "poissy",
+
       names: [
         "rachid",
         "toufik",
       ],
+
       lat: 48.933,
       lon: 2.04,
     },
@@ -360,16 +446,24 @@ export default async function handler(
   const details = {};
 
   try {
+    // =========================
+    // REQUÊTES IDFM
+    // =========================
+
     const jobs = [
       ...destinations.map(
         (destination) => ({
-          key: destination.key,
+          key:
+            destination.key,
+
           destination,
         })
       ),
 
       {
-        key: "gareDuNord",
+        key:
+          "gareDuNord",
+
         destination:
           gareDuNord,
       },
@@ -377,7 +471,8 @@ export default async function handler(
 
     const results = {};
 
-    // Maximum 4 appels PRIM à la fois
+    // Maximum 4 requêtes
+    // simultanées
     for (
       let index = 0;
       index < jobs.length;
@@ -412,12 +507,16 @@ export default async function handler(
               } catch (error) {
                 return {
                   key,
+
                   result: null,
+
                   error:
                     error instanceof
                     Error
                       ? error.message
-                      : String(error),
+                      : String(
+                          error
+                        ),
                 };
               }
             }
@@ -426,20 +525,28 @@ export default async function handler(
 
       batchResults.forEach(
         (item) => {
-          results[item.key] =
-            item;
+          results[
+            item.key
+          ] = item;
         }
       );
 
+      // Petite pause
+      // anti limitation API
       if (
         index + 4 <
         jobs.length
       ) {
-        await pause(1100);
+        await pause(
+          1100
+        );
       }
     }
 
-    // Tous les trajets IDFM habituels
+    // =========================
+    // TEMPS AUTRES PERSONNES
+    // =========================
+
     destinations.forEach(
       (destination) => {
         const selected =
@@ -450,20 +557,52 @@ export default async function handler(
         destination.names.forEach(
           (name) => {
             if (
-              !selected?.result
+              !selected
+                ?.result
             ) {
-              times[name] =
-                null;
+              times[
+                name
+              ] = null;
 
-              errors[name] =
-                selected?.error ||
+              errors[
+                name
+              ] =
+                selected
+                  ?.error ||
                 "Trajet indisponible";
 
               return;
             }
 
-            times[name] =
-              selected.result.minutes;
+            times[
+              name
+            ] =
+              selected
+                .result
+                .minutes;
+
+            details[
+              name
+            ] = {
+              minutes:
+                selected
+                  .result
+                  .minutes,
+
+              departure:
+                selected
+                  .result
+                  .journey
+                  ?.departure_date_time ||
+                null,
+
+              arrival:
+                selected
+                  .result
+                  .journey
+                  ?.arrival_date_time ||
+                null,
+            };
           }
         );
       }
@@ -471,25 +610,30 @@ export default async function handler(
 
     // =========================
     // JASON
+    //
     // La Poste du Louvre
     // -> Gare du Nord
-    // -> correspondance 10 min
+    // -> 10 min correspondance
     // -> TER
     // -> Gare de Compiègne
     // =========================
 
     try {
-      if (!SNCF_API_KEY) {
+      if (
+        !SNCF_API_KEY
+      ) {
         throw new Error(
           "SNCF_API_KEY non configurée dans Vercel"
         );
       }
 
       const firstLeg =
-        results.gareDuNord;
+        results
+          .gareDuNord;
 
       if (
-        !firstLeg?.result
+        !firstLeg
+          ?.result
       ) {
         throw new Error(
           firstLeg?.error ||
@@ -497,17 +641,26 @@ export default async function handler(
         );
       }
 
-      const transferMinutes = 10;
+      // Temps pour changer
+      // métro / quai TER
+      const transferMinutes =
+        10;
+
+      const arrivalGareDuNord =
+        firstLeg
+          .result
+          .journey
+          .arrival_date_time;
 
       const terSearchTime =
         addMinutes(
-          firstLeg.result
-            .journey
-            .arrival_date_time,
+          arrivalGareDuNord,
           transferMinutes
         );
 
-      if (!terSearchTime) {
+      if (
+        !terSearchTime
+      ) {
         throw new Error(
           "Horaire Gare du Nord invalide"
         );
@@ -519,8 +672,11 @@ export default async function handler(
           terSearchTime
         );
 
+      // Temps total
       times.jason =
-        firstLeg.result.minutes +
+        firstLeg
+          .result
+          .minutes +
         transferMinutes +
         ter.minutes;
 
@@ -529,7 +685,9 @@ export default async function handler(
           "Gare de Compiègne",
 
         laPosteToGareDuNord:
-          firstLeg.result.minutes,
+          firstLeg
+            .result
+            .minutes,
 
         correspondence:
           transferMinutes,
@@ -538,12 +696,14 @@ export default async function handler(
           ter.minutes,
 
         terDeparture:
-          ter.journey
+          ter
+            .journey
             .departure_date_time ||
           null,
 
         arrivalCompiegne:
-          ter.journey
+          ter
+            .journey
             .arrival_date_time ||
           null,
 
@@ -551,15 +711,23 @@ export default async function handler(
           times.jason,
       };
     } catch (error) {
-      // Un problème SNCF ne bloque pas
-      // les autres trajets
-      times.jason = null;
+      // Jason seulement
+      // passe indisponible
+      times.jason =
+        null;
 
       errors.jason =
-        error instanceof Error
+        error instanceof
+        Error
           ? error.message
-          : String(error);
+          : String(
+              error
+            );
     }
+
+    // =========================
+    // RÉPONSE API
+    // =========================
 
     res.setHeader(
       "Cache-Control",
@@ -572,8 +740,10 @@ export default async function handler(
         times,
         errors,
         details,
+
         updatedAt:
-          new Date().toISOString(),
+          new Date()
+            .toISOString(),
       });
   } catch (error) {
     return res
@@ -583,9 +753,12 @@ export default async function handler(
           "Erreur lors du calcul des trajets",
 
         details:
-          error instanceof Error
+          error instanceof
+          Error
             ? error.message
-            : String(error),
+            : String(
+                error
+              ),
       });
   }
 }
