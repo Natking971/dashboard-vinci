@@ -1,6 +1,3 @@
-// BUILD 2026-08-25 - JASON GARE DE COMPIEGNE + RHAPSODY PLANNING 45s
-// BUILD 2026-08-25 - RHAPSODY PLANNING 45 SECONDES
-// BUILD FIX CHATEAUDUN 2026-08-20 - VERSION NOUVELLE
 import { useState, useEffect, useRef } from "react";
 import { getSiteConfig } from "./siteConfig";
 
@@ -926,10 +923,9 @@ function PlanningSlide({ planning, week = "current" }) {
           display: "flex",
           flexDirection: "column",
           gap: 6,
-          // Rhapsody : défilement automatique pour afficher les 6 techniciens sur la TV.
-          // Les autres sites gardent le comportement existant.
-          animation: ((SITE.id === "rhapsody" && planning.length > 3) || planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12)
-            ? `scrollPlanning ${SITE.id === "rhapsody" ? 22 : 40}s linear infinite`
+          // Animation de défilement si plus de 3 techniciens OU si trop de tâches au total
+          animation: planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12
+            ? `scrollPlanning 40s linear infinite`
             : "none",
         }}>
         {planning.map(({ techId, tasks }) => {
@@ -1006,7 +1002,7 @@ function PlanningSlide({ planning, week = "current" }) {
         })}
 
         {/* Duplication pour effet de boucle infinie - uniquement si on défile */}
-        {(((SITE.id === "rhapsody" && planning.length > 3) || planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12)) && planning.map(({ techId, tasks }) => {
+        {planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12 && planning.map(({ techId, tasks }) => {
           const tech = TECHNICIANS.find(t => t.id === techId);
           return (
             <div key={`loop-${techId}`} style={{
@@ -2563,7 +2559,7 @@ const TRAJETS_CONFIG = [
   { key: "ghulam", nom: "Ghulam", dest: "Lagny" },
   { key: "nathan", nom: "Nathan", dest: "Jean Moulin" },
   { key: "michael", nom: "Michael", dest: "Nanterre" },
-  { key: "jason", nom: "Jason", dest: "Gare de Compiègne" },
+  { key: "jason", nom: "Jason", dest: "Chez tata" },
   { key: "cedric", nom: "Cedric", dest: "Pierrefitte" },
   { key: "liazide", nom: "Liazide", dest: "Pierrelaye" },
   { key: "rachid", nom: "Rachid", dest: "Poissy" },
@@ -2846,6 +2842,7 @@ export default function Dashboard() {
   const [time, setTime] = useState(new Date());
   const [slideIdx, setSlideIdx] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const [planning, setPlanning] = useState(FALLBACK_PLANNING);
   const [planningNext, setPlanningNext] = useState(FALLBACK_PLANNING);
   const [affairs, setAffairs] = useState(FALLBACK_AFFAIRS);
@@ -3136,9 +3133,24 @@ export default function Dashboard() {
 
 
 
-  // Navigation clavier : espace / flèche droite = suivant, flèche gauche = précédent
+  // Navigation clavier : P = pause/reprise, espace / flèche droite = suivant, flèche gauche = précédent
   useEffect(() => {
     function handleKey(e) {
+      // P met en pause ou reprend la rotation automatique.
+      // On ignore la touche si l'utilisateur est en train d'écrire dans un champ.
+      const target = e.target;
+      const isTyping =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+
+      if (!isTyping && (e.key === "p" || e.key === "P")) {
+        e.preventDefault();
+        setIsPaused(prev => !prev);
+        return;
+      }
+
       if (e.code === "Space" || e.code === "ArrowRight") {
         e.preventDefault();
         setSlideIdx(i => (i + 1) % SLIDES.length);
@@ -3171,6 +3183,12 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
+    // Quand P est activé, on arrête complètement le compte à rebours.
+    // La slide reste affichée tant que le dashboard est en pause.
+    if (isPaused) {
+      return;
+    }
+
     setProgress(0);
     const start = Date.now();
     // Slide vide : on passe très vite à la suivante (3s) au lieu d'attendre la durée complète
@@ -3178,15 +3196,7 @@ export default function Dashboard() {
     let slideDuration = SLIDE_DURATION;
     if (empty) slideDuration = 3000;
     else if (SLIDES[slideIdx].type === "quotes") slideDuration = QUOTES_SLIDE_DURATION;
-    else if (
-      SLIDES[slideIdx].type === "planning" &&
-      (
-        SITE.id === "rhapsody" ||
-        planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12
-      )
-    ) {
-      // Rhapsody : les slides Planning restent 45 secondes pour laisser le temps
-      // de voir les 6 techniciens et le défilement automatique.
+    else if (SLIDES[slideIdx].type === "planning" && planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12) {
       slideDuration = PLANNING_SLIDE_DURATION;
     }
     const tick = setInterval(() => {
@@ -3197,7 +3207,7 @@ export default function Dashboard() {
       setSlideIdx(i => (i + 1) % SLIDES.length);
     }, slideDuration);
     return () => { clearInterval(tick); clearTimeout(advance); };
-  }, [slideIdx, planning, planningNext, affairs, subcontractorsCurrent, subcontractorsNext, quotes]);
+  }, [isPaused, slideIdx, planning, planningNext, affairs, subcontractorsCurrent, subcontractorsNext, quotes]);
 
   useEffect(() => {
     if (SITE.id !== "lpdl") return;
@@ -3257,7 +3267,9 @@ export default function Dashboard() {
   const totalUrgent = Object.values(affairs).flat().filter(a => a.urgent).length;
 
   return (
-    <div style={{
+    <div
+      className={isPaused ? "dashboard-paused" : ""}
+      style={{
       height: "100vh",
       backgroundColor: "#F4F4F2",
       fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -3268,6 +3280,9 @@ export default function Dashboard() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
         * { box-sizing: border-box; }
+        .dashboard-paused *, .dashboard-paused *::before, .dashboard-paused *::after {
+          animation-play-state: paused !important;
+        }
         @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes scrollQuotes { from { transform: translateY(0); } to { transform: translateY(-50%); } }
@@ -3299,7 +3314,7 @@ export default function Dashboard() {
           <div>
             <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.5px" }}>TABLEAU DE BORD</div>
             <div style={{ fontSize: 13, color: "#9CA3AF", fontWeight: 500, marginTop: 3 }}>
-              {SITE.name} · Slide {slideIdx + 1} / {SLIDES.length} · rotation auto {SITE.id === "rhapsody" && currentSlide.type === "planning" ? "45s" : "30s"}
+              {SITE.name} · Slide {slideIdx + 1} / {SLIDES.length} · {isPaused ? "PAUSE · P pour reprendre" : "rotation auto 30s · P = pause"}
             </div>
           </div>
           <div style={{
