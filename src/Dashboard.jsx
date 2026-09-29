@@ -1286,12 +1286,16 @@ function getNextWeekDates() {
   });
 }
 
-function SubcontractorsSlide({ subcontractors, week = "next" }) {
+function SubcontractorsSlide({ subcontractors, week = "next", isPaused = false }) {
   const isCurrent = week === "current";
   const weekDates = isCurrent ? getCurrentWeekDates() : getNextWeekDates();
   const subtitle = isCurrent
     ? `Cette semaine — du ${fmt(weekDates[0])} au ${fmt(weekDates[4])}`
     : `Semaine prochaine — du ${fmt(weekDates[0])} au ${fmt(weekDates[4])}`;
+
+  // Une colonne commence à défiler à partir de 5 événements.
+  // Chaque colonne défile indépendamment : les autres restent fixes.
+  const SCROLL_THRESHOLD = 5;
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "32px 44px" }}>
@@ -1338,10 +1342,30 @@ function SubcontractorsSlide({ subcontractors, week = "next" }) {
         gridTemplateColumns: "repeat(5, 1fr)",
         gap: 10,
         flex: 1,
+        minHeight: 0,
       }}>
         {DAY_NAMES.map((day, dayIdx) => {
           const daySubs = subcontractors.filter(s => s.day === dayIdx);
           const holiday = getHolidayForDate(weekDates[dayIdx]);
+          const shouldScroll = !holiday && daySubs.length > SCROLL_THRESHOLD;
+
+          // Durée adaptée au nombre d'événements pour garder une lecture confortable.
+          const scrollDuration = Math.max(18, daySubs.length * 3.2);
+
+          const renderEventCard = (sub, i, keyPrefix = "") => (
+            <div key={`${keyPrefix}${i}`} style={{
+              backgroundColor: sub.light,
+              borderLeft: `4px solid ${sub.color}`,
+              borderRadius: "0 8px 8px 0",
+              padding: "12px 13px",
+              flexShrink: 0,
+            }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: sub.color, lineHeight: 1.2 }}>{sub.company}</div>
+              <div style={{ fontSize: 12, color: "#374151", marginTop: 4, fontWeight: 600 }}>{sub.domain}</div>
+              <div style={{ fontSize: 11, color: "#6B7280", marginTop: 4, fontStyle: "italic" }}>→ {sub.location}</div>
+            </div>
+          );
+
           return (
             <div key={day} style={{
               backgroundColor: holiday ? "#F3F4F6" : "white",
@@ -1352,6 +1376,7 @@ function SubcontractorsSlide({ subcontractors, week = "next" }) {
               overflow: "hidden",
               boxShadow: "0 2px 6px rgba(0,0,0,.05)",
               opacity: holiday ? 0.85 : 1,
+              minHeight: 0,
             }}>
               {/* En-tête du jour */}
               <div style={{
@@ -1360,16 +1385,29 @@ function SubcontractorsSlide({ subcontractors, week = "next" }) {
                 backgroundColor: holiday ? "#9CA3AF" : "#F9FAFB",
                 borderBottom: "1px solid #E5E7EB",
                 color: holiday ? "white" : "inherit",
+                flexShrink: 0,
               }}>
                 <div style={{ fontSize: 16, fontWeight: 800, color: holiday ? "white" : "#111827" }}>{day}</div>
                 <div style={{ fontSize: 12, color: holiday ? "rgba(255,255,255,0.8)" : "#6B7280", marginTop: 3, fontWeight: 500 }}>{fmt(weekDates[dayIdx])}</div>
               </div>
 
-              {/* Liste des sous-traitants du jour */}
-              <div style={{ flex: 1, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+              {/* Liste des événements du jour */}
+              <div style={{
+                flex: 1,
+                minHeight: 0,
+                padding: 10,
+                overflow: "hidden",
+                position: "relative",
+                maskImage: shouldScroll
+                  ? "linear-gradient(to bottom, transparent 0%, black 7%, black 93%, transparent 100%)"
+                  : "none",
+                WebkitMaskImage: shouldScroll
+                  ? "linear-gradient(to bottom, transparent 0%, black 7%, black 93%, transparent 100%)"
+                  : "none",
+              }}>
                 {holiday ? (
                   <div style={{
-                    flex: 1, display: "flex", flexDirection: "column",
+                    height: "100%", display: "flex", flexDirection: "column",
                     alignItems: "center", justifyContent: "center", gap: 6,
                   }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: "#9CA3AF", letterSpacing: "0.12em" }}>FÉRIÉ</div>
@@ -1378,21 +1416,31 @@ function SubcontractorsSlide({ subcontractors, week = "next" }) {
                     </div>
                   </div>
                 ) : daySubs.length === 0 ? (
-                  <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <div style={{ width: 28, height: 1.5, backgroundColor: "#D1D5DB" }} />
                   </div>
-                ) : daySubs.map((sub, i) => (
-                  <div key={i} style={{
-                    backgroundColor: sub.light,
-                    borderLeft: `4px solid ${sub.color}`,
-                    borderRadius: "0 8px 8px 0",
-                    padding: "12px 13px",
+                ) : shouldScroll ? (
+                  <div style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                    width: "100%",
+                    animation: `scrollEvents ${scrollDuration}s linear infinite`,
+                    animationPlayState: isPaused ? "paused" : "running",
                   }}>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: sub.color, lineHeight: 1.2 }}>{sub.company}</div>
-                    <div style={{ fontSize: 12, color: "#374151", marginTop: 4, fontWeight: 600 }}>{sub.domain}</div>
-                    <div style={{ fontSize: 11, color: "#6B7280", marginTop: 4, fontStyle: "italic" }}>→ {sub.location}</div>
+                    {daySubs.map((sub, i) => renderEventCard(sub, i))}
+                    <div style={{ height: 28, flexShrink: 0 }} />
+                    {daySubs.map((sub, i) => renderEventCard(sub, i, "loop-"))}
                   </div>
-                ))}
+                ) : (
+                  <div style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                  }}>
+                    {daySubs.map((sub, i) => renderEventCard(sub, i))}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -3289,7 +3337,7 @@ export default function Dashboard() {
         @keyframes scrollPlanning { from { transform: translateY(0); } to { transform: translateY(-50%); } }
         @keyframes scrollTenant { from { transform: translateY(0); } to { transform: translateY(-50%); } }
         @keyframes scrollStandings { from { transform: translateY(0); } to { transform: translateY(-50%); } }
-        @keyframes scrollTransport { from { transform: translate3d(0,0,0); } to { transform: translate3d(0,-50%,0); } }
+        @keyframes scrollTransport { from { transform: translate3d(0,0,0); } to { transform: translate3d(0,-50%,0); } }\n        @keyframes scrollEvents { from { transform: translateY(0); } to { transform: translateY(-50%); } }
       `}</style>
 
       {/* HEADER */}
@@ -3460,6 +3508,7 @@ export default function Dashboard() {
           <SubcontractorsSlide
             subcontractors={currentSlide.week === "current" ? subcontractorsCurrent : subcontractorsNext}
             week={currentSlide.week}
+            isPaused={isPaused}
           />
         )}
       </div>
