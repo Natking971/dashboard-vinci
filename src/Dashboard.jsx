@@ -2844,10 +2844,18 @@ function TrajetPersoSlide({ trajetTimes }) {
 
                   <div
                     style={{
-                      fontSize: 28,
+                      fontSize:
+                        temps !== null && Number(temps) >= 60
+                          ? 20
+                          : 28,
                       lineHeight: 1,
                       fontWeight: "bold",
                       color: status.color,
+                      whiteSpace: "nowrap",
+                      letterSpacing:
+                        temps !== null && Number(temps) >= 60
+                          ? "-0.3px"
+                          : "normal",
                     }}
                   >
                     {formatTrajetDuration(temps)}
