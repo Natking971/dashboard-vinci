@@ -2673,6 +2673,23 @@ function getTrajetStatus(temps, habituel) {
   };
 }
 
+function formatTrajetDuration(minutes) {
+  if (!Number.isFinite(minutes)) return "—";
+
+  const total = Math.max(0, Math.round(minutes));
+
+  if (total < 60) {
+    return `${total} min`;
+  }
+
+  const hours = Math.floor(total / 60);
+  const mins = total % 60;
+
+  return mins === 0
+    ? `${hours} h`
+    : `${hours} h ${mins} min`;
+}
+
 function TrajetPersoSlide({ trajetTimes }) {
   const radius = 50;
   const circumference = 2 * Math.PI * radius;
@@ -2833,18 +2850,10 @@ function TrajetPersoSlide({ trajetTimes }) {
                       color: status.color,
                     }}
                   >
-                    {temps ?? "—"}
+                    {formatTrajetDuration(temps)}
                   </div>
 
-                  <div
-                    style={{
-                      fontSize: 11,
-                      opacity: 0.8,
-                      marginTop: 4,
-                    }}
-                  >
-                    min
-                  </div>
+                  
                 </div>
               </div>
 
