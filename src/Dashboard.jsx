@@ -1,3 +1,6 @@
+// BUILD 2026-08-25 - JASON GARE DE COMPIEGNE + RHAPSODY PLANNING 45S
+// BUILD 2026-08-25 - RHAPSODY PLANNING 45 SECONDES
+// BUILD FIX CHATEAUDUN 2026-08-20 - VERSION NOUVELLE
 import { useState, useEffect, useRef } from "react";
 import { getSiteConfig } from "./siteConfig";
 
@@ -380,7 +383,7 @@ const SLIDES = [
   { id: "planningNext", type: "planning", week: "next" },
   { id: "onesite", type: "onesite" },
   { id: "weather", type: "weather" },
-  ...(SITE.id === "lpdl" ? [{ id: "trajetPerso", type: "trajetPerso" }] : []),
+  ...(["lpdl", "rhapsody"].includes(SITE.id) ? [{ id: "trajetPerso", type: "trajetPerso" }] : []),
   { id: "transport", type: "transport" },
 ];
 
@@ -923,9 +926,10 @@ function PlanningSlide({ planning, week = "current" }) {
           display: "flex",
           flexDirection: "column",
           gap: 6,
-          // Animation de défilement si plus de 3 techniciens OU si trop de tâches au total
-          animation: planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12
-            ? `scrollPlanning 40s linear infinite`
+          // Rhapsody : défilement automatique pour afficher les 6 techniciens sur la TV.
+          // Les autres sites gardent le comportement existant.
+          animation: ((SITE.id === "rhapsody" && planning.length > 3) || planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12)
+            ? `scrollPlanning ${SITE.id === "rhapsody" ? 22 : 40}s linear infinite`
             : "none",
         }}>
         {planning.map(({ techId, tasks }) => {
@@ -1002,7 +1006,7 @@ function PlanningSlide({ planning, week = "current" }) {
         })}
 
         {/* Duplication pour effet de boucle infinie - uniquement si on défile */}
-        {planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12 && planning.map(({ techId, tasks }) => {
+        {(((SITE.id === "rhapsody" && planning.length > 3) || planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12)) && planning.map(({ techId, tasks }) => {
           const tech = TECHNICIANS.find(t => t.id === techId);
           return (
             <div key={`loop-${techId}`} style={{
@@ -1286,16 +1290,12 @@ function getNextWeekDates() {
   });
 }
 
-function SubcontractorsSlide({ subcontractors, week = "next", isPaused = false }) {
+function SubcontractorsSlide({ subcontractors, week = "next" }) {
   const isCurrent = week === "current";
   const weekDates = isCurrent ? getCurrentWeekDates() : getNextWeekDates();
   const subtitle = isCurrent
     ? `Cette semaine — du ${fmt(weekDates[0])} au ${fmt(weekDates[4])}`
     : `Semaine prochaine — du ${fmt(weekDates[0])} au ${fmt(weekDates[4])}`;
-
-  // Une colonne commence à défiler à partir de 5 événements.
-  // Chaque colonne défile indépendamment : les autres restent fixes.
-  const SCROLL_THRESHOLD = 5;
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "32px 44px" }}>
@@ -1342,30 +1342,10 @@ function SubcontractorsSlide({ subcontractors, week = "next", isPaused = false }
         gridTemplateColumns: "repeat(5, 1fr)",
         gap: 10,
         flex: 1,
-        minHeight: 0,
       }}>
         {DAY_NAMES.map((day, dayIdx) => {
           const daySubs = subcontractors.filter(s => s.day === dayIdx);
           const holiday = getHolidayForDate(weekDates[dayIdx]);
-          const shouldScroll = !holiday && daySubs.length > SCROLL_THRESHOLD;
-
-          // Durée adaptée au nombre d'événements pour garder une lecture confortable.
-          const scrollDuration = Math.max(18, daySubs.length * 3.2);
-
-          const renderEventCard = (sub, i, keyPrefix = "") => (
-            <div key={`${keyPrefix}${i}`} style={{
-              backgroundColor: sub.light,
-              borderLeft: `4px solid ${sub.color}`,
-              borderRadius: "0 8px 8px 0",
-              padding: "12px 13px",
-              flexShrink: 0,
-            }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: sub.color, lineHeight: 1.2 }}>{sub.company}</div>
-              <div style={{ fontSize: 12, color: "#374151", marginTop: 4, fontWeight: 600 }}>{sub.domain}</div>
-              <div style={{ fontSize: 11, color: "#6B7280", marginTop: 4, fontStyle: "italic" }}>→ {sub.location}</div>
-            </div>
-          );
-
           return (
             <div key={day} style={{
               backgroundColor: holiday ? "#F3F4F6" : "white",
@@ -1376,7 +1356,6 @@ function SubcontractorsSlide({ subcontractors, week = "next", isPaused = false }
               overflow: "hidden",
               boxShadow: "0 2px 6px rgba(0,0,0,.05)",
               opacity: holiday ? 0.85 : 1,
-              minHeight: 0,
             }}>
               {/* En-tête du jour */}
               <div style={{
@@ -1385,29 +1364,16 @@ function SubcontractorsSlide({ subcontractors, week = "next", isPaused = false }
                 backgroundColor: holiday ? "#9CA3AF" : "#F9FAFB",
                 borderBottom: "1px solid #E5E7EB",
                 color: holiday ? "white" : "inherit",
-                flexShrink: 0,
               }}>
                 <div style={{ fontSize: 16, fontWeight: 800, color: holiday ? "white" : "#111827" }}>{day}</div>
                 <div style={{ fontSize: 12, color: holiday ? "rgba(255,255,255,0.8)" : "#6B7280", marginTop: 3, fontWeight: 500 }}>{fmt(weekDates[dayIdx])}</div>
               </div>
 
-              {/* Liste des événements du jour */}
-              <div style={{
-                flex: 1,
-                minHeight: 0,
-                padding: 10,
-                overflow: "hidden",
-                position: "relative",
-                maskImage: shouldScroll
-                  ? "linear-gradient(to bottom, transparent 0%, black 7%, black 93%, transparent 100%)"
-                  : "none",
-                WebkitMaskImage: shouldScroll
-                  ? "linear-gradient(to bottom, transparent 0%, black 7%, black 93%, transparent 100%)"
-                  : "none",
-              }}>
+              {/* Liste des sous-traitants du jour */}
+              <div style={{ flex: 1, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
                 {holiday ? (
                   <div style={{
-                    height: "100%", display: "flex", flexDirection: "column",
+                    flex: 1, display: "flex", flexDirection: "column",
                     alignItems: "center", justifyContent: "center", gap: 6,
                   }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: "#9CA3AF", letterSpacing: "0.12em" }}>FÉRIÉ</div>
@@ -1416,31 +1382,21 @@ function SubcontractorsSlide({ subcontractors, week = "next", isPaused = false }
                     </div>
                   </div>
                 ) : daySubs.length === 0 ? (
-                  <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <div style={{ width: 28, height: 1.5, backgroundColor: "#D1D5DB" }} />
                   </div>
-                ) : shouldScroll ? (
-                  <div style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 8,
-                    width: "100%",
-                    animation: `scrollEvents ${scrollDuration}s linear infinite`,
-                    animationPlayState: isPaused ? "paused" : "running",
+                ) : daySubs.map((sub, i) => (
+                  <div key={i} style={{
+                    backgroundColor: sub.light,
+                    borderLeft: `4px solid ${sub.color}`,
+                    borderRadius: "0 8px 8px 0",
+                    padding: "12px 13px",
                   }}>
-                    {daySubs.map((sub, i) => renderEventCard(sub, i))}
-                    <div style={{ height: 28, flexShrink: 0 }} />
-                    {daySubs.map((sub, i) => renderEventCard(sub, i, "loop-"))}
+                    <div style={{ fontSize: 16, fontWeight: 800, color: sub.color, lineHeight: 1.2 }}>{sub.company}</div>
+                    <div style={{ fontSize: 12, color: "#374151", marginTop: 4, fontWeight: 600 }}>{sub.domain}</div>
+                    <div style={{ fontSize: 11, color: "#6B7280", marginTop: 4, fontStyle: "italic" }}>→ {sub.location}</div>
                   </div>
-                ) : (
-                  <div style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 8,
-                  }}>
-                    {daySubs.map((sub, i) => renderEventCard(sub, i))}
-                  </div>
-                )}
+                ))}
               </div>
             </div>
           );
@@ -2592,27 +2548,47 @@ function TransportSlide({ lines, lastUpdate }) {
 // ─── SLIDE TRAJETS PERSONNELS ────────────────────────────────────────────────
 
 // Temps de trajet habituels servant de référence pour calculer le retard.
-const TRAJET_HABITUEL = {
-  ghulam: 40,
-  nathan: 24,
-  michael: 12,
-  jason: 36,
-  cedric: 24,
-  liazide: 41,
-  rachid: 41,
-  toufik: 41,
-};
+const TRAJET_HABITUEL = SITE.id === "rhapsody"
+  ? {
+      nicodeme: 60,
+      alvaro: 35,
+      camara: 20,
+      bazil: 55,
+      bongo: 35,
+      picart: 45,
+      royer: 60,
+    }
+  : {
+      ghulam: 40,
+      nathan: 24,
+      michael: 12,
+      jason: 36,
+      cedric: 24,
+      liazide: 41,
+      rachid: 41,
+      toufik: 41,
+    };
 
-const TRAJETS_CONFIG = [
-  { key: "ghulam", nom: "Ghulam", dest: "Lagny" },
-  { key: "nathan", nom: "Nathan", dest: "Jean Moulin" },
-  { key: "michael", nom: "Michael", dest: "Nanterre" },
-  { key: "jason", nom: "Jason", dest: "Chez tata" },
-  { key: "cedric", nom: "Cedric", dest: "Pierrefitte" },
-  { key: "liazide", nom: "Liazide", dest: "Pierrelaye" },
-  { key: "rachid", nom: "Rachid", dest: "Poissy" },
-  { key: "toufik", nom: "Toufik", dest: "Poissy" },
-];
+const TRAJETS_CONFIG = SITE.id === "rhapsody"
+  ? [
+      { key: "nicodeme", nom: "Avril Nicodeme", dest: "Bornel" },
+      { key: "alvaro", nom: "Alvaro Martinez", dest: "Ermont" },
+      { key: "camara", nom: "Mamadou Camara", dest: "Clichy" },
+      { key: "bazil", nom: "Jean Yvener Bazil", dest: "Longperrier" },
+      { key: "bongo", nom: "Preston Bongo", dest: "Montmorency" },
+      { key: "picart", nom: "Yoann Picart", dest: "Viroflay" },
+      { key: "royer", nom: "Geoffroy Royer", dest: "Fublaines" },
+    ]
+  : [
+      { key: "ghulam", nom: "Ghulam", dest: "Lagny" },
+      { key: "nathan", nom: "Nathan", dest: "Jean Moulin" },
+      { key: "michael", nom: "Michael", dest: "Nanterre" },
+      { key: "jason", nom: "Jason", dest: "Gare de Compiègne" },
+      { key: "cedric", nom: "Cedric", dest: "Pierrefitte" },
+      { key: "liazide", nom: "Liazide", dest: "Pierrelaye" },
+      { key: "rachid", nom: "Rachid", dest: "Poissy" },
+      { key: "toufik", nom: "Toufik", dest: "Poissy" },
+    ];
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -2890,7 +2866,6 @@ export default function Dashboard() {
   const [time, setTime] = useState(new Date());
   const [slideIdx, setSlideIdx] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
   const [planning, setPlanning] = useState(FALLBACK_PLANNING);
   const [planningNext, setPlanningNext] = useState(FALLBACK_PLANNING);
   const [affairs, setAffairs] = useState(FALLBACK_AFFAIRS);
@@ -2902,9 +2877,28 @@ export default function Dashboard() {
   const [lastUpdate, setLastUpdate] = useState(null);
   const [weather, setWeather] = useState(null);
   const [transportLines, setTransportLines] = useState([]);
-  const [trajetTimes, setTrajetTimes] = useState({
-    ghulam: 44, nathan: 27, michael: 12, jason: 77, cedric: 28, liazide: 35, rachid: 30, toufik: 30
-  });
+  const [trajetTimes, setTrajetTimes] = useState(
+    SITE.id === "rhapsody"
+      ? {
+          nicodeme: null,
+          alvaro: null,
+          camara: null,
+          bazil: null,
+          bongo: null,
+          picart: null,
+          royer: null,
+        }
+      : {
+          ghulam: 44,
+          nathan: 27,
+          michael: 12,
+          jason: 77,
+          cedric: 28,
+          liazide: 35,
+          rachid: 30,
+          toufik: 30,
+        }
+  );
   const [transportLastUpdate, setTransportLastUpdate] = useState(null);
   const [quote, setQuote] = useState(() => selectDailyQuote([]));
 
@@ -3181,24 +3175,9 @@ export default function Dashboard() {
 
 
 
-  // Navigation clavier : P = pause/reprise, espace / flèche droite = suivant, flèche gauche = précédent
+  // Navigation clavier : espace / flèche droite = suivant, flèche gauche = précédent
   useEffect(() => {
     function handleKey(e) {
-      // P met en pause ou reprend la rotation automatique.
-      // On ignore la touche si l'utilisateur est en train d'écrire dans un champ.
-      const target = e.target;
-      const isTyping =
-        target &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable);
-
-      if (!isTyping && (e.key === "p" || e.key === "P")) {
-        e.preventDefault();
-        setIsPaused(prev => !prev);
-        return;
-      }
-
       if (e.code === "Space" || e.code === "ArrowRight") {
         e.preventDefault();
         setSlideIdx(i => (i + 1) % SLIDES.length);
@@ -3231,12 +3210,6 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    // Quand P est activé, on arrête complètement le compte à rebours.
-    // La slide reste affichée tant que le dashboard est en pause.
-    if (isPaused) {
-      return;
-    }
-
     setProgress(0);
     const start = Date.now();
     // Slide vide : on passe très vite à la suivante (3s) au lieu d'attendre la durée complète
@@ -3244,7 +3217,15 @@ export default function Dashboard() {
     let slideDuration = SLIDE_DURATION;
     if (empty) slideDuration = 3000;
     else if (SLIDES[slideIdx].type === "quotes") slideDuration = QUOTES_SLIDE_DURATION;
-    else if (SLIDES[slideIdx].type === "planning" && planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12) {
+    else if (
+      SLIDES[slideIdx].type === "planning" &&
+      (
+        SITE.id === "rhapsody" ||
+        planning.reduce((sum, p) => sum + p.tasks.length, 0) > 12
+      )
+    ) {
+      // Rhapsody : les slides Planning restent 45 secondes pour laisser le temps
+      // de voir les 6 techniciens et le défilement automatique.
       slideDuration = PLANNING_SLIDE_DURATION;
     }
     const tick = setInterval(() => {
@@ -3255,10 +3236,10 @@ export default function Dashboard() {
       setSlideIdx(i => (i + 1) % SLIDES.length);
     }, slideDuration);
     return () => { clearInterval(tick); clearTimeout(advance); };
-  }, [isPaused, slideIdx, planning, planningNext, affairs, subcontractorsCurrent, subcontractorsNext, quotes]);
+  }, [slideIdx, planning, planningNext, affairs, subcontractorsCurrent, subcontractorsNext, quotes]);
 
   useEffect(() => {
-    if (SITE.id !== "lpdl") return;
+    if (!["lpdl", "rhapsody"].includes(SITE.id)) return;
 
     let cancelled = false;
 
@@ -3315,9 +3296,7 @@ export default function Dashboard() {
   const totalUrgent = Object.values(affairs).flat().filter(a => a.urgent).length;
 
   return (
-    <div
-      className={isPaused ? "dashboard-paused" : ""}
-      style={{
+    <div style={{
       height: "100vh",
       backgroundColor: "#F4F4F2",
       fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -3328,16 +3307,13 @@ export default function Dashboard() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
         * { box-sizing: border-box; }
-        .dashboard-paused *, .dashboard-paused *::before, .dashboard-paused *::after {
-          animation-play-state: paused !important;
-        }
         @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes scrollQuotes { from { transform: translateY(0); } to { transform: translateY(-50%); } }
         @keyframes scrollPlanning { from { transform: translateY(0); } to { transform: translateY(-50%); } }
         @keyframes scrollTenant { from { transform: translateY(0); } to { transform: translateY(-50%); } }
         @keyframes scrollStandings { from { transform: translateY(0); } to { transform: translateY(-50%); } }
-        @keyframes scrollTransport { from { transform: translate3d(0,0,0); } to { transform: translate3d(0,-50%,0); } }\n        @keyframes scrollEvents { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+        @keyframes scrollTransport { from { transform: translate3d(0,0,0); } to { transform: translate3d(0,-50%,0); } }
       `}</style>
 
       {/* HEADER */}
@@ -3362,7 +3338,7 @@ export default function Dashboard() {
           <div>
             <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.5px" }}>TABLEAU DE BORD</div>
             <div style={{ fontSize: 13, color: "#9CA3AF", fontWeight: 500, marginTop: 3 }}>
-              {SITE.name} · Slide {slideIdx + 1} / {SLIDES.length} · {isPaused ? "PAUSE · P pour reprendre" : "rotation auto 30s · P = pause"}
+              {SITE.name} · Slide {slideIdx + 1} / {SLIDES.length} · rotation auto {SITE.id === "rhapsody" && currentSlide.type === "planning" ? "45s" : "30s"}
             </div>
           </div>
           <div style={{
@@ -3508,7 +3484,6 @@ export default function Dashboard() {
           <SubcontractorsSlide
             subcontractors={currentSlide.week === "current" ? subcontractorsCurrent : subcontractorsNext}
             week={currentSlide.week}
-            isPaused={isPaused}
           />
         )}
       </div>
