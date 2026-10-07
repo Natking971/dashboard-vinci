@@ -1,8 +1,14 @@
 // /api/trajets.js
-// API des trajets personnels multi-sites.
-// Le site est détecté avec VITE_SITE dans Vercel.
-// LPDL = trajets historiques + Jason vers Compiègne.
-// Rhapsody = 27-31 rue de Clichy, 93400 Saint-Ouen-sur-Seine.
+// API trajets personnels multi-sites.
+// Vercel détecte le site avec VITE_SITE.
+//
+// LPDL :
+//   - trajets classiques avec IDFM / PRIM
+//   - Jason : La Poste du Louvre -> Gare du Nord -> TER -> Compiègne
+//
+// Rhapsody :
+//   - 6 trajets IDFM / PRIM
+//   - Nicodeme : Rhapsody -> Gare du Nord -> TER -> Bornel-Belle-Église
 
 const PRIM_URL =
   "https://prim.iledefrance-mobilites.fr/marketplace/v2/navitia/journeys";
@@ -30,9 +36,7 @@ function parseDate(value) {
 
 function formatDate(timestamp) {
   const date = new Date(timestamp);
-
-  const pad = (number) =>
-    String(number).padStart(2, "0");
+  const pad = (number) => String(number).padStart(2, "0");
 
   return (
     `${date.getUTCFullYear()}` +
@@ -81,22 +85,19 @@ function hasPublicTransport(journey) {
 }
 
 function hasTer(journey) {
-  return journey?.sections?.some(
-    (section) => {
-      if (
-        section.type !== "public_transport"
-      ) {
-        return false;
-      }
-
-      const informations =
-        JSON.stringify(
-          section.display_informations || {}
-        ).toUpperCase();
-
-      return informations.includes("TER");
+  return journey?.sections?.some((section) => {
+    if (
+      section.type !== "public_transport"
+    ) {
+      return false;
     }
-  );
+
+    const text = JSON.stringify(
+      section.display_informations || {}
+    ).toUpperCase();
+
+    return text.includes("TER");
+  });
 }
 
 function selectBestJourney(
@@ -159,7 +160,10 @@ async function getJson(response, service) {
 
   if (!response.ok) {
     throw new Error(
-      `${service} HTTP ${response.status} : ${body.slice(0, 180)}`
+      `${service} HTTP ${response.status} : ${body.slice(
+        0,
+        220
+      )}`
     );
   }
 
@@ -172,7 +176,11 @@ async function getJson(response, service) {
   }
 }
 
-async function getPrimJourney(apiKey, from, to) {
+async function getPrimJourney(
+  apiKey,
+  from,
+  to
+) {
   const params = new URLSearchParams({
     from: `${from.lon};${from.lat}`,
     to: `${to.lon};${to.lat}`,
@@ -191,75 +199,197 @@ async function getPrimJourney(apiKey, from, to) {
     }
   );
 
-  const data = await getJson(response, "PRIM");
-  const result = selectBestJourney(data);
+  const data =
+    await getJson(
+      response,
+      "PRIM"
+    );
+
+  const result =
+    selectBestJourney(data);
 
   if (!result) {
-    throw new Error("PRIM : aucun trajet trouvé");
+    throw new Error(
+      "PRIM : aucun trajet trouvé"
+    );
   }
 
   return result;
 }
 
-async function getSncfJourney(apiKey, from, to) {
-  const params = new URLSearchParams({
-    from: `${from.lon};${from.lat}`,
-    to: `${to.lon};${to.lat}`,
-    datetime: formatDate(Date.now()),
-    datetime_represents: "departure",
-    data_freshness: "realtime",
-    count: "10",
-  });
+async function getSncfStationJourney(
+  apiKey,
+  fromStopAreaId,
+  toStopAreaId,
+  departureDateTime,
+  terOnly = true
+) {
+  const params =
+    new URLSearchParams({
+      from: fromStopAreaId,
+      to: toStopAreaId,
+      datetime: departureDateTime,
+      datetime_represents: "departure",
+      data_freshness: "realtime",
+      count: "10",
+    });
 
-  const basicAuth = Buffer.from(`${apiKey}:`).toString("base64");
+  const basicAuth =
+    Buffer.from(
+      `${apiKey}:`
+    ).toString("base64");
 
-  const response = await fetch(
-    `${SNCF_URL}?${params.toString()}`,
-    {
-      headers: {
-        Accept: "application/json",
-        Authorization: `Basic ${basicAuth}`,
-      },
+  const response =
+    await fetch(
+      `${SNCF_URL}?${params.toString()}`,
+      {
+        headers: {
+          Accept: "application/json",
+          Authorization:
+            `Basic ${basicAuth}`,
+        },
+      }
+    );
+
+  const data =
+    await getJson(
+      response,
+      "SNCF"
+    );
+
+  const result =
+    selectBestJourney(
+      data,
+      departureDateTime,
+      terOnly
+    );
+
+  if (!result) {
+    throw new Error(
+      "SNCF : aucun trajet trouvé"
+    );
+  }
+
+  return result;
+}
+
+async function getPrimBatch(
+  apiKey,
+  start,
+  destinations
+) {
+  const results = {};
+
+  for (
+    let index = 0;
+    index < destinations.length;
+    index += 4
+  ) {
+    const batch =
+      destinations.slice(
+        index,
+        index + 4
+      );
+
+    const batchResults =
+      await Promise.all(
+        batch.map(
+          async (destination) => {
+            try {
+              const result =
+                await getPrimJourney(
+                  apiKey,
+                  start,
+                  destination
+                );
+
+              return {
+                key: destination.key,
+                result,
+                error: null,
+              };
+            } catch (error) {
+              return {
+                key: destination.key,
+                result: null,
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : String(error),
+              };
+            }
+          }
+        )
+      );
+
+    batchResults.forEach(
+      (item) => {
+        results[item.key] =
+          item;
+      }
+    );
+
+    if (
+      index + 4 <
+      destinations.length
+    ) {
+      await pause(1100);
+    }
+  }
+
+  return results;
+}
+
+function copyPrimResultsToResponse(
+  destinations,
+  results,
+  times,
+  errors,
+  details
+) {
+  destinations.forEach(
+    (destination) => {
+      const selected =
+        results[
+          destination.key
+        ];
+
+      destination.names.forEach(
+        (name) => {
+          if (!selected?.result) {
+            times[name] = null;
+
+            errors[name] =
+              selected?.error ||
+              "Trajet indisponible";
+
+            return;
+          }
+
+          times[name] =
+            selected.result.minutes;
+
+          details[name] = {
+            minutes:
+              selected.result.minutes,
+
+            departure:
+              selected.result.journey
+                ?.departure_date_time ||
+              null,
+
+            arrival:
+              selected.result.journey
+                ?.arrival_date_time ||
+              null,
+
+            destination:
+              destination.key,
+          };
+        }
+      );
     }
   );
-
-  const data = await getJson(response, "SNCF");
-  const result = selectBestJourney(data);
-
-  if (!result) {
-    throw new Error("SNCF : aucun trajet trouvé");
-  }
-
-  return result;
-}
-
-async function getJourney(
-  apiKey,
-  sncfApiKey,
-  from,
-  to,
-  allowSncfFallback = false
-) {
-  try {
-    return await getPrimJourney(
-      apiKey,
-      from,
-      to
-    );
-  } catch (primError) {
-    if (
-      !allowSncfFallback ||
-      !sncfApiKey
-    ) {
-      throw primError;
-    }
-
-    return await getSncfJourney(
-      sncfApiKey,
-      from,
-      to
-    );
-  }
 }
 
 export default async function handler(
@@ -273,7 +403,8 @@ export default async function handler(
     process.env.SNCF_API_KEY;
 
   const site = String(
-    process.env.VITE_SITE || "lpdl"
+    process.env.VITE_SITE ||
+      "lpdl"
   ).toLowerCase();
 
   if (!IDFM_API_KEY) {
@@ -284,7 +415,7 @@ export default async function handler(
   }
 
   // ============================================================
-  // CONFIGURATION LPDL
+  // LPDL
   // ============================================================
 
   const lpdlStart = {
@@ -292,7 +423,7 @@ export default async function handler(
     lon: 2.343634,
   };
 
-  const gareDuNord = {
+  const lpdlGareDuNord = {
     lat: 48.8809,
     lon: 2.3553,
   };
@@ -304,87 +435,96 @@ export default async function handler(
       lat: 48.882222,
       lon: 2.704167,
     },
+
     {
       key: "nathan",
       names: ["nathan"],
       lat: 48.824744,
       lon: 2.318872,
     },
+
     {
       key: "michael",
       names: ["michael"],
       lat: 48.895631,
       lon: 2.223138,
     },
+
     {
       key: "cedric",
       names: ["cedric"],
       lat: 48.963873,
       lon: 2.372285,
     },
+
     {
       key: "liazide",
       names: ["liazide"],
       lat: 49.019392,
       lon: 2.153672,
     },
+
     {
       key: "poissy",
-      names: ["rachid", "toufik"],
+      names: [
+        "rachid",
+        "toufik"
+      ],
       lat: 48.933,
       lon: 2.04,
     },
   ];
 
   // ============================================================
-  // CONFIGURATION RHAPSODY
-  // Départ : 27-31 rue de Clichy, 93400 Saint-Ouen-sur-Seine
+  // RHAPSODY
   // ============================================================
 
   const rhapsodyStart = {
-    // Point de départ utilisé pour l'itinéraire autour du bâtiment.
-    // La station Mairie de Saint-Ouen est à proximité immédiate.
     lat: 48.911619,
     lon: 2.333753,
   };
 
+  const rhapsodyGareDuNord = {
+    lat: 48.8809,
+    lon: 2.3553,
+  };
+
   const rhapsodyDestinations = [
-    {
-      key: "nicodeme",
-      names: ["nicodeme"],
-      lat: 49.1989,
-      lon: 2.21,
-    },
     {
       key: "alvaro",
       names: ["alvaro"],
       lat: 48.9833,
       lon: 2.2667,
     },
+
     {
       key: "camara",
       names: ["camara"],
       lat: 48.904444,
       lon: 2.306389,
     },
+
     {
       key: "bazil",
       names: ["bazil"],
       lat: 49.05227,
-      lon: 2.66350,
+      lon: 2.6635,
     },
+
     {
       key: "bongo",
       names: ["bongo"],
-      lat: 49.0000,
+      lat: 49.0,
       lon: 2.3333,
     },
+
     {
       key: "picart",
       names: ["picart"],
       lat: 48.800833,
       lon: 2.173056,
     },
+
     {
       key: "royer",
       names: ["royer"],
@@ -402,245 +542,36 @@ export default async function handler(
     // RHAPSODY
     // ============================================================
 
-    if (site === "rhapsody") {
-      const results = {};
+    if (
+      site === "rhapsody"
+    ) {
+      // ----------------------------------------------------------
+      // Les 6 trajets IDFM habituels
+      // ----------------------------------------------------------
 
-      const jobs =
-        rhapsodyDestinations.map(
-          (destination) => ({
-            key: destination.key,
-            destination,
-          })
+      const rhapsodyResults =
+        await getPrimBatch(
+          IDFM_API_KEY,
+          rhapsodyStart,
+          rhapsodyDestinations
         );
 
-      // Maximum 4 requêtes simultanées pour ne pas saturer PRIM.
-      for (
-        let index = 0;
-        index < jobs.length;
-        index += 4
-      ) {
-        const batch =
-          jobs.slice(
-            index,
-            index + 4
-          );
-
-        const batchResults =
-          await Promise.all(
-            batch.map(
-              async ({
-                key,
-                destination,
-              }) => {
-                try {
-                  const result =
-                    await getJourney(
-                      IDFM_API_KEY,
-                      SNCF_API_KEY,
-                      rhapsodyStart,
-                      destination,
-                      true
-                    );
-
-                  return {
-                    key,
-                    result,
-                    error: null,
-                  };
-                } catch (error) {
-                  return {
-                    key,
-                    result: null,
-                    error:
-                      error instanceof Error
-                        ? error.message
-                        : String(error),
-                  };
-                }
-              }
-            )
-          );
-
-        batchResults.forEach(
-          (item) => {
-            results[item.key] = item;
-          }
-        );
-
-        if (
-          index + 4 <
-          jobs.length
-        ) {
-          await pause(1100);
-        }
-      }
-
-      rhapsodyDestinations.forEach(
-        (destination) => {
-          const selected =
-            results[
-              destination.key
-            ];
-
-          destination.names.forEach(
-            (name) => {
-              if (!selected?.result) {
-                times[name] = null;
-
-                errors[name] =
-                  selected?.error ||
-                  "Trajet indisponible";
-
-                return;
-              }
-
-              times[name] =
-                selected.result.minutes;
-
-              details[name] = {
-                minutes:
-                  selected.result.minutes,
-
-                departure:
-                  selected.result.journey
-                    ?.departure_date_time ||
-                  null,
-
-                arrival:
-                  selected.result.journey
-                    ?.arrival_date_time ||
-                  null,
-
-                destination:
-                  destination.key,
-              };
-            }
-          );
-        }
-      );
-    } else {
-      // ============================================================
-      // LPDL
-      // ============================================================
-
-      const jobs = [
-        ...lpdlDestinations.map(
-          (destination) => ({
-            key: destination.key,
-            destination,
-          })
-        ),
-        {
-          key: "gareDuNord",
-          destination: gareDuNord,
-        },
-      ];
-
-      const results = {};
-
-      for (
-        let index = 0;
-        index < jobs.length;
-        index += 4
-      ) {
-        const batch =
-          jobs.slice(
-            index,
-            index + 4
-          );
-
-        const batchResults =
-          await Promise.all(
-            batch.map(
-              async ({
-                key,
-                destination,
-              }) => {
-                try {
-                  const result =
-                    await getPrimJourney(
-                      IDFM_API_KEY,
-                      lpdlStart,
-                      destination
-                    );
-
-                  return {
-                    key,
-                    result,
-                    error: null,
-                  };
-                } catch (error) {
-                  return {
-                    key,
-                    result: null,
-                    error:
-                      error instanceof Error
-                        ? error.message
-                        : String(error),
-                  };
-                }
-              }
-            )
-          );
-
-        batchResults.forEach(
-          (item) => {
-            results[item.key] = item;
-          }
-        );
-
-        if (
-          index + 4 <
-          jobs.length
-        ) {
-          await pause(1100);
-        }
-      }
-
-      lpdlDestinations.forEach(
-        (destination) => {
-          const selected =
-            results[
-              destination.key
-            ];
-
-          destination.names.forEach(
-            (name) => {
-              if (!selected?.result) {
-                times[name] = null;
-
-                errors[name] =
-                  selected?.error ||
-                  "Trajet indisponible";
-
-                return;
-              }
-
-              times[name] =
-                selected.result.minutes;
-
-              details[name] = {
-                minutes:
-                  selected.result.minutes,
-
-                departure:
-                  selected.result.journey
-                    ?.departure_date_time ||
-                  null,
-
-                arrival:
-                  selected.result.journey
-                    ?.arrival_date_time ||
-                  null,
-              };
-            }
-          );
-        }
+      copyPrimResultsToResponse(
+        rhapsodyDestinations,
+        rhapsodyResults,
+        times,
+        errors,
+        details
       );
 
-      // ============================================================
-      // JASON — LPDL -> Gare du Nord -> TER -> Compiègne
-      // ============================================================
+      // ----------------------------------------------------------
+      // NICODEME
+      //
+      // Rhapsody
+      // -> Gare du Nord avec IDFM
+      // -> TER avec SNCF
+      // -> Bornel-Belle-Église
+      // ----------------------------------------------------------
 
       try {
         if (!SNCF_API_KEY) {
@@ -649,25 +580,31 @@ export default async function handler(
           );
         }
 
-        const firstLeg =
-          results.gareDuNord;
+        const gareDuNordJourney =
+          await getPrimJourney(
+            IDFM_API_KEY,
+            rhapsodyStart,
+            rhapsodyGareDuNord
+          );
 
-        if (!firstLeg?.result) {
+        const gareArrival =
+          gareDuNordJourney
+            .journey
+            ?.arrival_date_time;
+
+        if (!gareArrival) {
           throw new Error(
-            firstLeg?.error ||
-              "Trajet vers Gare du Nord indisponible"
+            "Impossible de récupérer l'arrivée à Gare du Nord"
           );
         }
 
+        // Temps de correspondance
+        // volontairement fixé à 10 minutes.
         const transferMinutes = 10;
-
-        const arrivalGareDuNord =
-          firstLeg.result.journey
-            .arrival_date_time;
 
         const terSearchTime =
           addMinutes(
-            arrivalGareDuNord,
+            gareArrival,
             transferMinutes
           );
 
@@ -677,37 +614,179 @@ export default async function handler(
           );
         }
 
-        const ter =
-          await getSncfTer(
+        // Paris Gare du Nord
+        // UIC = 87271007
+        //
+        // Bornel - Belle-Église
+        // UIC = 87276717
+
+        const terJourney =
+          await getSncfStationJourney(
             SNCF_API_KEY,
-            terSearchTime
+
+            "stop_area:SNCF:87271007",
+
+            "stop_area:SNCF:87276717",
+
+            terSearchTime,
+
+            true
+          );
+
+        times.nicodeme =
+          gareDuNordJourney.minutes +
+          transferMinutes +
+          terJourney.minutes;
+
+        details.nicodeme = {
+          destination:
+            "Bornel-Belle-Église",
+
+          rhapsodyToGareDuNord:
+            gareDuNordJourney.minutes,
+
+          correspondence:
+            transferMinutes,
+
+          gareDuNordToBornel:
+            terJourney.minutes,
+
+          gareDuNordArrival:
+            gareArrival,
+
+          terDeparture:
+            terJourney.journey
+              ?.departure_date_time ||
+            null,
+
+          bornelArrival:
+            terJourney.journey
+              ?.arrival_date_time ||
+            null,
+
+          totalMinutes:
+            times.nicodeme,
+        };
+      } catch (error) {
+        times.nicodeme = null;
+
+        errors.nicodeme =
+          error instanceof Error
+            ? error.message
+            : String(error);
+      }
+    } else {
+      // ============================================================
+      // LPDL
+      // ============================================================
+
+      const lpdlResults =
+        await getPrimBatch(
+          IDFM_API_KEY,
+          lpdlStart,
+          lpdlDestinations
+        );
+
+      copyPrimResultsToResponse(
+        lpdlDestinations,
+        lpdlResults,
+        times,
+        errors,
+        details
+      );
+
+      // ----------------------------------------------------------
+      // JASON
+      //
+      // LPDL
+      // -> Gare du Nord
+      // -> TER
+      // -> Compiègne
+      // ----------------------------------------------------------
+
+      try {
+        if (!SNCF_API_KEY) {
+          throw new Error(
+            "SNCF_API_KEY non configurée dans Vercel"
+          );
+        }
+
+        const gareDuNordJourney =
+          await getPrimJourney(
+            IDFM_API_KEY,
+            lpdlStart,
+            lpdlGareDuNord
+          );
+
+        const gareArrival =
+          gareDuNordJourney
+            .journey
+            ?.arrival_date_time;
+
+        if (!gareArrival) {
+          throw new Error(
+            "Impossible de récupérer l'arrivée à Gare du Nord"
+          );
+        }
+
+        const transferMinutes = 10;
+
+        const terSearchTime =
+          addMinutes(
+            gareArrival,
+            transferMinutes
+          );
+
+        if (!terSearchTime) {
+          throw new Error(
+            "Horaire Gare du Nord invalide"
+          );
+        }
+
+        // Compiègne
+        // UIC = 87276691
+
+        const terJourney =
+          await getSncfStationJourney(
+            SNCF_API_KEY,
+
+            "stop_area:SNCF:87271007",
+
+            "stop_area:SNCF:87276691",
+
+            terSearchTime,
+
+            true
           );
 
         times.jason =
-          firstLeg.result.minutes +
+          gareDuNordJourney.minutes +
           transferMinutes +
-          ter.minutes;
+          terJourney.minutes;
 
         details.jason = {
           destination:
             "Gare de Compiègne",
 
           laPosteToGareDuNord:
-            firstLeg.result.minutes,
+            gareDuNordJourney.minutes,
 
           correspondence:
             transferMinutes,
 
-          waitingAndTer:
-            ter.minutes,
+          gareDuNordToCompiegne:
+            terJourney.minutes,
+
+          gareDuNordArrival:
+            gareArrival,
 
           terDeparture:
-            ter.journey
+            terJourney.journey
               ?.departure_date_time ||
             null,
 
           arrivalCompiegne:
-            ter.journey
+            terJourney.journey
               ?.arrival_date_time ||
             null,
 
@@ -748,70 +827,4 @@ export default async function handler(
           : String(error),
     });
   }
-}
-
-async function getSncfTer(
-  apiKey,
-  departureDateTime
-) {
-  const params =
-    new URLSearchParams({
-      from:
-        "stop_area:SNCF:87271007",
-
-      to:
-        "stop_area:SNCF:87276691",
-
-      datetime:
-        departureDateTime,
-
-      datetime_represents:
-        "departure",
-
-      data_freshness:
-        "realtime",
-
-      count:
-        "10",
-    });
-
-  const basicAuth =
-    Buffer.from(
-      `${apiKey}:`
-    ).toString("base64");
-
-  const response =
-    await fetch(
-      `${SNCF_URL}?${params.toString()}`,
-      {
-        headers: {
-          Accept:
-            "application/json",
-
-          Authorization:
-            `Basic ${basicAuth}`,
-        },
-      }
-    );
-
-  const data =
-    await getJson(
-      response,
-      "SNCF"
-    );
-
-  const result =
-    selectBestJourney(
-      data,
-      departureDateTime,
-      true
-    );
-
-  if (!result) {
-    throw new Error(
-      "SNCF : aucun TER trouvé"
-    );
-  }
-
-  return result;
 }
