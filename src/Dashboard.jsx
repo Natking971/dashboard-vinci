@@ -2687,6 +2687,7 @@ function TrajetPersoSlide({ trajetTimes }) {
         padding: 20,
         display: "flex",
         flexDirection: "column",
+        boxSizing: "border-box",
       }}
     >
       <div
@@ -2704,11 +2705,12 @@ function TrajetPersoSlide({ trajetTimes }) {
           flex: 1,
           display: "grid",
           gridTemplateColumns: "repeat(4, 1fr)",
+          gridTemplateRows: "repeat(2, minmax(0, 1fr))",
           gap: 10,
           overflow: "hidden",
         }}
       >
-        {TRAJETS_CONFIG.map(personne => {
+        {TRAJETS_CONFIG.map((personne, index) => {
           const tempsBrut = trajetTimes?.[personne.key];
           const temps =
             tempsBrut !== null &&
@@ -2740,6 +2742,15 @@ function TrajetPersoSlide({ trajetTimes }) {
                 alignItems: "center",
                 justifyContent: "center",
                 minHeight: 0,
+                boxSizing: "border-box",
+
+                // Rhapsody : 7 cartes = 4 en haut + 3 centrées en bas.
+                gridColumn:
+                  SITE.id === "rhapsody" &&
+                  TRAJETS_CONFIG.length === 7 &&
+                  index === 4
+                    ? "2"
+                    : undefined,
               }}
             >
               <div
@@ -2751,6 +2762,7 @@ function TrajetPersoSlide({ trajetTimes }) {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  flexShrink: 0,
                 }}
               >
                 <svg
@@ -2840,6 +2852,7 @@ function TrajetPersoSlide({ trajetTimes }) {
                 style={{
                   fontSize: 14,
                   fontWeight: 600,
+                  lineHeight: 1.2,
                 }}
               >
                 {personne.nom}
@@ -2850,6 +2863,7 @@ function TrajetPersoSlide({ trajetTimes }) {
                   fontSize: 11,
                   opacity: 0.7,
                   marginTop: 4,
+                  lineHeight: 1.2,
                 }}
               >
                 {personne.dest}
@@ -2933,9 +2947,21 @@ export default function Dashboard() {
             client: row.client || "",
           };
           // Détermination de la semaine
+          // IMPORTANT : une ligne de planning doit obligatoirement
+          // contenir "actuelle" ou "prochaine" pour être affichée.
+          // Une cellule vide (ou une valeur inconnue) est ignorée.
           const semaine = (row.semaine || "").toLowerCase().trim();
-          const isNext = semaine === "prochaine" || semaine === "next" || semaine === "suivante";
-          const target = isNext ? planningByTechNext : planningByTechCurrent;
+
+          let target = null;
+
+          if (semaine === "actuelle") {
+            target = planningByTechCurrent;
+          } else if (semaine === "prochaine") {
+            target = planningByTechNext;
+          } else {
+            return;
+          }
+
           if (!target[techId]) target[techId] = [];
           target[techId].push(task);
         });
