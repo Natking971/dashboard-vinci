@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { getSiteConfig } from "./siteConfig";
 
 
-// ─── CONFIGURATIO ──────────────────────────────────────────────────────────
+// ─── CONFIGURATION ──────────────────────────────────────────────────────────
 
 const SLIDE_DURATION = 30000;
 const QUOTES_SLIDE_DURATION = 60000; // Plus long pour laisser défiler tous les devis
