@@ -2563,7 +2563,7 @@ const TRAJET_HABITUEL = SITE.id === "rhapsody"
       nathan: 24,
       michael: 12,
       jason: 36,
-      cedric: 24,
+      cedric: 81, // Gare de Longueville : référence 1 h 21 min selon l’itinéraire fourni
       liazide: 41,
       rachid: 41,
       toufik: 41,
@@ -2584,7 +2584,7 @@ const TRAJETS_CONFIG = SITE.id === "rhapsody"
       { key: "nathan", nom: "Nathan", dest: "Jean Moulin" },
       { key: "michael", nom: "Michael", dest: "Nanterre" },
       { key: "jason", nom: "Jason", dest: "Gare de Compiègne" },
-      { key: "cedric", nom: "Cedric", dest: "Pierrefitte" },
+      { key: "cedric", nom: "Cedric", dest: "Gare de Longueville" },
       { key: "liazide", nom: "Liazide", dest: "Pierrelaye" },
       { key: "rachid", nom: "Rachid", dest: "Poissy" },
       { key: "toufik", nom: "Toufik", dest: "Poissy" },
@@ -2844,18 +2844,10 @@ function TrajetPersoSlide({ trajetTimes }) {
 
                   <div
                     style={{
-                      fontSize:
-                        temps !== null && Number(temps) >= 60
-                          ? 20
-                          : 28,
+                      fontSize: 28,
                       lineHeight: 1,
                       fontWeight: "bold",
                       color: status.color,
-                      whiteSpace: "nowrap",
-                      letterSpacing:
-                        temps !== null && Number(temps) >= 60
-                          ? "-0.3px"
-                          : "normal",
                     }}
                   >
                     {formatTrajetDuration(temps)}
@@ -2924,7 +2916,7 @@ export default function Dashboard() {
           nathan: 27,
           michael: 12,
           jason: 77,
-          cedric: 28,
+          cedric: 81,
           liazide: 35,
           rachid: 30,
           toufik: 30,
