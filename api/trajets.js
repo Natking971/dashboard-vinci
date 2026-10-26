@@ -1,7 +1,7 @@
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Content-Type", "application/json");
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Cache-Control", "no-store, max-age=0");
 
   const apiKey = process.env.IDFM_API_KEY;
@@ -58,6 +58,7 @@ export default async function handler(req, res) {
         value.label ||
         value.value ||
         value.shortName ||
+        value.short_name ||
         value.code ||
         ""
       );
@@ -95,14 +96,24 @@ export default async function handler(req, res) {
       .trim();
   }
 
+  // Uniformise les identifiants IDFM pour permettre
+  // la correspondance entre line:IDFM:... et IDFM:...
+  function normalizeLineId(value) {
+    return String(value || "")
+      .trim()
+      .replace(/^line:/i, "");
+  }
+
   function findCode(value = "") {
     const n = normalize(value);
 
     if (!n) return null;
 
-    // Correspondance directe avec les codes connus.
-    if (ALL_CODES.includes(n.toUpperCase())) {
-      return n.toUpperCase();
+    // Correspondance directe avec un code connu.
+    const directCode = n.toUpperCase();
+
+    if (ALL_CODES.includes(directCode)) {
+      return directCode;
     }
 
     // RER A à E.
@@ -113,13 +124,17 @@ export default async function handler(req, res) {
     }
 
     // Transilien H, J, K, L, N, P, R, U ou V.
+    // Correction : aucun espace parasite dans la classe.
     const transilien = n.match(
-      /\btransilien\s*(?:ligne\s*)?([hj klnpruv])\b/i
+      /\btransilien\s*(?:ligne\s*)?([hjklnpruv])\b/i
     );
 
     if (transilien) {
-      const code = transilien[1].replace(/\s/g, "").toUpperCase();
-      if (ALL_CODES.includes(code)) return code;
+      const code = transilien[1].toUpperCase();
+
+      if (ALL_CODES.includes(code)) {
+        return code;
+      }
     }
 
     // Ligne J, Line J, Train J, Ligne 13, Line 3B, etc.
@@ -128,12 +143,14 @@ export default async function handler(req, res) {
     );
 
     if (line) {
-      let code = line[1]
+      const code = line[1]
         .replace(/\s+/g, "")
         .replace(/bis$/i, "B")
         .toUpperCase();
 
-      if (ALL_CODES.includes(code)) return code;
+      if (ALL_CODES.includes(code)) {
+        return code;
+      }
     }
 
     // Métro 3, Métro 3bis, Métro 7bis.
@@ -146,10 +163,11 @@ export default async function handler(req, res) {
         .replace(/bis$/i, "B")
         .toUpperCase();
 
-      if (ALL_CODES.includes(code)) return code;
+      if (ALL_CODES.includes(code)) {
+        return code;
+      }
     }
 
-    // Certaines réponses fournissent simplement « Transilien J ».
     const aliases = {
       "transilien h": "H",
       "transilien j": "J",
@@ -198,12 +216,17 @@ export default async function handler(req, res) {
       obj.code,
       obj.name,
       obj.label,
+      obj.lineName,
+      obj.line_name,
       obj.line,
     ];
 
     for (const candidate of candidates) {
       const code = findCode(text(candidate));
-      if (code) return code;
+
+      if (code) {
+        return code;
+      }
     }
 
     return null;
@@ -299,32 +322,86 @@ export default async function handler(req, res) {
       .map(String);
   }
 
+  // Récupère les objets impactés et ajoute les lignes présentes
+  // dans impactedSections[].lineId.
   function extractImpactedObjects(disruption) {
-    return [
+    const objects = [
       ...array(disruption?.impactedObjects),
       ...array(disruption?.impacted_objects),
       ...array(disruption?.ptObjects),
       ...array(disruption?.pt_objects),
     ];
+
+    const sections = [
+      ...array(disruption?.impactedSections),
+      ...array(disruption?.impacted_sections),
+    ];
+
+    for (const section of sections) {
+      if (!section || typeof section !== "object") {
+        continue;
+      }
+
+      const lineObject = section.line;
+
+      const lineId = text(
+        section.lineId ||
+        section.line_id ||
+        (lineObject && typeof lineObject === "object"
+          ? lineObject.id || lineObject.lineId || lineObject.line_id
+          : "")
+      );
+
+      // Si l'API fournit directement un code de ligne,
+      // on le conserve également.
+      const lineCode = codeFromObject(lineObject);
+
+      const lineName = text(
+        section.lineName ||
+        section.line_name ||
+        lineObject
+      );
+
+      if (lineId) {
+        objects.push({
+          type: "line",
+          id: lineId,
+          name: lineName,
+          shortName: lineCode || "",
+        });
+      } else if (lineCode) {
+        objects.push({
+          type: "line",
+          name: lineName,
+          shortName: lineCode,
+        });
+      }
+    }
+
+    return objects;
   }
 
   function explicitCodesFromText(value = "") {
     const n = normalize(value);
     const codes = new Set();
 
-    // Recherche uniquement les formulations explicites de ligne.
+    // Recherche de formulations explicites de ligne.
     const patterns = [
-      /\btransilien\s*(?:ligne\s*)?([hj klnpruv])\b/gi,
-      /\b(?:ligne|line|train)\s*[-:]?\s*([hj klnpruv])\b/gi,
+      /\btransilien\s*(?:ligne\s*)?([hjklnpruv])\b/gi,
+      /\b(?:ligne|line|train)\s*[-:]?\s*([hjklnpruv])\b/gi,
       /\brer\s*[-:]?\s*([a-e])\b/gi,
       /\bmetro\s*(\d{1,2}(?:bis|b)?)\b/gi,
+      /\b(?:ligne|line|metro)\s*(\d{1,2}(?:bis|b)?)\b/gi,
     ];
 
     for (const pattern of patterns) {
       let match;
 
       while ((match = pattern.exec(n)) !== null) {
-        let code = match[1].replace(/\s/g, "").toUpperCase();
+        let code = match[1]
+          .replace(/\s/g, "")
+          .toUpperCase();
+
         code = code.replace(/BIS$/i, "B");
 
         if (ALL_CODES.includes(code)) {
@@ -363,9 +440,19 @@ export default async function handler(req, res) {
       ? data.lines
       : [];
 
-    // Associe l'identifiant technique IDFM au code affiché
-    // dans le dashboard, par exemple line:IDFM:... -> J.
+    // Associe les identifiants techniques IDFM aux codes affichés
+    // dans le dashboard : par exemple line:IDFM:C01394 -> J.
     const lineCodeById = new Map();
+
+    function registerLineId(id, code) {
+      if (!id || !code) return;
+
+      const originalId = String(id).trim();
+      const normalizedId = normalizeLineId(originalId);
+
+      lineCodeById.set(originalId, code);
+      lineCodeById.set(normalizedId, code);
+    }
 
     for (const line of sourceLines) {
       const code = codeFromObject(line);
@@ -373,28 +460,59 @@ export default async function handler(req, res) {
       if (!code) continue;
 
       for (const id of getLineIds(line)) {
-        lineCodeById.set(id, code);
+        registerLineId(id, code);
       }
+    }
+
+    function findCodeByLineId(id) {
+      if (!id) return null;
+
+      const originalId = String(id).trim();
+      const normalizedId = normalizeLineId(originalId);
+
+      return (
+        lineCodeById.get(originalId) ||
+        lineCodeById.get(normalizedId) ||
+        null
+      );
     }
 
     function codesForDisruption(disruption) {
       const codes = new Set();
-
       const disruptionId = text(disruption?.id);
 
       // 1. Lignes directement présentes dans le message.
       for (const line of array(disruption?.lines)) {
         const code = codeFromObject(line);
-        if (code) codes.add(code);
+
+        if (code) {
+          codes.add(code);
+        }
+
+        if (line && typeof line === "object") {
+          const lineId = text(
+            line.id || line.lineId || line.line_id
+          );
+
+          const mappedCode = findCodeByLineId(lineId);
+
+          if (mappedCode) {
+            codes.add(mappedCode);
+          }
+        }
       }
 
-      // 2. Objets impactés liés au message.
+      // 2. Objets impactés, y compris impactedSections[].lineId.
       const impacted = extractImpactedObjects(disruption);
 
       for (const obj of impacted) {
         if (!obj || typeof obj !== "object") {
           const code = findCode(text(obj));
-          if (code) codes.add(code);
+
+          if (code) {
+            codes.add(code);
+          }
+
           continue;
         }
 
@@ -402,43 +520,58 @@ export default async function handler(req, res) {
           text(obj.type || obj.embedded_type || obj.embeddedType)
         );
 
-        const id = text(obj.id);
+        const id = text(
+          obj.id || obj.lineId || obj.line_id
+        );
 
-        // On privilégie les objets de type ligne.
         const isLine =
           type === "line" ||
           type.includes("line") ||
           /^line:/i.test(id);
 
-        if (type && !isLine) continue;
+        // Évite d'attribuer une perturbation à une ligne
+        // simplement parce qu'un arrêt ou une gare est mentionné.
+        if (type && !isLine) {
+          continue;
+        }
 
         let code = codeFromObject(obj);
 
         if (!code && id) {
-          code = lineCodeById.get(id) || null;
+          code = findCodeByLineId(id);
         }
 
         if (code) {
           codes.add(code);
         }
 
-        // Certaines réponses portent le lien dans disruptionIds.
+        // Certains objets contiennent directement les identifiants
+        // des perturbations auxquelles ils sont associés.
         const linkedIds = array(
           obj.disruptionIds || obj.disruption_ids
-        ).map(text);
+        ).map((item) => {
+          if (item && typeof item === "object") {
+            return text(item.id);
+          }
+
+          return text(item);
+        });
 
         if (
           disruptionId &&
           linkedIds.includes(disruptionId) &&
           !code
         ) {
-          const idCode = lineCodeById.get(id);
-          if (idCode) codes.add(idCode);
+          const idCode = findCodeByLineId(id);
+
+          if (idCode) {
+            codes.add(idCode);
+          }
         }
       }
 
-      // 3. Certains flux rattachent les identifiants de messages
-      // directement aux objets lignes de la réponse globale.
+      // 3. Vérifie également les liens entre lignes et perturbations
+      // dans la liste globale des lignes.
       for (const line of sourceLines) {
         const linkedIds = array(
           line.disruptionIds ||
@@ -457,12 +590,15 @@ export default async function handler(req, res) {
           linkedIds.includes(disruptionId)
         ) {
           const code = codeFromObject(line);
-          if (code) codes.add(code);
+
+          if (code) {
+            codes.add(code);
+          }
         }
       }
 
-      // 4. Dernier recours : ligne explicitement nommée dans le titre
-      // ou le message. On n'infère pas une ligne à partir d'un arrêt.
+      // 4. Dernier recours : détecte uniquement les lignes
+      // explicitement nommées dans le titre ou le message.
       if (codes.size === 0) {
         const fullText = [
           text(disruption?.title),
@@ -478,7 +614,7 @@ export default async function handler(req, res) {
       return [...codes];
     }
 
-    // Diagnostic accessible avec /api/transport?debug=1
+    // Diagnostic : /api/transport?debug=1
     if (req.query?.debug === "1") {
       const rootLineJ = sourceLines
         .filter((line) => codeFromObject(line) === "J")
@@ -510,11 +646,16 @@ export default async function handler(req, res) {
           impactedObjects: extractImpactedObjects(disruption),
         }));
 
+      const lineJMappings = [...lineCodeById.entries()]
+        .filter(([, code]) => code === "J")
+        .map(([id, code]) => ({ id, code }));
+
       return res.status(200).json({
         debug: true,
         total_disruptions: disruptions.length,
         total_lines: sourceLines.length,
         rootLineJ,
+        lineJMappings,
         lineJCandidates,
       });
     }
@@ -525,6 +666,7 @@ export default async function handler(req, res) {
       const cause = text(disruption?.cause).toUpperCase();
       const severity = text(disruption?.severity).toUpperCase();
 
+      // Ignore les messages purement informatifs ou normaux.
       if (
         cause === "INFORMATION" ||
         cause === "NORMAL" ||
@@ -546,7 +688,6 @@ export default async function handler(req, res) {
         "";
 
       const message = translate(rawMessage) || causeFR;
-
       const codes = codesForDisruption(disruption);
 
       for (const code of codes) {
@@ -571,6 +712,8 @@ export default async function handler(req, res) {
       }
     }
 
+    // Renvoie toutes les lignes attendues par le dashboard,
+    // même lorsqu'aucune perturbation n'est trouvée.
     const lines = ALL_CODES.map((code) => ({
       code,
       disruptions: lineMap[code] || [],
@@ -578,8 +721,8 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       lines,
-      updatedAt: text(data.lastUpdatedDate) ||
-        new Date().toISOString(),
+      updatedAt:
+        text(data.lastUpdatedDate) || new Date().toISOString(),
       total_disruptions: disruptions.length,
     });
   } catch (error) {
