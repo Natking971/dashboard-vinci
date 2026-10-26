@@ -1,705 +1,591 @@
-// api/trajets.js — Dashboard Vinci multi-site
-// Variables Vercel : IDFM_API_KEY obligatoire ; SNCF_API_KEY pour les trajets en train.
-// VITE_SITE = lpdl (par défaut) ou rhapsody.
 
-const PRIM_URL =
-  "https://prim.iledefrance-mobilites.fr/marketplace/v2/navitia/journeys";
+export default async function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Content-Type", "application/json");
+  res.setHeader("Cache-Control", "no-store, max-age=0");
 
-const SNCF_URL =
-  "https://api.sncf.com/v1/coverage/sncf/journeys";
+  const apiKey = process.env.IDFM_API_KEY;
 
-const pause = (ms) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
-
-function parseDate(value) {
-  if (!/^\d{8}T\d{6}$/.test(value || "")) {
-    return null;
+  if (!apiKey) {
+    return res.status(200).json({
+      lines: [],
+      error: "IDFM_API_KEY non configuree",
+    });
   }
 
-  return Date.UTC(
-    Number(value.slice(0, 4)),
-    Number(value.slice(4, 6)) - 1,
-    Number(value.slice(6, 8)),
-    Number(value.slice(9, 11)),
-    Number(value.slice(11, 13)),
-    Number(value.slice(13, 15))
-  );
-}
+  const CODES_METRO = [
+    "1", "2", "3", "3B", "4", "5", "6", "7", "7B",
+    "8", "9", "10", "11", "12", "13", "14",
+  ];
 
-function formatDate(timestamp) {
-  const date = new Date(timestamp);
-  const pad = (value) => String(value).padStart(2, "0");
+  const CODES_RER = ["A", "B", "C", "D", "E"];
 
-  return (
-    `${date.getUTCFullYear()}` +
-    `${pad(date.getUTCMonth() + 1)}` +
-    `${pad(date.getUTCDate())}T` +
-    `${pad(date.getUTCHours())}` +
-    `${pad(date.getUTCMinutes())}` +
-    `${pad(date.getUTCSeconds())}`
-  );
-}
+  const CODES_TRANSILIEN = [
+    "H", "J", "K", "L", "N", "P", "R", "U", "V",
+  ];
 
-function addMinutes(value, minutes) {
-  const timestamp = parseDate(value);
+  const ALL_CODES = [
+    ...CODES_METRO,
+    ...CODES_RER,
+    ...CODES_TRANSILIEN,
+  ];
 
-  return timestamp === null
-    ? null
-    : formatDate(timestamp + minutes * 60000);
-}
+  const CAUSE_FR = {
+    TRAVAUX: "Travaux",
+    PERTURBATION: "Perturbation",
+    INCIDENT: "Incident",
+    INFORMATION: "Information",
+    PERTURBEE: "Perturbation",
+    BLOQUANTE: "Perturbation",
+    BLOQUEE: "Bloqué",
+    REDUITE: "Trafic réduit",
+    GREVE: "Grève",
+    ACCIDENT: "Accident",
+    PANNE: "Panne",
+    NORMAL: "Normal",
+    TRAVAUX_PLANIFIES: "Travaux planifiés",
+    MAJEURE: "Perturbation majeure",
+  };
 
-function minutesBetween(startValue, endValue) {
-  const start = parseDate(startValue);
-  const end = parseDate(endValue);
+  function text(value) {
+    if (typeof value === "string" || typeof value === "number") {
+      return String(value);
+    }
 
-  if (
-    start === null ||
-    end === null ||
-    end < start
-  ) {
-    return null;
+    if (value && typeof value === "object") {
+      return String(
+        value.name ||
+        value.label ||
+        value.value ||
+        value.shortName ||
+        value.code ||
+        ""
+      );
+    }
+
+    return "";
   }
 
-  return Math.round((end - start) / 60000);
-}
-
-function hasPublicTransport(journey) {
-  return journey?.sections?.some(
-    (section) => section.type === "public_transport"
-  );
-}
-
-function selectBestJourney(data, referenceDateTime = null) {
-  const journeys = (
-    Array.isArray(data?.journeys)
-      ? data.journeys
-      : []
-  ).filter(
-    (journey) =>
-      hasPublicTransport(journey) &&
-      journey.arrival_date_time &&
-      Number.isFinite(Number(journey.duration))
-  );
-
-  if (!journeys.length) {
-    return null;
+  function array(value) {
+    if (Array.isArray(value)) return value;
+    if (value == null) return [];
+    return [value];
   }
 
-  const reference =
-    referenceDateTime ||
-    data?.context?.current_datetime ||
-    journeys[0].departure_date_time;
+  function clean(value = "") {
+    return String(value)
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/&amp;/gi, "&")
+      .replace(/&#[0-9]+;/g, " ")
+      .replace(/[\u{1F000}-\u{1FFFF}]/gu, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
 
-  return journeys
-    .map((journey) => ({
-      journey,
-      minutes:
-        minutesBetween(
-          reference,
-          journey.arrival_date_time
-        ) ??
-        Math.round(Number(journey.duration) / 60),
-    }))
-    .sort((a, b) => a.minutes - b.minutes)[0];
-}
+  function normalize(value = "") {
+    return clean(value)
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[–—]/g, "-")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
 
-async function readJson(response, serviceName) {
-  const body = await response.text();
+  function findCode(value = "") {
+    const n = normalize(value);
 
-  if (!response.ok) {
-    throw new Error(
-      `${serviceName} HTTP ${response.status}: ${body.slice(0, 180)}`
+    if (!n) return null;
+
+    // Correspondance directe avec les codes connus.
+    if (ALL_CODES.includes(n.toUpperCase())) {
+      return n.toUpperCase();
+    }
+
+    // RER A à E.
+    const rer = n.match(/\brer\s*[-:]?\s*([a-e])\b/i);
+
+    if (rer) {
+      return rer[1].toUpperCase();
+    }
+
+    // Transilien H, J, K, L, N, P, R, U ou V.
+    const transilien = n.match(
+      /\btransilien\s*(?:ligne\s*)?([hj klnpruv])\b/i
     );
+
+    if (transilien) {
+      const code = transilien[1].replace(/\s/g, "").toUpperCase();
+      if (ALL_CODES.includes(code)) return code;
+    }
+
+    // Ligne J, Line J, Train J, Ligne 13, Line 3B, etc.
+    const line = n.match(
+      /\b(?:ligne|line|train)\s*[-:]?\s*([a-e]|\d{1,2}(?:bis|b)?)\b/i
+    );
+
+    if (line) {
+      let code = line[1]
+        .replace(/\s+/g, "")
+        .replace(/bis$/i, "B")
+        .toUpperCase();
+
+      if (ALL_CODES.includes(code)) return code;
+    }
+
+    // Métro 3, Métro 3bis, Métro 7bis.
+    const metro = n.match(
+      /\bmetro\s*(\d{1,2}(?:bis|b)?)\b/i
+    );
+
+    if (metro) {
+      const code = metro[1]
+        .replace(/bis$/i, "B")
+        .toUpperCase();
+
+      if (ALL_CODES.includes(code)) return code;
+    }
+
+    // Certaines réponses fournissent simplement « Transilien J ».
+    const aliases = {
+      "transilien h": "H",
+      "transilien j": "J",
+      "transilien k": "K",
+      "transilien l": "L",
+      "transilien n": "N",
+      "transilien p": "P",
+      "transilien r": "R",
+      "transilien u": "U",
+      "transilien v": "V",
+      "ligne h": "H",
+      "ligne j": "J",
+      "ligne k": "K",
+      "ligne l": "L",
+      "ligne n": "N",
+      "ligne p": "P",
+      "ligne r": "R",
+      "ligne u": "U",
+      "ligne v": "V",
+      "line h": "H",
+      "line j": "J",
+      "line k": "K",
+      "line l": "L",
+      "line n": "N",
+      "line p": "P",
+      "line r": "R",
+      "line u": "U",
+      "line v": "V",
+    };
+
+    return aliases[n] || null;
+  }
+
+  function codeFromObject(obj) {
+    if (typeof obj === "string") {
+      return findCode(obj);
+    }
+
+    if (!obj || typeof obj !== "object") {
+      return null;
+    }
+
+    const candidates = [
+      obj.shortName,
+      obj.short_name,
+      obj.code,
+      obj.name,
+      obj.label,
+      obj.line,
+    ];
+
+    for (const candidate of candidates) {
+      const code = findCode(text(candidate));
+      if (code) return code;
+    }
+
+    return null;
+  }
+
+  function translate(value = "") {
+    let t = clean(value);
+
+    const replacements = [
+      [/traffic is interrupted between (.+?) and (.+?)(?:\.|,|$)/gi,
+        "Trafic interrompu entre $1 et $2"],
+      [/traffic is interrupted on (.+?)(?:\.|$)/gi,
+        "Trafic interrompu sur $1"],
+      [/traffic is interrupted/gi, "Trafic interrompu"],
+      [/traffic interrupted/gi, "Trafic interrompu"],
+      [/traffic disrupted/gi, "Trafic perturbé"],
+      [/traffic is disrupted/gi, "Trafic perturbé"],
+      [/traffic is running normally/gi, "Trafic normal"],
+      [/train parked/gi, "Train en stationnement"],
+      [/train stalled/gi, "Train en panne"],
+      [/stop[s]? not served/gi, "Arrêt(s) non desservi(s)"],
+      [/station[s]? not served/gi, "Station(s) non desservie(s)"],
+      [/will not be served/gi, "ne sera pas desservi"],
+      [/will be served/gi, "sera desservi"],
+      [/departures? (?:are )?cancelled/gi, "Départs supprimés"],
+      [/the following departures are cancelled[:\s]*/gi,
+        "Départs supprimés : "],
+      [/cancelled/gi, "supprimé(s)"],
+      [/cancellation/gi, "suppression"],
+      [/replacement bus service is provided/gi,
+        "Bus de remplacement mis en place"],
+      [/replacement bus/gi, "bus de remplacement"],
+      [/due to construction/gi, "en raison de travaux"],
+      [/due to engineering works?/gi, "en raison de travaux techniques"],
+      [/due to works?/gi, "en raison de travaux"],
+      [/due to a breakdown/gi, "en raison d'une panne"],
+      [/due to an incident/gi, "en raison d'un incident"],
+      [/due to a strike/gi, "en raison d'une grève"],
+      [/engineering works?/gi, "travaux techniques"],
+      [/until further notice/gi, "jusqu'à nouvel ordre"],
+      [/in both directions?/gi, "dans les deux sens"],
+      [/last departure from/gi, "dernier départ depuis"],
+      [/last departure at/gi, "dernier départ à"],
+      [/a detour has been set up/gi,
+        "Un itinéraire de substitution est mis en place"],
+      [/the line will be diverted/gi, "La ligne sera déviée"],
+      [/will be diverted/gi, "sera déviée"],
+      [/diverted/gi, "déviée"],
+      [/platform/gi, "quai"],
+      [/monday/gi, "lundi"],
+      [/tuesday/gi, "mardi"],
+      [/wednesday/gi, "mercredi"],
+      [/thursday/gi, "jeudi"],
+      [/friday/gi, "vendredi"],
+      [/saturday/gi, "samedi"],
+      [/sunday/gi, "dimanche"],
+      [/january/gi, "janvier"],
+      [/february/gi, "février"],
+      [/march/gi, "mars"],
+      [/april/gi, "avril"],
+      [/may/gi, "mai"],
+      [/june/gi, "juin"],
+      [/july/gi, "juillet"],
+      [/august/gi, "août"],
+      [/september/gi, "septembre"],
+      [/october/gi, "octobre"],
+      [/november/gi, "novembre"],
+      [/december/gi, "décembre"],
+      [/thanks for your understanding\.?/gi,
+        "Merci de votre compréhension."],
+    ];
+
+    for (const [pattern, replacement] of replacements) {
+      t = t.replace(pattern, replacement);
+    }
+
+    t = t.replace(/\s+/g, " ").trim();
+
+    if (t) {
+      t = t.charAt(0).toUpperCase() + t.slice(1);
+    }
+
+    return t.substring(0, 150);
+  }
+
+  function getLineIds(line) {
+    return [
+      line?.id,
+      line?.lineId,
+      line?.line_id,
+    ]
+      .filter(Boolean)
+      .map(String);
+  }
+
+  function extractImpactedObjects(disruption) {
+    return [
+      ...array(disruption?.impactedObjects),
+      ...array(disruption?.impacted_objects),
+      ...array(disruption?.ptObjects),
+      ...array(disruption?.pt_objects),
+    ];
+  }
+
+  function explicitCodesFromText(value = "") {
+    const n = normalize(value);
+    const codes = new Set();
+
+    // Recherche uniquement les formulations explicites de ligne.
+    const patterns = [
+      /\btransilien\s*(?:ligne\s*)?([hj klnpruv])\b/gi,
+      /\b(?:ligne|line|train)\s*[-:]?\s*([hj klnpruv])\b/gi,
+      /\brer\s*[-:]?\s*([a-e])\b/gi,
+      /\bmetro\s*(\d{1,2}(?:bis|b)?)\b/gi,
+    ];
+
+    for (const pattern of patterns) {
+      let match;
+
+      while ((match = pattern.exec(n)) !== null) {
+        let code = match[1].replace(/\s/g, "").toUpperCase();
+        code = code.replace(/BIS$/i, "B");
+
+        if (ALL_CODES.includes(code)) {
+          codes.add(code);
+        }
+      }
+    }
+
+    return [...codes];
   }
 
   try {
-    return JSON.parse(body);
-  } catch {
-    throw new Error(
-      `${serviceName} a renvoyé une réponse JSON invalide`
+    const response = await fetch(
+      "https://prim.iledefrance-mobilites.fr/marketplace/disruptions_bulk/disruptions/v2",
+      {
+        headers: {
+          apikey: apiKey,
+          Accept: "application/json",
+        },
+      }
     );
-  }
-}
 
-async function getPrimJourney(apiKey, from, to) {
-  const params = new URLSearchParams({
-    from: `${from.lon};${from.lat}`,
-    to: `${to.lon};${to.lat}`,
-    data_freshness: "realtime",
-    datetime_represents: "departure",
-    count: "10",
-  });
-
-  const response = await fetch(
-    `${PRIM_URL}?${params.toString()}`,
-    {
-      headers: {
-        Accept: "application/json",
-        apikey: apiKey,
-      },
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
-  );
 
-  const data = await readJson(
-    response,
-    "PRIM / Île-de-France Mobilités"
-  );
+    const data = await response.json();
 
-  const result = selectBestJourney(data);
+    const disruptions = Array.isArray(data)
+      ? data
+      : Array.isArray(data.disruptions)
+        ? data.disruptions
+        : [];
 
-  if (!result) {
-    throw new Error(
-      "PRIM : aucun trajet en transport trouvé"
-    );
-  }
+    const sourceLines = Array.isArray(data.lines)
+      ? data.lines
+      : [];
 
-  return result;
-}
+    // Associe l'identifiant technique IDFM au code affiché
+    // dans le dashboard, par exemple line:IDFM:... -> J.
+    const lineCodeById = new Map();
 
-// SNCF : calcul des trajets ferroviaires.
-// La ligne P vers Longueville est un service Transilien,
-// donc on ne filtre pas les résultats pour garder uniquement les TER.
-async function getSncfStationJourney(
-  apiKey,
-  fromStationId,
-  toStationId,
-  departureDateTime
-) {
-  const params = new URLSearchParams({
-    from: fromStationId,
-    to: toStationId,
-    datetime: departureDateTime,
-    datetime_represents: "departure",
-    data_freshness: "realtime",
-    count: "10",
-  });
+    for (const line of sourceLines) {
+      const code = codeFromObject(line);
 
-  const authorization = Buffer
-    .from(`${apiKey}:`)
-    .toString("base64");
+      if (!code) continue;
 
-  const response = await fetch(
-    `${SNCF_URL}?${params.toString()}`,
-    {
-      headers: {
-        Accept: "application/json",
-        Authorization: `Basic ${authorization}`,
-      },
+      for (const id of getLineIds(line)) {
+        lineCodeById.set(id, code);
+      }
     }
-  );
 
-  const data = await readJson(response, "API SNCF");
-  const result = selectBestJourney(data, departureDateTime);
+    function codesForDisruption(disruption) {
+      const codes = new Set();
 
-  if (!result) {
-    throw new Error(
-      "SNCF : aucun trajet trouvé entre les deux gares"
-    );
-  }
+      const disruptionId = text(disruption?.id);
 
-  return result;
-}
+      // 1. Lignes directement présentes dans le message.
+      for (const line of array(disruption?.lines)) {
+        const code = codeFromObject(line);
+        if (code) codes.add(code);
+      }
 
-async function getPrimBatch(apiKey, start, destinations) {
-  const results = {};
+      // 2. Objets impactés liés au message.
+      const impacted = extractImpactedObjects(disruption);
 
-  for (
-    let index = 0;
-    index < destinations.length;
-    index += 4
-  ) {
-    const batch = destinations.slice(index, index + 4);
-
-    const batchResults = await Promise.all(
-      batch.map(async ({ key, destination }) => {
-        try {
-          return {
-            key,
-            result: await getPrimJourney(
-              apiKey,
-              start,
-              destination
-            ),
-            error: null,
-          };
-        } catch (error) {
-          return {
-            key,
-            result: null,
-            error:
-              error instanceof Error
-                ? error.message
-                : String(error),
-          };
+      for (const obj of impacted) {
+        if (!obj || typeof obj !== "object") {
+          const code = findCode(text(obj));
+          if (code) codes.add(code);
+          continue;
         }
-      })
-    );
 
-    batchResults.forEach((item) => {
-      results[item.key] = item;
-    });
+        const type = normalize(
+          text(obj.type || obj.embedded_type || obj.embeddedType)
+        );
 
-    if (index + 4 < destinations.length) {
-      await pause(1100);
+        const id = text(obj.id);
+
+        // On privilégie les objets de type ligne.
+        const isLine =
+          type === "line" ||
+          type.includes("line") ||
+          /^line:/i.test(id);
+
+        if (type && !isLine) continue;
+
+        let code = codeFromObject(obj);
+
+        if (!code && id) {
+          code = lineCodeById.get(id) || null;
+        }
+
+        if (code) {
+          codes.add(code);
+        }
+
+        // Certaines réponses portent le lien dans disruptionIds.
+        const linkedIds = array(
+          obj.disruptionIds || obj.disruption_ids
+        ).map(text);
+
+        if (
+          disruptionId &&
+          linkedIds.includes(disruptionId) &&
+          !code
+        ) {
+          const idCode = lineCodeById.get(id);
+          if (idCode) codes.add(idCode);
+        }
+      }
+
+      // 3. Certains flux rattachent les identifiants de messages
+      // directement aux objets lignes de la réponse globale.
+      for (const line of sourceLines) {
+        const linkedIds = array(
+          line.disruptionIds ||
+          line.disruption_ids ||
+          line.disruptions
+        ).map((item) => {
+          if (item && typeof item === "object") {
+            return text(item.id);
+          }
+
+          return text(item);
+        });
+
+        if (
+          disruptionId &&
+          linkedIds.includes(disruptionId)
+        ) {
+          const code = codeFromObject(line);
+          if (code) codes.add(code);
+        }
+      }
+
+      // 4. Dernier recours : ligne explicitement nommée dans le titre
+      // ou le message. On n'infère pas une ligne à partir d'un arrêt.
+      if (codes.size === 0) {
+        const fullText = [
+          text(disruption?.title),
+          text(disruption?.shortMessage),
+          text(disruption?.message),
+        ].join(" ");
+
+        for (const code of explicitCodesFromText(fullText)) {
+          codes.add(code);
+        }
+      }
+
+      return [...codes];
     }
-  }
 
-  return results;
-}
+    // Diagnostic accessible avec /api/transport?debug=1
+    if (req.query?.debug === "1") {
+      const rootLineJ = sourceLines
+        .filter((line) => codeFromObject(line) === "J")
+        .map((line) => ({
+          id: line.id,
+          name: line.name,
+          shortName: line.shortName,
+          mode: line.mode,
+          disruptionIds: line.disruptionIds,
+        }));
 
-function copyPrimResults(
-  destinations,
-  results,
-  times,
-  errors,
-  details
-) {
-  for (const destination of destinations) {
-    const selected = results[destination.key];
+      const lineJCandidates = disruptions
+        .filter((disruption) =>
+          codesForDisruption(disruption).includes("J")
+        )
+        .slice(0, 30)
+        .map((disruption) => ({
+          id: disruption.id,
+          title: disruption.title,
+          shortMessage: disruption.shortMessage,
+          message: translate(
+            disruption.shortMessage ||
+            disruption.message ||
+            disruption.title ||
+            ""
+          ),
+          cause: disruption.cause,
+          severity: disruption.severity,
+          impactedObjects: extractImpactedObjects(disruption),
+        }));
 
-    for (const name of destination.names) {
-      if (!selected?.result) {
-        times[name] = null;
-        errors[name] =
-          selected?.error || "Trajet indisponible";
+      return res.status(200).json({
+        debug: true,
+        total_disruptions: disruptions.length,
+        total_lines: sourceLines.length,
+        rootLineJ,
+        lineJCandidates,
+      });
+    }
+
+    const lineMap = {};
+
+    for (const disruption of disruptions) {
+      const cause = text(disruption?.cause).toUpperCase();
+      const severity = text(disruption?.severity).toUpperCase();
+
+      if (
+        cause === "INFORMATION" ||
+        cause === "NORMAL" ||
+        severity === "INFORMATION" ||
+        severity === "NORMAL"
+      ) {
         continue;
       }
 
-      times[name] = selected.result.minutes;
+      const causeFR =
+        CAUSE_FR[cause] ||
+        CAUSE_FR[severity] ||
+        "Perturbation";
 
-      details[name] = {
-        minutes: selected.result.minutes,
-        departure:
-          selected.result.journey?.departure_date_time || null,
-        arrival:
-          selected.result.journey?.arrival_date_time || null,
-        destination:
-          destination.destinationName || destination.key,
-      };
-    }
-  }
-}
+      const rawMessage =
+        text(disruption?.shortMessage) ||
+        text(disruption?.message) ||
+        text(disruption?.title) ||
+        "";
 
-function getErrorMessage(error) {
-  return error instanceof Error
-    ? error.message
-    : String(error);
-}
+      const message = translate(rawMessage) || causeFR;
 
-export default async function handler(req, res) {
-  if (req.method && req.method !== "GET") {
-    res.setHeader("Allow", "GET");
+      const codes = codesForDisruption(disruption);
 
-    return res.status(405).json({
-      error: "Méthode non autorisée",
-    });
-  }
+      for (const code of codes) {
+        if (!ALL_CODES.includes(code)) continue;
 
-  const IDFM_API_KEY = process.env.IDFM_API_KEY;
-  const SNCF_API_KEY = process.env.SNCF_API_KEY;
-
-  const site = String(
-    process.env.VITE_SITE || "lpdl"
-  ).toLowerCase();
-
-  if (!IDFM_API_KEY) {
-    return res.status(500).json({
-      error:
-        "La variable IDFM_API_KEY n'est pas configurée dans Vercel.",
-    });
-  }
-
-  const times = {};
-  const errors = {};
-  const details = {};
-
-  // ============================================================
-  // CONFIGURATION LPDL
-  // ============================================================
-
-  const lpdlStart = {
-    lat: 48.864725,
-    lon: 2.343634,
-  };
-
-  const gareDuNordCoords = {
-    lat: 48.8809,
-    lon: 2.3553,
-  };
-
-  const gareDeLEstCoords = {
-    lat: 48.8761,
-    lon: 2.3592,
-  };
-
-  const lpdlDestinations = [
-    {
-      key: "ghulam",
-      names: ["ghulam"],
-      lat: 48.882222,
-      lon: 2.704167,
-    },
-    {
-      key: "nathan",
-      names: ["nathan"],
-      lat: 48.824744,
-      lon: 2.318872,
-    },
-    {
-      key: "michael",
-      names: ["michael"],
-      lat: 48.895631,
-      lon: 2.223138,
-    },
-    {
-      key: "liazide",
-      names: ["liazide"],
-      lat: 49.019392,
-      lon: 2.153672,
-    },
-    {
-      key: "poissy",
-      names: ["rachid", "toufik"],
-      lat: 48.933,
-      lon: 2.04,
-    },
-  ];
-
-  // ============================================================
-  // CONFIGURATION RHAPSODY
-  // ============================================================
-
-  const rhapsodyStart = {
-    lat: 48.911619,
-    lon: 2.333753,
-  };
-
-  const rhapsodyDestinations = [
-    {
-      key: "alvaro",
-      names: ["alvaro"],
-      lat: 48.9833,
-      lon: 2.2667,
-    },
-    {
-      key: "camara",
-      names: ["camara"],
-      lat: 48.904444,
-      lon: 2.306389,
-    },
-    {
-      key: "bazil",
-      names: ["bazil"],
-      lat: 49.05227,
-      lon: 2.6635,
-    },
-    {
-      key: "bongo",
-      names: ["bongo"],
-      lat: 49.0,
-      lon: 2.3333,
-    },
-    {
-      key: "picart",
-      names: ["picart"],
-      lat: 48.800833,
-      lon: 2.173056,
-    },
-    {
-      key: "royer",
-      names: ["royer"],
-      lat: 48.93778,
-      lon: 2.93556,
-    },
-  ];
-
-  try {
-    // ============================================================
-    // RHAPSODY
-    // ============================================================
-
-    if (site === "rhapsody") {
-      const jobs = rhapsodyDestinations.map(
-        (destination) => ({
-          key: destination.key,
-          destination,
-        })
-      );
-
-      const results = await getPrimBatch(
-        IDFM_API_KEY,
-        rhapsodyStart,
-        jobs
-      );
-
-      copyPrimResults(
-        rhapsodyDestinations,
-        results,
-        times,
-        errors,
-        details
-      );
-
-      // Nicodeme :
-      // Rhapsody -> Gare du Nord -> Bornel-Belle-Église.
-      try {
-        if (!SNCF_API_KEY) {
-          throw new Error(
-            "SNCF_API_KEY absente du projet Vercel dashboard-rhapsody"
-          );
+        if (!lineMap[code]) {
+          lineMap[code] = [];
         }
 
-        const firstLeg = await getPrimJourney(
-          IDFM_API_KEY,
-          rhapsodyStart,
-          gareDuNordCoords
+        const alreadyExists = lineMap[code].some(
+          (item) =>
+            item.message === message &&
+            item.severity === causeFR
         );
 
-        const stationArrival =
-          firstLeg.journey?.arrival_date_time;
-
-        if (!stationArrival) {
-          throw new Error(
-            "Arrivée à Gare du Nord introuvable"
-          );
+        if (!alreadyExists) {
+          lineMap[code].push({
+            severity: causeFR,
+            message,
+          });
         }
-
-        const transferMinutes = 10;
-
-        const trainDateTime = addMinutes(
-          stationArrival,
-          transferMinutes
-        );
-
-        if (!trainDateTime) {
-          throw new Error(
-            "Horaire Gare du Nord invalide"
-          );
-        }
-
-        const train = await getSncfStationJourney(
-          SNCF_API_KEY,
-          "stop_area:SNCF:87271007",
-          "stop_area:SNCF:87276717",
-          trainDateTime
-        );
-
-        times.nicodeme =
-          firstLeg.minutes +
-          transferMinutes +
-          train.minutes;
-
-        details.nicodeme = {
-          destination: "Bornel-Belle-Église",
-          rhapsodyToGareDuNord: firstLeg.minutes,
-          correspondence: transferMinutes,
-          gareDuNordToBornel: train.minutes,
-          gareDuNordArrival: stationArrival,
-          trainDeparture:
-            train.journey?.departure_date_time || null,
-          bornelArrival:
-            train.journey?.arrival_date_time || null,
-          totalMinutes: times.nicodeme,
-        };
-      } catch (error) {
-        times.nicodeme = null;
-        errors.nicodeme = getErrorMessage(error);
-      }
-    } else {
-      // ============================================================
-      // LPDL — TRAJETS IDFM
-      // ============================================================
-
-      const jobs = [
-        ...lpdlDestinations.map(
-          (destination) => ({
-            key: destination.key,
-            destination,
-          })
-        ),
-        {
-          key: "gareDuNord",
-          destination: gareDuNordCoords,
-        },
-        {
-          key: "gareDeLEst",
-          destination: gareDeLEstCoords,
-        },
-      ];
-
-      const results = await getPrimBatch(
-        IDFM_API_KEY,
-        lpdlStart,
-        jobs
-      );
-
-      copyPrimResults(
-        lpdlDestinations,
-        results,
-        times,
-        errors,
-        details
-      );
-
-      // ============================================================
-      // CÉDRIC — LOUVRE -> GARE DE L'EST -> LIGNE P -> LONGUEVILLE
-      // ============================================================
-
-      try {
-        if (!SNCF_API_KEY) {
-          throw new Error(
-            "SNCF_API_KEY absente du projet Vercel dashboard-vinci"
-          );
-        }
-
-        const firstLeg = results.gareDeLEst;
-
-        if (!firstLeg?.result) {
-          throw new Error(
-            firstLeg?.error ||
-              "Trajet vers Gare de l'Est indisponible"
-          );
-        }
-
-        const stationArrival =
-          firstLeg.result.journey?.arrival_date_time;
-
-        if (!stationArrival) {
-          throw new Error(
-            "Arrivée à Gare de l'Est introuvable"
-          );
-        }
-
-        const transferMinutes = 10;
-
-        const trainDateTime = addMinutes(
-          stationArrival,
-          transferMinutes
-        );
-
-        if (!trainDateTime) {
-          throw new Error(
-            "Horaire Gare de l'Est invalide"
-          );
-        }
-
-        const train = await getSncfStationJourney(
-          SNCF_API_KEY,
-          "stop_area:SNCF:87113001",
-          "stop_area:SNCF:87116137",
-          trainDateTime
-        );
-
-        times.cedric =
-          firstLeg.result.minutes +
-          transferMinutes +
-          train.minutes;
-
-        details.cedric = {
-          destination: "Gare de Longueville",
-          louvreToGareDeLEst: firstLeg.result.minutes,
-          correspondence: transferMinutes,
-          gareDeLEstToLongueville: train.minutes,
-          gareDeLEstArrival: stationArrival,
-          trainDeparture:
-            train.journey?.departure_date_time || null,
-          longvilleArrival:
-            train.journey?.arrival_date_time || null,
-          totalMinutes: times.cedric,
-        };
-      } catch (error) {
-        times.cedric = null;
-        errors.cedric = getErrorMessage(error);
-      }
-
-      // ============================================================
-      // JASON — LOUVRE -> GARE DU NORD -> TRAIN -> COMPIÈGNE
-      // ============================================================
-
-      try {
-        if (!SNCF_API_KEY) {
-          throw new Error(
-            "SNCF_API_KEY absente du projet Vercel dashboard-vinci"
-          );
-        }
-
-        const firstLeg = results.gareDuNord;
-
-        if (!firstLeg?.result) {
-          throw new Error(
-            firstLeg?.error ||
-              "Trajet vers Gare du Nord indisponible"
-          );
-        }
-
-        const stationArrival =
-          firstLeg.result.journey?.arrival_date_time;
-
-        if (!stationArrival) {
-          throw new Error(
-            "Arrivée à Gare du Nord introuvable"
-          );
-        }
-
-        const transferMinutes = 10;
-
-        const trainDateTime = addMinutes(
-          stationArrival,
-          transferMinutes
-        );
-
-        if (!trainDateTime) {
-          throw new Error(
-            "Horaire Gare du Nord invalide"
-          );
-        }
-
-        const train = await getSncfStationJourney(
-          SNCF_API_KEY,
-          "stop_area:SNCF:87271007",
-          "stop_area:SNCF:87276691",
-          trainDateTime
-        );
-
-        times.jason =
-          firstLeg.result.minutes +
-          transferMinutes +
-          train.minutes;
-
-        details.jason = {
-          destination: "Gare de Compiègne",
-          laPosteToGareDuNord: firstLeg.result.minutes,
-          correspondence: transferMinutes,
-          gareDuNordToCompiegne: train.minutes,
-          gareDuNordArrival: stationArrival,
-          trainDeparture:
-            train.journey?.departure_date_time || null,
-          arrivalCompiegne:
-            train.journey?.arrival_date_time || null,
-          totalMinutes: times.jason,
-        };
-      } catch (error) {
-        times.jason = null;
-        errors.jason = getErrorMessage(error);
       }
     }
 
-    res.setHeader(
-      "Cache-Control",
-      "s-maxage=300, stale-while-revalidate=30"
-    );
+    const lines = ALL_CODES.map((code) => ({
+      code,
+      disruptions: lineMap[code] || [],
+    }));
 
     return res.status(200).json({
-      site,
-      times,
-      errors,
-      details,
-      updatedAt: new Date().toISOString(),
+      lines,
+      updatedAt: text(data.lastUpdatedDate) ||
+        new Date().toISOString(),
+      total_disruptions: disruptions.length,
     });
   } catch (error) {
-    return res.status(500).json({
-      error: "Erreur lors du calcul des trajets",
-      details: getErrorMessage(error),
+    return res.status(200).json({
+      lines: [],
+      error: error.message || "Erreur API transport",
     });
   }
 }
