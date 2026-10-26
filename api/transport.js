@@ -1,207 +1,643 @@
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Content-Type", "application/json");
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store, max-age=0");
 
   const apiKey = process.env.IDFM_API_KEY;
-  if (!apiKey) return res.status(200).json({ lines: [], error: "IDFM_API_KEY non configuree" });
 
-  const CODES_METRO      = ["1","2","3","3B","4","5","6","7","7B","8","9","10","11","12","13","14"];
-  const CODES_RER        = ["A","B","C","D","E"];
-  const CODES_TRANSILIEN = ["H","J","K","L","N","P","R","U","V"];
-  const ALL_CODES        = [...CODES_METRO, ...CODES_RER, ...CODES_TRANSILIEN];
+  if (!apiKey) {
+    return res.status(200).json({
+      lines: [],
+      error: "IDFM_API_KEY non configuree dans Vercel",
+    });
+  }
 
-  const IDFM_NAME_TO_CODE = {
-    "metro 1":"1","metro 2":"2","metro 3":"3","metro 3b":"3B","metro 3bis":"3B",
-    "metro 4":"4","metro 5":"5","metro 6":"6","metro 7":"7","metro 7b":"7B","metro 7bis":"7B",
-    "metro 8":"8","metro 9":"9","metro 10":"10","metro 11":"11","metro 12":"12",
-    "metro 13":"13","metro 14":"14",
-    "rer a":"A","rer b":"B","rer c":"C","rer d":"D","rer e":"E",
-    "transilien h":"H","transilien j":"J","transilien k":"K","transilien l":"L",
-    "transilien n":"N","transilien p":"P","transilien r":"R","transilien u":"U","transilien v":"V",
-    "ligne h":"H","ligne j":"J","ligne k":"K","ligne l":"L","ligne n":"N",
-    "ligne p":"P","ligne r":"R","ligne u":"U","ligne v":"V",
-    "line h":"H","line j":"J","line k":"K","line l":"L","line n":"N",
-    "line p":"P","line r":"R","line u":"U","line v":"V",
-  };
+  const CODES_METRO = [
+    "1", "2", "3", "3B", "4", "5", "6", "7", "7B",
+    "8", "9", "10", "11", "12", "13", "14",
+  ];
+
+  const CODES_RER = ["A", "B", "C", "D", "E"];
+
+  const CODES_TRANSILIEN = [
+    "H", "J", "K", "L", "N", "P", "R", "U", "V",
+  ];
+
+  const ALL_CODES = [
+    ...CODES_METRO,
+    ...CODES_RER,
+    ...CODES_TRANSILIEN,
+  ];
 
   const CAUSE_FR = {
-    "TRAVAUX":"Travaux","PERTURBATION":"Perturbation","INCIDENT":"Incident",
-    "INFORMATION":"Information","PERTURBEE":"Perturbé","BLOQUEE":"Bloqué",
-    "REDUITE":"Trafic réduit","GREVE":"Grève","ACCIDENT":"Accident",
-    "PANNE":"Panne","NORMAL":"Normal","TRAVAUX_PLANIFIES":"Travaux planifiés",
-    "MAJEURE":"Perturbation majeure",
+    TRAVAUX: "Travaux",
+    PERTURBATION: "Perturbation",
+    INCIDENT: "Incident",
+    PERTURBEE: "Perturbation",
+    BLOQUANTE: "Perturbation",
+    BLOQUEE: "Bloqué",
+    REDUITE: "Trafic réduit",
+    GREVE: "Grève",
+    ACCIDENT: "Accident",
+    PANNE: "Panne",
+    TRAVAUX_PLANIFIES: "Travaux planifiés",
+    MAJEURE: "Perturbation majeure",
   };
 
-  const MOIS_FR = {
-    january:"janvier",february:"février",march:"mars",april:"avril",
-    may:"mai",june:"juin",july:"juillet",august:"août",
-    september:"septembre",october:"octobre",november:"novembre",december:"décembre",
-    jan:"jan.",feb:"fév.",mar:"mars",apr:"avr.",jun:"juin",jul:"juil.",
-    aug:"août",sep:"sep.",oct:"oct.",nov:"nov.",dec:"déc.",
-  };
+  function text(value) {
+    if (typeof value === "string" || typeof value === "number") {
+      return String(value);
+    }
 
-  const JOURS_FR = {
-    monday:"lundi",tuesday:"mardi",wednesday:"mercredi",thursday:"jeudi",
-    friday:"vendredi",saturday:"samedi",sunday:"dimanche",
-    mon:"lun.",tue:"mar.",wed:"mer.",thu:"jeu.",fri:"ven.",sat:"sam.",sun:"dim.",
-  };
+    if (value && typeof value === "object") {
+      return String(
+        value.name ||
+        value.label ||
+        value.value ||
+        value.shortName ||
+        value.short_name ||
+        value.code ||
+        ""
+      );
+    }
 
-  function nettoyer(texte = "") {
-    return texte
+    return "";
+  }
+
+  function array(value) {
+    if (Array.isArray(value)) return value;
+    return value == null ? [] : [value];
+  }
+
+  function clean(value = "") {
+    return String(value)
       .replace(/<[^>]*>/g, " ")
-      .replace(/&nbsp;/gi, " ").replace(/&lt;/gi,"<").replace(/&gt;/gi,">").replace(/&amp;/gi,"&")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/&amp;/gi, "&")
       .replace(/&#[0-9]+;/g, " ")
-      .replace(/[\u{1F000}-\u{1FFFF}]/gu, "")
-      .replace(/[⚠⚡🚇🚆🚊🚋🚌🚍🚎🚐🚑🚒🔴🟠🟡]/g, "")
-      .replace(/#\w+/g, "")
       .replace(/\s+/g, " ")
       .trim();
   }
 
-  function traduire(texte = "") {
-    let t = nettoyer(texte);
+  function normalize(value = "") {
+    return clean(value)
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[–—]/g, "-")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
 
-    // Jours
-    Object.entries(JOURS_FR).forEach(([en, fr]) => {
-      t = t.replace(new RegExp("\\b" + en + "\\b", "gi"), fr);
-    });
-    // Mois
-    Object.entries(MOIS_FR).forEach(([en, fr]) => {
-      t = t.replace(new RegExp("\\b" + en + "\\b", "gi"), fr);
-    });
+  function findCode(value = "") {
+    const n = normalize(value);
 
-    const remplacements = [
-      // Interruptions
-      [/traffic is interrupted between (.+?) and (.+?)(?:\.|,|<|$)/gi, "Trafic interrompu entre $1 et $2"],
-      [/traffic is interrupted on (.+?)(?:\.|<|$)/gi, "Trafic interrompu sur $1"],
-      [/traffic disrupted/gi, "Trafic perturbé"],
-      [/traffic interrupted/gi, "Trafic interrompu"],
-      [/traffic is disrupted/gi, "Trafic perturbé"],
+    if (!n) return null;
+
+    const direct = n.toUpperCase();
+
+    if (ALL_CODES.includes(direct)) {
+      return direct;
+    }
+
+    const rer = n.match(/\brer\s*[-:]?\s*([a-e])\b/i);
+
+    if (rer) {
+      return rer[1].toUpperCase();
+    }
+
+    const transilien = n.match(
+      /\btransilien\s*(?:ligne\s*)?([hjklnpruv])\b/i
+    );
+
+    if (transilien) {
+      return transilien[1].toUpperCase();
+    }
+
+    const line = n.match(
+      /\b(?:ligne|line|train)\s*[-:]?\s*([a-e]|\d{1,2}(?:bis|b)?)\b/i
+    );
+
+    if (line) {
+      const code = line[1]
+        .replace(/bis$/i, "B")
+        .toUpperCase();
+
+      if (ALL_CODES.includes(code)) {
+        return code;
+      }
+    }
+
+    const metro = n.match(
+      /\bmetro\s*(\d{1,2}(?:bis|b)?)\b/i
+    );
+
+    if (metro) {
+      const code = metro[1]
+        .replace(/bis$/i, "B")
+        .toUpperCase();
+
+      if (ALL_CODES.includes(code)) {
+        return code;
+      }
+    }
+
+    return null;
+  }
+
+  function codeFromObject(obj) {
+    if (typeof obj === "string") {
+      return findCode(obj);
+    }
+
+    if (!obj || typeof obj !== "object") {
+      return null;
+    }
+
+    for (const candidate of [
+      obj.shortName,
+      obj.short_name,
+      obj.code,
+      obj.name,
+      obj.label,
+      obj.lineName,
+      obj.line_name,
+      obj.line,
+    ]) {
+      const code = findCode(text(candidate));
+
+      if (code) return code;
+    }
+
+    return null;
+  }
+
+  function normalizeLineId(value) {
+    return String(value || "")
+      .trim()
+      .replace(/^line:/i, "");
+  }
+
+  function translate(value = "") {
+    let t = clean(value);
+
+    const replacements = [
+      [/traffic is interrupted between (.+?) and (.+?)(?:\.|,|$)/gi, "Trafic interrompu entre $1 et $2"],
+      [/traffic is interrupted on (.+?)(?:\.|$)/gi, "Trafic interrompu sur $1"],
+      [/traffic is interrupted|traffic interrupted/gi, "Trafic interrompu"],
+      [/traffic is disrupted|traffic disrupted/gi, "Trafic perturbé"],
+      [/traffic is running normally/gi, "Trafic normal"],
       [/train parked/gi, "Train en stationnement"],
       [/train stalled/gi, "Train en panne"],
-      // Annulations
-      [/the following departures are cancelled[:\s]*/gi, "Départs supprimés : "],
-      [/departures? (?:are )?cancelled/gi, "Départs supprimés"],
-      [/races? cancelled/gi, "Courses annulées"],
-      [/cancelled/gi, "supprimé(s)"],
-      [/cancell?ation/gi, "suppression"],
-      // Arrêts
-      [/stop[s]? not served[:\s]*(.*?)(?:\.|$)/gi, "Arrêt(s) non desservi(s) : $1"],
       [/stop[s]? not served/gi, "Arrêt(s) non desservi(s)"],
       [/station[s]? not served/gi, "Station(s) non desservie(s)"],
       [/will not be served/gi, "ne sera pas desservi"],
-      [/will be served/gi, "sera desservi"],
-      // Bus de remplacement
-      [/a replacement bus service is provided/gi, "Bus de remplacement mis en place"],
+      [/departures? (?:are )?cancelled/gi, "Départs supprimés"],
+      [/cancelled/gi, "supprimé(s)"],
+      [/replacement bus service is provided/gi, "Bus de remplacement mis en place"],
       [/replacement bus/gi, "bus de remplacement"],
-      // Travaux
-      [/due to construction/gi, "en raison de travaux"],
-      [/due to works?/gi, "en raison de travaux"],
+      [/due to construction|due to works?/gi, "en raison de travaux"],
       [/due to engineering works?/gi, "en raison de travaux techniques"],
       [/due to a breakdown/gi, "en raison d'une panne"],
       [/due to an incident/gi, "en raison d'un incident"],
       [/due to a strike/gi, "en raison d'une grève"],
-      [/due to operational constraints?/gi, "en raison de contraintes opérationnelles"],
-      [/engineering works?/gi, "travaux techniques"],
-      // Dates
       [/until further notice/gi, "jusqu'à nouvel ordre"],
-      [/from ([a-z]+ \d+) to ([a-z]+ \d+)/gi, "du $1 au $2"],
-      [/from ([a-z]+day),?\s*/gi, "à partir du $1"],
-      [/inclusive/gi, "inclus"],
-      // Divers
       [/in both directions?/gi, "dans les deux sens"],
-      [/last departure from/gi, "dernier départ depuis"],
-      [/last departure at/gi, "dernier départ à"],
-      [/between (.+?) and (.+?)(?:\.|,|$)/gi, "entre $1 et $2"],
-      [/period[:\s]*evenings?/gi, "Période : soirées"],
-      [/line ([0-9]{1,2}[ab]?)/gi, "Ligne $1"],
-      [/line ([a-e])\b/gi, "Ligne $1"],
-      [/details? of/gi, "Détails"],
-      [/thanks for your understanding\.?/gi, "Merci de votre compréhension."],
-      [/a detour has been set up/gi, "Un itinéraire de substitution est mis en place"],
-      [/the line will be diverted/gi, "La ligne sera déviée"],
-      [/will be diverted/gi, "sera déviée"],
-      [/diverted/gi, "déviée"],
-      [/\bvia\b/gi, "via"],
+      [/the line will be diverted|will be diverted|diverted/gi, "ligne déviée"],
       [/platform/gi, "quai"],
+      [/monday/gi, "lundi"],
+      [/tuesday/gi, "mardi"],
+      [/wednesday/gi, "mercredi"],
+      [/thursday/gi, "jeudi"],
+      [/friday/gi, "vendredi"],
+      [/saturday/gi, "samedi"],
+      [/sunday/gi, "dimanche"],
+      [/january/gi, "janvier"],
+      [/february/gi, "février"],
+      [/march/gi, "mars"],
+      [/april/gi, "avril"],
+      [/may/gi, "mai"],
+      [/june/gi, "juin"],
+      [/july/gi, "juillet"],
+      [/august/gi, "août"],
+      [/september/gi, "septembre"],
+      [/october/gi, "octobre"],
+      [/november/gi, "novembre"],
+      [/december/gi, "décembre"],
     ];
 
-    for (const [pattern, remplacement] of remplacements) {
-      t = t.replace(pattern, remplacement);
+    for (const [pattern, replacement] of replacements) {
+      t = t.replace(pattern, replacement);
     }
 
-    // Nettoyage final
     t = t.replace(/\s+/g, " ").trim();
-    // Majuscule en début
-    if (t.length > 0) t = t[0].toUpperCase() + t.slice(1);
+
+    if (t) {
+      t = t.charAt(0).toUpperCase() + t.slice(1);
+    }
 
     return t.substring(0, 150);
   }
 
-  function findCode(name = "") {
-    const n = name.toLowerCase().trim();
-    if (IDFM_NAME_TO_CODE[n]) return IDFM_NAME_TO_CODE[n];
-    for (const code of ALL_CODES) {
-      if (n === code.toLowerCase()) return code;
-      if (n === "rer " + code.toLowerCase()) return code;
+  function getLineIds(line) {
+    return [
+      line?.id,
+      line?.lineId,
+      line?.line_id,
+    ]
+      .filter(Boolean)
+      .map(String);
+  }
+
+  // Récupère les objets impactés et les lignes dans impactedSections.
+  function extractImpactedObjects(disruption) {
+    const objects = [
+      ...array(disruption?.impactedObjects),
+      ...array(disruption?.impacted_objects),
+      ...array(disruption?.ptObjects),
+      ...array(disruption?.pt_objects),
+    ];
+
+    const sections = [
+      ...array(disruption?.impactedSections),
+      ...array(disruption?.impacted_sections),
+    ];
+
+    for (const section of sections) {
+      if (!section || typeof section !== "object") continue;
+
+      const lineObject = section.line;
+
+      const lineId = text(
+        section.lineId ||
+        section.line_id ||
+        (
+          lineObject && typeof lineObject === "object"
+            ? lineObject.id ||
+              lineObject.lineId ||
+              lineObject.line_id
+            : ""
+        )
+      );
+
+      const lineCode = codeFromObject(lineObject);
+
+      const lineName = text(
+        section.lineName ||
+        section.line_name ||
+        lineObject
+      );
+
+      if (lineId) {
+        objects.push({
+          type: "line",
+          id: lineId,
+          name: lineName,
+          shortName: lineCode || "",
+        });
+      } else if (lineCode) {
+        objects.push({
+          type: "line",
+          name: lineName,
+          shortName: lineCode,
+        });
+      }
     }
-    const rerMatch = n.match(/\brer\s+([a-e])\b/i);
-    if (rerMatch) return rerMatch[1].toUpperCase();
-    const metroMatch = n.match(/\bm[eé]tro\s+(\d{1,2}[ab]?)\b/i);
-    if (metroMatch) {
-      const num = metroMatch[1].replace(/b$/i, "B");
-      if (ALL_CODES.includes(num)) return num;
+
+    return objects;
+  }
+
+  function explicitCodesFromText(value = "") {
+    const n = normalize(value);
+    const codes = new Set();
+
+    const patterns = [
+      /\btransilien\s*(?:ligne\s*)?([hjklnpruv])\b/gi,
+      /\b(?:ligne|line|train)\s*[-:]?\s*([hjklnpruv])\b/gi,
+      /\brer\s*[-:]?\s*([a-e])\b/gi,
+      /\bmetro\s*(\d{1,2}(?:bis|b)?)\b/gi,
+      /\b(?:ligne|line)\s*(\d{1,2}(?:bis|b)?)\b/gi,
+    ];
+
+    for (const pattern of patterns) {
+      let match;
+
+      while ((match = pattern.exec(n)) !== null) {
+        const code = match[1]
+          .replace(/bis$/i, "B")
+          .toUpperCase();
+
+        if (ALL_CODES.includes(code)) {
+          codes.add(code);
+        }
+      }
     }
-    const lineMatch = n.match(/\bline[s]?\s+([a-e]|\d{1,2}[ab]?)\b/i);
-    if (lineMatch) {
-      const code = lineMatch[1].toUpperCase().replace(/B$/i, "B");
-      if (ALL_CODES.includes(code)) return code;
-    }
-    return null;
+
+    return [...codes];
   }
 
   try {
     const response = await fetch(
       "https://prim.iledefrance-mobilites.fr/marketplace/disruptions_bulk/disruptions/v2",
-      { headers: { "apikey": apiKey, "Accept": "application/json" } }
+      {
+        headers: {
+          apikey: apiKey,
+          Accept: "application/json",
+        },
+      }
     );
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    if (!response.ok) {
+      throw new Error(`IDFM HTTP ${response.status}`);
+    }
+
     const data = await response.json();
 
-    if (req.query.debug === "1") {
-      return res.status(200).json({ sample: (data.disruptions || data || []).slice(0, 2), keys: Object.keys(data) });
+    const disruptions = Array.isArray(data)
+      ? data
+      : Array.isArray(data.disruptions)
+        ? data.disruptions
+        : [];
+
+    const sourceLines = Array.isArray(data.lines)
+      ? data.lines
+      : [];
+
+    // Associe les identifiants techniques aux codes des lignes.
+    const lineCodeById = new Map();
+
+    function registerLineId(id, code) {
+      if (!id || !code) return;
+
+      const originalId = String(id).trim();
+
+      lineCodeById.set(originalId, code);
+      lineCodeById.set(normalizeLineId(originalId), code);
+    }
+
+    for (const line of sourceLines) {
+      const code = codeFromObject(line);
+
+      if (!code) continue;
+
+      for (const id of getLineIds(line)) {
+        registerLineId(id, code);
+      }
+    }
+
+    function findCodeByLineId(id) {
+      if (!id) return null;
+
+      const originalId = String(id).trim();
+
+      return (
+        lineCodeById.get(originalId) ||
+        lineCodeById.get(normalizeLineId(originalId)) ||
+        null
+      );
+    }
+
+    function codesForDisruption(disruption) {
+      const codes = new Set();
+      const disruptionId = text(disruption?.id);
+
+      // 1. Lignes directement présentes dans le message.
+      for (const line of array(disruption?.lines)) {
+        const directCode = codeFromObject(line);
+
+        if (directCode) {
+          codes.add(directCode);
+        }
+
+        if (line && typeof line === "object") {
+          const id = text(
+            line.id || line.lineId || line.line_id
+          );
+
+          const mapped = findCodeByLineId(id);
+
+          if (mapped) {
+            codes.add(mapped);
+          }
+        }
+      }
+
+      // 2. Objets impactés, dont impactedSections[].lineId.
+      for (const obj of extractImpactedObjects(disruption)) {
+        if (!obj || typeof obj !== "object") {
+          const code = findCode(text(obj));
+
+          if (code) codes.add(code);
+          continue;
+        }
+
+        const type = normalize(
+          text(obj.type || obj.embedded_type || obj.embeddedType)
+        );
+
+        const id = text(
+          obj.id || obj.lineId || obj.line_id
+        );
+
+        const isLine =
+          type === "line" ||
+          type.includes("line") ||
+          /^line:/i.test(id);
+
+        // Ne pas attribuer une perturbation à partir du seul nom d'un arrêt.
+        if (type && !isLine) continue;
+
+        let code = codeFromObject(obj);
+
+        if (!code && id) {
+          code = findCodeByLineId(id);
+        }
+
+        if (code) {
+          codes.add(code);
+        }
+
+        const linkedIds = array(
+          obj.disruptionIds || obj.disruption_ids
+        ).map((item) =>
+          item && typeof item === "object"
+            ? text(item.id)
+            : text(item)
+        );
+
+        if (
+          disruptionId &&
+          linkedIds.includes(disruptionId) &&
+          !code
+        ) {
+          const mapped = findCodeByLineId(id);
+
+          if (mapped) {
+            codes.add(mapped);
+          }
+        }
+      }
+
+      // 3. Liens définis directement dans les objets lignes.
+      for (const line of sourceLines) {
+        const linkedIds = array(
+          line.disruptionIds ||
+          line.disruption_ids ||
+          line.disruptions
+        ).map((item) =>
+          item && typeof item === "object"
+            ? text(item.id)
+            : text(item)
+        );
+
+        if (
+          disruptionId &&
+          linkedIds.includes(disruptionId)
+        ) {
+          const code = codeFromObject(line);
+
+          if (code) {
+            codes.add(code);
+          }
+        }
+      }
+
+      // 4. Dernier recours : ligne explicitement nommée dans le texte.
+      if (codes.size === 0) {
+        const fullText = [
+          text(disruption?.title),
+          text(disruption?.shortMessage),
+          text(disruption?.message),
+        ].join(" ");
+
+        for (const code of explicitCodesFromText(fullText)) {
+          codes.add(code);
+        }
+      }
+
+      return [...codes];
+    }
+
+    // Diagnostic accessible avec /api/transport?debug=1
+    if (req.query?.debug === "1") {
+      const rootLineJ = sourceLines
+        .filter((line) => codeFromObject(line) === "J")
+        .map((line) => ({
+          id: line.id,
+          name: line.name,
+          shortName: line.shortName,
+          mode: line.mode,
+          disruptionIds: line.disruptionIds,
+        }));
+
+      const lineJMappings = [...lineCodeById.entries()]
+        .filter(([, code]) => code === "J")
+        .map(([id, code]) => ({ id, code }));
+
+      const lineJCandidates = disruptions
+        .filter((disruption) =>
+          codesForDisruption(disruption).includes("J")
+        )
+        .slice(0, 30)
+        .map((disruption) => ({
+          id: disruption.id,
+          title: disruption.title,
+          shortMessage: disruption.shortMessage,
+          message: translate(
+            disruption.shortMessage ||
+            disruption.message ||
+            disruption.title ||
+            ""
+          ),
+          cause: disruption.cause,
+          severity: disruption.severity,
+          impactedObjects: extractImpactedObjects(disruption),
+        }));
+
+      return res.status(200).json({
+        debug: true,
+        total_disruptions: disruptions.length,
+        total_lines: sourceLines.length,
+        rootLineJ,
+        lineJMappings,
+        lineJCandidates,
+      });
     }
 
     const lineMap = {};
-    const disruptions = data.disruptions || (Array.isArray(data) ? data : []);
 
-    disruptions.forEach(d => {
-      const severity = d.severity || "";
-      if (severity === "NORMAL" || severity === "INFORMATION") return;
+    for (const disruption of disruptions) {
+      const cause = text(disruption?.cause).toUpperCase();
+      const severity = text(disruption?.severity).toUpperCase();
 
-      const causeFR  = CAUSE_FR[d.cause] || CAUSE_FR[severity] || "Perturbation";
-      const rawMsg   = d.shortMessage || d.message || d.title || "";
-      const message  = traduire(rawMsg) || causeFR;
-      const affectedLines = d.lines || [];
-
-      const addToLine = (code) => {
-        if (!code || !ALL_CODES.includes(code)) return;
-        if (!lineMap[code]) lineMap[code] = [];
-        const exists = lineMap[code].some(x => x.message === message);
-        if (!exists) lineMap[code].push({ severity: causeFR, message });
-      };
-
-      if (affectedLines.length > 0) {
-        affectedLines.forEach(l => addToLine(findCode(l.name || l.shortName || "")));
-      } else {
-        addToLine(findCode(d.title || ""));
+      // Ignore les messages purement informatifs ou normaux.
+      if (
+        cause === "INFORMATION" ||
+        cause === "NORMAL" ||
+        severity === "INFORMATION" ||
+        severity === "NORMAL"
+      ) {
+        continue;
       }
+
+      const causeFR =
+        CAUSE_FR[cause] ||
+        CAUSE_FR[severity] ||
+        "Perturbation";
+
+      const rawMessage =
+        text(disruption?.shortMessage) ||
+        text(disruption?.message) ||
+        text(disruption?.title) ||
+        "";
+
+      const message = translate(rawMessage) || causeFR;
+
+      const codes = codesForDisruption(disruption);
+
+      for (const code of codes) {
+        if (!ALL_CODES.includes(code)) continue;
+
+        if (!lineMap[code]) {
+          lineMap[code] = [];
+        }
+
+        const duplicate = lineMap[code].some(
+          (item) =>
+            item.message === message &&
+            item.severity === causeFR
+        );
+
+        if (!duplicate) {
+          lineMap[code].push({
+            severity: causeFR,
+            message,
+          });
+        }
+      }
+    }
+
+    // Renvoie toutes les lignes attendues par le dashboard.
+    const lines = ALL_CODES.map((code) => ({
+      code,
+      disruptions: lineMap[code] || [],
+    }));
+
+    return res.status(200).json({
+      lines,
+      updatedAt:
+        text(data.lastUpdatedDate) || new Date().toISOString(),
+      total_disruptions: disruptions.length,
     });
-
-    const lines = ALL_CODES.map(code => ({ code, disruptions: lineMap[code] || [] }));
-    res.status(200).json({ lines, updatedAt: new Date().toISOString(), total_disruptions: disruptions.length });
-
-  } catch (e) {
-    res.status(200).json({ lines: [], error: e.message });
+  } catch (error) {
+    return res.status(200).json({
+      lines: [],
+      error: error instanceof Error
+        ? error.message
+        : "Erreur API transport",
+    });
   }
 }
