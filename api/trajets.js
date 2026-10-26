@@ -1,475 +1,705 @@
-from pathlib import Path
+// api/trajets.js — Dashboard Vinci multi-site
+// Variables Vercel : IDFM_API_KEY obligatoire ; SNCF_API_KEY pour les trajets en train.
+// VITE_SITE = lpdl (par défaut) ou rhapsody.
 
-# Reuse the complete, previously prepared Trajets endpoint for the user's
-# La Poste du Louvre dashboard. This preserves its existing response shape.
-source_trajets = Path("/mnt/data/trajets_CORRIGE_DEPART_LA_POSTE_DU_LOUVRE.js")
-trajets_code = source_trajets.read_text(encoding="utf-8")
+const PRIM_URL =
+  "https://prim.iledefrance-mobilites.fr/marketplace/v2/navitia/journeys";
 
-transport_code = r'''// /api/transport.js
-// Perturbations métro, RER et Transilien via Île-de-France Mobilités.
+const SNCF_URL =
+  "https://api.sncf.com/v1/coverage/sncf/journeys";
 
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.setHeader("Cache-Control", "no-store, max-age=0");
+const pause = (ms) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
-  const apiKey = process.env.IDFM_API_KEY;
-
-  if (!apiKey) {
-    return res.status(200).json({
-      lines: [],
-      error: "IDFM_API_KEY non configuree dans Vercel",
-    });
-  }
-
-  const CODES_METRO = [
-    "1", "2", "3", "3B", "4", "5", "6", "7", "7B",
-    "8", "9", "10", "11", "12", "13", "14",
-  ];
-  const CODES_RER = ["A", "B", "C", "D", "E"];
-  const CODES_TRANSILIEN = ["H", "J", "K", "L", "N", "P", "R", "U", "V"];
-  const ALL_CODES = [...CODES_METRO, ...CODES_RER, ...CODES_TRANSILIEN];
-
-  const CAUSE_FR = {
-    TRAVAUX: "Travaux",
-    PERTURBATION: "Perturbation",
-    INCIDENT: "Incident",
-    PERTURBEE: "Perturbation",
-    BLOQUANTE: "Perturbation",
-    BLOQUEE: "Bloqué",
-    REDUITE: "Trafic réduit",
-    GREVE: "Grève",
-    ACCIDENT: "Accident",
-    PANNE: "Panne",
-    TRAVAUX_PLANIFIES: "Travaux planifiés",
-    MAJEURE: "Perturbation majeure",
-  };
-
-  function text(value) {
-    if (typeof value === "string" || typeof value === "number") {
-      return String(value);
-    }
-    if (value && typeof value === "object") {
-      return String(
-        value.name || value.label || value.value ||
-        value.shortName || value.short_name || value.code || ""
-      );
-    }
-    return "";
-  }
-
-  function array(value) {
-    if (Array.isArray(value)) return value;
-    return value == null ? [] : [value];
-  }
-
-  function clean(value = "") {
-    return String(value)
-      .replace(/<[^>]*>/g, " ")
-      .replace(/&nbsp;/gi, " ")
-      .replace(/&lt;/gi, "<")
-      .replace(/&gt;/gi, ">")
-      .replace(/&amp;/gi, "&")
-      .replace(/&#[0-9]+;/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  function normalize(value = "") {
-    return clean(value)
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/[–—]/g, "-")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  function findCode(value = "") {
-    const n = normalize(value);
-    if (!n) return null;
-
-    const direct = n.toUpperCase();
-    if (ALL_CODES.includes(direct)) return direct;
-
-    const rer = n.match(/\brer\s*[-:]?\s*([a-e])\b/i);
-    if (rer) return rer[1].toUpperCase();
-
-    const transilien = n.match(
-      /\btransilien\s*(?:ligne\s*)?([hjklnpruv])\b/i
-    );
-    if (transilien) return transilien[1].toUpperCase();
-
-    const line = n.match(
-      /\b(?:ligne|line|train)\s*[-:]?\s*([a-e]|\d{1,2}(?:bis|b)?)\b/i
-    );
-    if (line) {
-      const code = line[1].replace(/bis$/i, "B").toUpperCase();
-      if (ALL_CODES.includes(code)) return code;
-    }
-
-    const metro = n.match(/\bmetro\s*(\d{1,2}(?:bis|b)?)\b/i);
-    if (metro) {
-      const code = metro[1].replace(/bis$/i, "B").toUpperCase();
-      if (ALL_CODES.includes(code)) return code;
-    }
-
+function parseDate(value) {
+  if (!/^\d{8}T\d{6}$/.test(value || "")) {
     return null;
   }
 
-  function codeFromObject(obj) {
-    if (typeof obj === "string") return findCode(obj);
-    if (!obj || typeof obj !== "object") return null;
+  return Date.UTC(
+    Number(value.slice(0, 4)),
+    Number(value.slice(4, 6)) - 1,
+    Number(value.slice(6, 8)),
+    Number(value.slice(9, 11)),
+    Number(value.slice(11, 13)),
+    Number(value.slice(13, 15))
+  );
+}
 
-    for (const candidate of [
-      obj.shortName, obj.short_name, obj.code, obj.name,
-      obj.label, obj.lineName, obj.line_name, obj.line,
-    ]) {
-      const code = findCode(text(candidate));
-      if (code) return code;
-    }
+function formatDate(timestamp) {
+  const date = new Date(timestamp);
+  const pad = (value) => String(value).padStart(2, "0");
+
+  return (
+    `${date.getUTCFullYear()}` +
+    `${pad(date.getUTCMonth() + 1)}` +
+    `${pad(date.getUTCDate())}T` +
+    `${pad(date.getUTCHours())}` +
+    `${pad(date.getUTCMinutes())}` +
+    `${pad(date.getUTCSeconds())}`
+  );
+}
+
+function addMinutes(value, minutes) {
+  const timestamp = parseDate(value);
+
+  return timestamp === null
+    ? null
+    : formatDate(timestamp + minutes * 60000);
+}
+
+function minutesBetween(startValue, endValue) {
+  const start = parseDate(startValue);
+  const end = parseDate(endValue);
+
+  if (
+    start === null ||
+    end === null ||
+    end < start
+  ) {
     return null;
   }
 
-  function normalizeLineId(value) {
-    return String(value || "").trim().replace(/^line:/i, "");
+  return Math.round((end - start) / 60000);
+}
+
+function hasPublicTransport(journey) {
+  return journey?.sections?.some(
+    (section) => section.type === "public_transport"
+  );
+}
+
+function selectBestJourney(data, referenceDateTime = null) {
+  const journeys = (
+    Array.isArray(data?.journeys)
+      ? data.journeys
+      : []
+  ).filter(
+    (journey) =>
+      hasPublicTransport(journey) &&
+      journey.arrival_date_time &&
+      Number.isFinite(Number(journey.duration))
+  );
+
+  if (!journeys.length) {
+    return null;
   }
 
-  function translate(value = "") {
-    let t = clean(value);
-    const replacements = [
-      [/traffic is interrupted between (.+?) and (.+?)(?:\.|,|$)/gi, "Trafic interrompu entre $1 et $2"],
-      [/traffic is interrupted on (.+?)(?:\.|$)/gi, "Trafic interrompu sur $1"],
-      [/traffic is interrupted|traffic interrupted/gi, "Trafic interrompu"],
-      [/traffic is disrupted|traffic disrupted/gi, "Trafic perturbé"],
-      [/traffic is running normally/gi, "Trafic normal"],
-      [/train parked/gi, "Train en stationnement"],
-      [/train stalled/gi, "Train en panne"],
-      [/stop[s]? not served/gi, "Arrêt(s) non desservi(s)"],
-      [/station[s]? not served/gi, "Station(s) non desservie(s)"],
-      [/will not be served/gi, "ne sera pas desservi"],
-      [/departures? (?:are )?cancelled/gi, "Départs supprimés"],
-      [/cancelled/gi, "supprimé(s)"],
-      [/replacement bus service is provided/gi, "Bus de remplacement mis en place"],
-      [/replacement bus/gi, "bus de remplacement"],
-      [/due to construction|due to works?/gi, "en raison de travaux"],
-      [/due to engineering works?/gi, "en raison de travaux techniques"],
-      [/due to a breakdown/gi, "en raison d'une panne"],
-      [/due to an incident/gi, "en raison d'un incident"],
-      [/due to a strike/gi, "en raison d'une grève"],
-      [/until further notice/gi, "jusqu'à nouvel ordre"],
-      [/in both directions?/gi, "dans les deux sens"],
-      [/the line will be diverted|will be diverted|diverted/gi, "ligne déviée"],
-      [/platform/gi, "quai"],
-      [/monday/gi, "lundi"], [/tuesday/gi, "mardi"],
-      [/wednesday/gi, "mercredi"], [/thursday/gi, "jeudi"],
-      [/friday/gi, "vendredi"], [/saturday/gi, "samedi"],
-      [/sunday/gi, "dimanche"],
-      [/january/gi, "janvier"], [/february/gi, "février"],
-      [/march/gi, "mars"], [/april/gi, "avril"],
-      [/may/gi, "mai"], [/june/gi, "juin"],
-      [/july/gi, "juillet"], [/august/gi, "août"],
-      [/september/gi, "septembre"], [/october/gi, "octobre"],
-      [/november/gi, "novembre"], [/december/gi, "décembre"],
-    ];
-    for (const [pattern, replacement] of replacements) {
-      t = t.replace(pattern, replacement);
-    }
-    t = t.replace(/\s+/g, " ").trim();
-    if (t) t = t.charAt(0).toUpperCase() + t.slice(1);
-    return t.substring(0, 150);
-  }
+  const reference =
+    referenceDateTime ||
+    data?.context?.current_datetime ||
+    journeys[0].departure_date_time;
 
-  function getLineIds(line) {
-    return [line?.id, line?.lineId, line?.line_id]
-      .filter(Boolean)
-      .map(String);
-  }
+  return journeys
+    .map((journey) => ({
+      journey,
+      minutes:
+        minutesBetween(
+          reference,
+          journey.arrival_date_time
+        ) ??
+        Math.round(Number(journey.duration) / 60),
+    }))
+    .sort((a, b) => a.minutes - b.minutes)[0];
+}
 
-  // Ajoute aussi les lignes associées par impactedSections[].lineId.
-  function extractImpactedObjects(disruption) {
-    const objects = [
-      ...array(disruption?.impactedObjects),
-      ...array(disruption?.impacted_objects),
-      ...array(disruption?.ptObjects),
-      ...array(disruption?.pt_objects),
-    ];
+async function readJson(response, serviceName) {
+  const body = await response.text();
 
-    const sections = [
-      ...array(disruption?.impactedSections),
-      ...array(disruption?.impacted_sections),
-    ];
-
-    for (const section of sections) {
-      if (!section || typeof section !== "object") continue;
-
-      const lineObject = section.line;
-      const lineId = text(
-        section.lineId ||
-        section.line_id ||
-        (lineObject && typeof lineObject === "object"
-          ? lineObject.id || lineObject.lineId || lineObject.line_id
-          : "")
-      );
-      const lineCode = codeFromObject(lineObject);
-      const lineName = text(
-        section.lineName || section.line_name || lineObject
-      );
-
-      if (lineId) {
-        objects.push({
-          type: "line",
-          id: lineId,
-          name: lineName,
-          shortName: lineCode || "",
-        });
-      } else if (lineCode) {
-        objects.push({ type: "line", name: lineName, shortName: lineCode });
-      }
-    }
-    return objects;
-  }
-
-  function explicitCodesFromText(value = "") {
-    const n = normalize(value);
-    const codes = new Set();
-    const patterns = [
-      /\btransilien\s*(?:ligne\s*)?([hjklnpruv])\b/gi,
-      /\b(?:ligne|line|train)\s*[-:]?\s*([hjklnpruv])\b/gi,
-      /\brer\s*[-:]?\s*([a-e])\b/gi,
-      /\bmetro\s*(\d{1,2}(?:bis|b)?)\b/gi,
-      /\b(?:ligne|line)\s*(\d{1,2}(?:bis|b)?)\b/gi,
-    ];
-
-    for (const pattern of patterns) {
-      let match;
-      while ((match = pattern.exec(n)) !== null) {
-        const code = match[1].replace(/bis$/i, "B").toUpperCase();
-        if (ALL_CODES.includes(code)) codes.add(code);
-      }
-    }
-    return [...codes];
+  if (!response.ok) {
+    throw new Error(
+      `${serviceName} HTTP ${response.status}: ${body.slice(0, 180)}`
+    );
   }
 
   try {
-    const response = await fetch(
-      "https://prim.iledefrance-mobilites.fr/marketplace/disruptions_bulk/disruptions/v2",
-      {
-        headers: {
-          apikey: apiKey,
-          Accept: "application/json",
-        },
-      }
+    return JSON.parse(body);
+  } catch {
+    throw new Error(
+      `${serviceName} a renvoyé une réponse JSON invalide`
+    );
+  }
+}
+
+async function getPrimJourney(apiKey, from, to) {
+  const params = new URLSearchParams({
+    from: `${from.lon};${from.lat}`,
+    to: `${to.lon};${to.lat}`,
+    data_freshness: "realtime",
+    datetime_represents: "departure",
+    count: "10",
+  });
+
+  const response = await fetch(
+    `${PRIM_URL}?${params.toString()}`,
+    {
+      headers: {
+        Accept: "application/json",
+        apikey: apiKey,
+      },
+    }
+  );
+
+  const data = await readJson(
+    response,
+    "PRIM / Île-de-France Mobilités"
+  );
+
+  const result = selectBestJourney(data);
+
+  if (!result) {
+    throw new Error(
+      "PRIM : aucun trajet en transport trouvé"
+    );
+  }
+
+  return result;
+}
+
+// SNCF : calcul des trajets ferroviaires.
+// La ligne P vers Longueville est un service Transilien,
+// donc on ne filtre pas les résultats pour garder uniquement les TER.
+async function getSncfStationJourney(
+  apiKey,
+  fromStationId,
+  toStationId,
+  departureDateTime
+) {
+  const params = new URLSearchParams({
+    from: fromStationId,
+    to: toStationId,
+    datetime: departureDateTime,
+    datetime_represents: "departure",
+    data_freshness: "realtime",
+    count: "10",
+  });
+
+  const authorization = Buffer
+    .from(`${apiKey}:`)
+    .toString("base64");
+
+  const response = await fetch(
+    `${SNCF_URL}?${params.toString()}`,
+    {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Basic ${authorization}`,
+      },
+    }
+  );
+
+  const data = await readJson(response, "API SNCF");
+  const result = selectBestJourney(data, departureDateTime);
+
+  if (!result) {
+    throw new Error(
+      "SNCF : aucun trajet trouvé entre les deux gares"
+    );
+  }
+
+  return result;
+}
+
+async function getPrimBatch(apiKey, start, destinations) {
+  const results = {};
+
+  for (
+    let index = 0;
+    index < destinations.length;
+    index += 4
+  ) {
+    const batch = destinations.slice(index, index + 4);
+
+    const batchResults = await Promise.all(
+      batch.map(async ({ key, destination }) => {
+        try {
+          return {
+            key,
+            result: await getPrimJourney(
+              apiKey,
+              start,
+              destination
+            ),
+            error: null,
+          };
+        } catch (error) {
+          return {
+            key,
+            result: null,
+            error:
+              error instanceof Error
+                ? error.message
+                : String(error),
+          };
+        }
+      })
     );
 
-    if (!response.ok) {
-      throw new Error(`IDFM HTTP ${response.status}`);
+    batchResults.forEach((item) => {
+      results[item.key] = item;
+    });
+
+    if (index + 4 < destinations.length) {
+      await pause(1100);
     }
+  }
 
-    const data = await response.json();
-    const disruptions = Array.isArray(data)
-      ? data
-      : Array.isArray(data.disruptions) ? data.disruptions : [];
-    const sourceLines = Array.isArray(data.lines) ? data.lines : [];
+  return results;
+}
 
-    const lineCodeById = new Map();
+function copyPrimResults(
+  destinations,
+  results,
+  times,
+  errors,
+  details
+) {
+  for (const destination of destinations) {
+    const selected = results[destination.key];
 
-    function registerLineId(id, code) {
-      if (!id || !code) return;
-      const originalId = String(id).trim();
-      lineCodeById.set(originalId, code);
-      lineCodeById.set(normalizeLineId(originalId), code);
-    }
-
-    for (const line of sourceLines) {
-      const code = codeFromObject(line);
-      if (!code) continue;
-      for (const id of getLineIds(line)) registerLineId(id, code);
-    }
-
-    function findCodeByLineId(id) {
-      if (!id) return null;
-      const originalId = String(id).trim();
-      return lineCodeById.get(originalId) ||
-        lineCodeById.get(normalizeLineId(originalId)) || null;
-    }
-
-    function codesForDisruption(disruption) {
-      const codes = new Set();
-      const disruptionId = text(disruption?.id);
-
-      for (const line of array(disruption?.lines)) {
-        const directCode = codeFromObject(line);
-        if (directCode) codes.add(directCode);
-        if (line && typeof line === "object") {
-          const id = text(line.id || line.lineId || line.line_id);
-          const mapped = findCodeByLineId(id);
-          if (mapped) codes.add(mapped);
-        }
-      }
-
-      for (const obj of extractImpactedObjects(disruption)) {
-        if (!obj || typeof obj !== "object") {
-          const code = findCode(text(obj));
-          if (code) codes.add(code);
-          continue;
-        }
-
-        const type = normalize(
-          text(obj.type || obj.embedded_type || obj.embeddedType)
-        );
-        const id = text(obj.id || obj.lineId || obj.line_id);
-        const isLine =
-          type === "line" || type.includes("line") || /^line:/i.test(id);
-
-        // Ne pas attribuer une perturbation à partir du seul nom d'un arrêt.
-        if (type && !isLine) continue;
-
-        let code = codeFromObject(obj);
-        if (!code && id) code = findCodeByLineId(id);
-        if (code) codes.add(code);
-
-        const linkedIds = array(
-          obj.disruptionIds || obj.disruption_ids
-        ).map((item) => item && typeof item === "object"
-          ? text(item.id)
-          : text(item));
-
-        if (disruptionId && linkedIds.includes(disruptionId) && !code) {
-          const mapped = findCodeByLineId(id);
-          if (mapped) codes.add(mapped);
-        }
-      }
-
-      // Certains flux associent les perturbations directement aux lignes.
-      for (const line of sourceLines) {
-        const linkedIds = array(
-          line.disruptionIds || line.disruption_ids || line.disruptions
-        ).map((item) => item && typeof item === "object"
-          ? text(item.id)
-          : text(item));
-
-        if (disruptionId && linkedIds.includes(disruptionId)) {
-          const code = codeFromObject(line);
-          if (code) codes.add(code);
-        }
-      }
-
-      // Dernier recours : seulement si la ligne est explicitement nommée.
-      if (codes.size === 0) {
-        const fullText = [
-          text(disruption?.title),
-          text(disruption?.shortMessage),
-          text(disruption?.message),
-        ].join(" ");
-        for (const code of explicitCodesFromText(fullText)) codes.add(code);
-      }
-
-      return [...codes];
-    }
-
-    // Diagnostic : /api/transport?debug=1
-    if (req.query?.debug === "1") {
-      const rootLineJ = sourceLines
-        .filter((line) => codeFromObject(line) === "J")
-        .map((line) => ({
-          id: line.id,
-          name: line.name,
-          shortName: line.shortName,
-          mode: line.mode,
-          disruptionIds: line.disruptionIds,
-        }));
-
-      const lineJMappings = [...lineCodeById.entries()]
-        .filter(([, code]) => code === "J")
-        .map(([id, code]) => ({ id, code }));
-
-      const lineJCandidates = disruptions
-        .filter((disruption) => codesForDisruption(disruption).includes("J"))
-        .slice(0, 30)
-        .map((disruption) => ({
-          id: disruption.id,
-          title: disruption.title,
-          shortMessage: disruption.shortMessage,
-          message: translate(
-            disruption.shortMessage || disruption.message || disruption.title || ""
-          ),
-          cause: disruption.cause,
-          severity: disruption.severity,
-          impactedObjects: extractImpactedObjects(disruption),
-        }));
-
-      return res.status(200).json({
-        debug: true,
-        total_disruptions: disruptions.length,
-        total_lines: sourceLines.length,
-        rootLineJ,
-        lineJMappings,
-        lineJCandidates,
-      });
-    }
-
-    const lineMap = {};
-
-    for (const disruption of disruptions) {
-      const cause = text(disruption?.cause).toUpperCase();
-      const severity = text(disruption?.severity).toUpperCase();
-
-      if (
-        cause === "INFORMATION" ||
-        cause === "NORMAL" ||
-        severity === "INFORMATION" ||
-        severity === "NORMAL"
-      ) {
+    for (const name of destination.names) {
+      if (!selected?.result) {
+        times[name] = null;
+        errors[name] =
+          selected?.error || "Trajet indisponible";
         continue;
       }
 
-      const causeFR =
-        CAUSE_FR[cause] || CAUSE_FR[severity] || "Perturbation";
-      const rawMessage =
-        text(disruption?.shortMessage) ||
-        text(disruption?.message) ||
-        text(disruption?.title) || "";
-      const message = translate(rawMessage) || causeFR;
+      times[name] = selected.result.minutes;
 
-      for (const code of codesForDisruption(disruption)) {
-        if (!ALL_CODES.includes(code)) continue;
-        if (!lineMap[code]) lineMap[code] = [];
+      details[name] = {
+        minutes: selected.result.minutes,
+        departure:
+          selected.result.journey?.departure_date_time || null,
+        arrival:
+          selected.result.journey?.arrival_date_time || null,
+        destination:
+          destination.destinationName || destination.key,
+      };
+    }
+  }
+}
 
-        const duplicate = lineMap[code].some(
-          (item) => item.message === message && item.severity === causeFR
+function getErrorMessage(error) {
+  return error instanceof Error
+    ? error.message
+    : String(error);
+}
+
+export default async function handler(req, res) {
+  if (req.method && req.method !== "GET") {
+    res.setHeader("Allow", "GET");
+
+    return res.status(405).json({
+      error: "Méthode non autorisée",
+    });
+  }
+
+  const IDFM_API_KEY = process.env.IDFM_API_KEY;
+  const SNCF_API_KEY = process.env.SNCF_API_KEY;
+
+  const site = String(
+    process.env.VITE_SITE || "lpdl"
+  ).toLowerCase();
+
+  if (!IDFM_API_KEY) {
+    return res.status(500).json({
+      error:
+        "La variable IDFM_API_KEY n'est pas configurée dans Vercel.",
+    });
+  }
+
+  const times = {};
+  const errors = {};
+  const details = {};
+
+  // ============================================================
+  // CONFIGURATION LPDL
+  // ============================================================
+
+  const lpdlStart = {
+    lat: 48.864725,
+    lon: 2.343634,
+  };
+
+  const gareDuNordCoords = {
+    lat: 48.8809,
+    lon: 2.3553,
+  };
+
+  const gareDeLEstCoords = {
+    lat: 48.8761,
+    lon: 2.3592,
+  };
+
+  const lpdlDestinations = [
+    {
+      key: "ghulam",
+      names: ["ghulam"],
+      lat: 48.882222,
+      lon: 2.704167,
+    },
+    {
+      key: "nathan",
+      names: ["nathan"],
+      lat: 48.824744,
+      lon: 2.318872,
+    },
+    {
+      key: "michael",
+      names: ["michael"],
+      lat: 48.895631,
+      lon: 2.223138,
+    },
+    {
+      key: "liazide",
+      names: ["liazide"],
+      lat: 49.019392,
+      lon: 2.153672,
+    },
+    {
+      key: "poissy",
+      names: ["rachid", "toufik"],
+      lat: 48.933,
+      lon: 2.04,
+    },
+  ];
+
+  // ============================================================
+  // CONFIGURATION RHAPSODY
+  // ============================================================
+
+  const rhapsodyStart = {
+    lat: 48.911619,
+    lon: 2.333753,
+  };
+
+  const rhapsodyDestinations = [
+    {
+      key: "alvaro",
+      names: ["alvaro"],
+      lat: 48.9833,
+      lon: 2.2667,
+    },
+    {
+      key: "camara",
+      names: ["camara"],
+      lat: 48.904444,
+      lon: 2.306389,
+    },
+    {
+      key: "bazil",
+      names: ["bazil"],
+      lat: 49.05227,
+      lon: 2.6635,
+    },
+    {
+      key: "bongo",
+      names: ["bongo"],
+      lat: 49.0,
+      lon: 2.3333,
+    },
+    {
+      key: "picart",
+      names: ["picart"],
+      lat: 48.800833,
+      lon: 2.173056,
+    },
+    {
+      key: "royer",
+      names: ["royer"],
+      lat: 48.93778,
+      lon: 2.93556,
+    },
+  ];
+
+  try {
+    // ============================================================
+    // RHAPSODY
+    // ============================================================
+
+    if (site === "rhapsody") {
+      const jobs = rhapsodyDestinations.map(
+        (destination) => ({
+          key: destination.key,
+          destination,
+        })
+      );
+
+      const results = await getPrimBatch(
+        IDFM_API_KEY,
+        rhapsodyStart,
+        jobs
+      );
+
+      copyPrimResults(
+        rhapsodyDestinations,
+        results,
+        times,
+        errors,
+        details
+      );
+
+      // Nicodeme :
+      // Rhapsody -> Gare du Nord -> Bornel-Belle-Église.
+      try {
+        if (!SNCF_API_KEY) {
+          throw new Error(
+            "SNCF_API_KEY absente du projet Vercel dashboard-rhapsody"
+          );
+        }
+
+        const firstLeg = await getPrimJourney(
+          IDFM_API_KEY,
+          rhapsodyStart,
+          gareDuNordCoords
         );
 
-        if (!duplicate) {
-          lineMap[code].push({ severity: causeFR, message });
+        const stationArrival =
+          firstLeg.journey?.arrival_date_time;
+
+        if (!stationArrival) {
+          throw new Error(
+            "Arrivée à Gare du Nord introuvable"
+          );
         }
+
+        const transferMinutes = 10;
+
+        const trainDateTime = addMinutes(
+          stationArrival,
+          transferMinutes
+        );
+
+        if (!trainDateTime) {
+          throw new Error(
+            "Horaire Gare du Nord invalide"
+          );
+        }
+
+        const train = await getSncfStationJourney(
+          SNCF_API_KEY,
+          "stop_area:SNCF:87271007",
+          "stop_area:SNCF:87276717",
+          trainDateTime
+        );
+
+        times.nicodeme =
+          firstLeg.minutes +
+          transferMinutes +
+          train.minutes;
+
+        details.nicodeme = {
+          destination: "Bornel-Belle-Église",
+          rhapsodyToGareDuNord: firstLeg.minutes,
+          correspondence: transferMinutes,
+          gareDuNordToBornel: train.minutes,
+          gareDuNordArrival: stationArrival,
+          trainDeparture:
+            train.journey?.departure_date_time || null,
+          bornelArrival:
+            train.journey?.arrival_date_time || null,
+          totalMinutes: times.nicodeme,
+        };
+      } catch (error) {
+        times.nicodeme = null;
+        errors.nicodeme = getErrorMessage(error);
+      }
+    } else {
+      // ============================================================
+      // LPDL — TRAJETS IDFM
+      // ============================================================
+
+      const jobs = [
+        ...lpdlDestinations.map(
+          (destination) => ({
+            key: destination.key,
+            destination,
+          })
+        ),
+        {
+          key: "gareDuNord",
+          destination: gareDuNordCoords,
+        },
+        {
+          key: "gareDeLEst",
+          destination: gareDeLEstCoords,
+        },
+      ];
+
+      const results = await getPrimBatch(
+        IDFM_API_KEY,
+        lpdlStart,
+        jobs
+      );
+
+      copyPrimResults(
+        lpdlDestinations,
+        results,
+        times,
+        errors,
+        details
+      );
+
+      // ============================================================
+      // CÉDRIC — LOUVRE -> GARE DE L'EST -> LIGNE P -> LONGUEVILLE
+      // ============================================================
+
+      try {
+        if (!SNCF_API_KEY) {
+          throw new Error(
+            "SNCF_API_KEY absente du projet Vercel dashboard-vinci"
+          );
+        }
+
+        const firstLeg = results.gareDeLEst;
+
+        if (!firstLeg?.result) {
+          throw new Error(
+            firstLeg?.error ||
+              "Trajet vers Gare de l'Est indisponible"
+          );
+        }
+
+        const stationArrival =
+          firstLeg.result.journey?.arrival_date_time;
+
+        if (!stationArrival) {
+          throw new Error(
+            "Arrivée à Gare de l'Est introuvable"
+          );
+        }
+
+        const transferMinutes = 10;
+
+        const trainDateTime = addMinutes(
+          stationArrival,
+          transferMinutes
+        );
+
+        if (!trainDateTime) {
+          throw new Error(
+            "Horaire Gare de l'Est invalide"
+          );
+        }
+
+        const train = await getSncfStationJourney(
+          SNCF_API_KEY,
+          "stop_area:SNCF:87113001",
+          "stop_area:SNCF:87116137",
+          trainDateTime
+        );
+
+        times.cedric =
+          firstLeg.result.minutes +
+          transferMinutes +
+          train.minutes;
+
+        details.cedric = {
+          destination: "Gare de Longueville",
+          louvreToGareDeLEst: firstLeg.result.minutes,
+          correspondence: transferMinutes,
+          gareDeLEstToLongueville: train.minutes,
+          gareDeLEstArrival: stationArrival,
+          trainDeparture:
+            train.journey?.departure_date_time || null,
+          longvilleArrival:
+            train.journey?.arrival_date_time || null,
+          totalMinutes: times.cedric,
+        };
+      } catch (error) {
+        times.cedric = null;
+        errors.cedric = getErrorMessage(error);
+      }
+
+      // ============================================================
+      // JASON — LOUVRE -> GARE DU NORD -> TRAIN -> COMPIÈGNE
+      // ============================================================
+
+      try {
+        if (!SNCF_API_KEY) {
+          throw new Error(
+            "SNCF_API_KEY absente du projet Vercel dashboard-vinci"
+          );
+        }
+
+        const firstLeg = results.gareDuNord;
+
+        if (!firstLeg?.result) {
+          throw new Error(
+            firstLeg?.error ||
+              "Trajet vers Gare du Nord indisponible"
+          );
+        }
+
+        const stationArrival =
+          firstLeg.result.journey?.arrival_date_time;
+
+        if (!stationArrival) {
+          throw new Error(
+            "Arrivée à Gare du Nord introuvable"
+          );
+        }
+
+        const transferMinutes = 10;
+
+        const trainDateTime = addMinutes(
+          stationArrival,
+          transferMinutes
+        );
+
+        if (!trainDateTime) {
+          throw new Error(
+            "Horaire Gare du Nord invalide"
+          );
+        }
+
+        const train = await getSncfStationJourney(
+          SNCF_API_KEY,
+          "stop_area:SNCF:87271007",
+          "stop_area:SNCF:87276691",
+          trainDateTime
+        );
+
+        times.jason =
+          firstLeg.result.minutes +
+          transferMinutes +
+          train.minutes;
+
+        details.jason = {
+          destination: "Gare de Compiègne",
+          laPosteToGareDuNord: firstLeg.result.minutes,
+          correspondence: transferMinutes,
+          gareDuNordToCompiegne: train.minutes,
+          gareDuNordArrival: stationArrival,
+          trainDeparture:
+            train.journey?.departure_date_time || null,
+          arrivalCompiegne:
+            train.journey?.arrival_date_time || null,
+          totalMinutes: times.jason,
+        };
+      } catch (error) {
+        times.jason = null;
+        errors.jason = getErrorMessage(error);
       }
     }
 
-    const lines = ALL_CODES.map((code) => ({
-      code,
-      disruptions: lineMap[code] || [],
-    }));
+    res.setHeader(
+      "Cache-Control",
+      "s-maxage=300, stale-while-revalidate=30"
+    );
 
     return res.status(200).json({
-      lines,
-      updatedAt: text(data.lastUpdatedDate) || new Date().toISOString(),
-      total_disruptions: disruptions.length,
+      site,
+      times,
+      errors,
+      details,
+      updatedAt: new Date().toISOString(),
     });
   } catch (error) {
-    return res.status(200).json({
-      lines: [],
-      error: error instanceof Error ? error.message : "Erreur API transport",
+    return res.status(500).json({
+      error: "Erreur lors du calcul des trajets",
+      details: getErrorMessage(error),
     });
   }
 }
-'''
-
-out_trajets = Path("/mnt/data/api_trajets.js")
-out_transport = Path("/mnt/data/api_transport.js")
-out_trajets.write_text(trajets_code, encoding="utf-8")
-out_transport.write_text(transport_code, encoding="utf-8")
-
-print("Fichiers créés :")
-print(f"- {out_trajets} ({len(trajets_code.splitlines())} lignes)")
-print(f"- {out_transport} ({len(transport_code.splitlines())} lignes)")
