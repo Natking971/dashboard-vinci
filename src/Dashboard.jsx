@@ -3124,7 +3124,7 @@ function RegulatorySlide({ rows }) {
       <div style={{ ...cardStyle, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid #E5E7EB", flexShrink: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 800 }}>Détail des observations</div>
-          <div style={{ fontSize: 11, color: "#6B7280" }}>Tri par date décroissante · {filtered.length} ligne(s)</div>
+          <div style={{ fontSize: 11, color: "#6B7280" }}>Priorité aux observations en cours · puis date décroissante · {filtered.length} ligne(s)</div>
         </div>
         <div ref={tableScrollRef} style={{ overflow: "hidden", flex: 1, minHeight: 0 }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 950 }}>
@@ -3134,7 +3134,14 @@ function RegulatorySlide({ rows }) {
               )}</tr>
             </thead>
             <tbody>
-              {[...filtered].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0)).map((row, index) => (
+              {[...filtered].sort((a, b) => {
+                // Priorité d'affichage TV : les observations « En cours » remontent en premier.
+                // À priorité égale, les plus récentes restent en haut.
+                const priority = status => status === "En cours" ? 0 : status === "En attente" ? 1 : status === "Traitées" ? 2 : 3;
+                const priorityDiff = priority(a.status) - priority(b.status);
+                if (priorityDiff !== 0) return priorityDiff;
+                return (b.date?.getTime() || 0) - (a.date?.getTime() || 0);
+              }).map((row, index) => (
                 <tr key={`${row.id}-${index}`} style={{ background: index % 2 ? "#FAFAFA" : "white" }}>
                   <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>{row.date ? fmtDate(row.date) : row.dateText || "—"}</td>
                   <td style={{ padding: "7px 10px", fontWeight: 700 }}>{row.domain}</td>
