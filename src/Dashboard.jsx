@@ -2937,6 +2937,7 @@ function parseRegulatoryDate(value) {
 }
 
 function RegulatorySlide({ rows }) {
+  const tableScrollRef = useRef(null);
   const [yearFilter, setYearFilter] = useState("all");
   const [domainFilter, setDomainFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -2984,6 +2985,32 @@ function RegulatorySlide({ rows }) {
     (criticalityFilter === "all" || row.criticality === criticalityFilter)
   );
 
+  // Défilement automatique du tableau pour un affichage sur télévision sans souris/clavier.
+  // La vitesse est volontairement lente et la boucle reprend en haut une fois arrivé en bas.
+  useEffect(() => {
+    const element = tableScrollRef.current;
+    if (!element) return;
+    element.scrollTop = 0;
+    let pauseTicks = 0;
+    const timer = setInterval(() => {
+      const maxScroll = element.scrollHeight - element.clientHeight;
+      if (maxScroll <= 2) return;
+      if (element.scrollTop >= maxScroll - 2) {
+        // Petite pause en bas avant de repartir au début.
+        if (pauseTicks < 20) {
+          pauseTicks += 1;
+          return;
+        }
+        element.scrollTop = 0;
+        pauseTicks = 0;
+      } else {
+        element.scrollTop = Math.min(maxScroll, element.scrollTop + 0.8);
+        pauseTicks = 0;
+      }
+    }, 30);
+    return () => clearInterval(timer);
+  }, [filtered.length, yearFilter, domainFilter, statusFilter, criticalityFilter]);
+
   const treatedCount = filtered.filter(row => row.status === "Traitées").length;
   const inProgressCount = filtered.filter(row => row.status === "En cours").length;
   const pendingCount = filtered.filter(row => row.status === "En attente").length;
@@ -3000,22 +3027,22 @@ function RegulatorySlide({ rows }) {
   const fmtDate = date => date ? date.toLocaleDateString("fr-FR") : "—";
 
   const selectStyle = {
-    border: "1px solid #D1D5DB", borderRadius: 9, padding: "10px 12px",
-    background: "white", color: "#111827", fontSize: 13, fontWeight: 600, minWidth: 140,
+    border: "1px solid #D1D5DB", borderRadius: 9, padding: "8px 10px",
+    background: "white", color: "#111827", fontSize: 12, fontWeight: 600, minWidth: 130,
   };
   const cardStyle = {
-    background: "white", border: "1px solid #E5E7EB", borderRadius: 14,
-    padding: "18px 20px", minWidth: 0, boxShadow: "0 2px 5px rgba(0,0,0,.03)",
+    background: "white", border: "1px solid #E5E7EB", borderRadius: 12,
+    padding: "12px 14px", minWidth: 0, boxShadow: "0 2px 5px rgba(0,0,0,.03)",
   };
 
   return (
-    <div style={{ height: "100%", overflow: "auto", padding: "24px 34px 30px", color: "#111827" }}>
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, marginBottom: 20 }}>
+    <div style={{ height: "100%", overflow: "hidden", padding: "12px 24px 14px", color: "#111827", display: "flex", flexDirection: "column", minHeight: 0 }}>
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, marginBottom: 10, flexShrink: 0 }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", letterSpacing: ".14em", textTransform: "uppercase", marginBottom: 6 }}>
             Suivi BV Link · 2025–2026
           </div>
-          <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-1px" }}>Contrôle réglementaire</div>
+          <div style={{ fontSize: 29, fontWeight: 800, letterSpacing: "-1px" }}>Contrôle réglementaire</div>
           <div style={{ color: "#6B7280", fontSize: 13, marginTop: 6 }}>
             {filtered.length} observation{filtered.length !== 1 ? "s" : ""} affichée{filtered.length !== 1 ? "s" : ""} · données actualisées automatiquement
           </div>
@@ -3025,7 +3052,7 @@ function RegulatorySlide({ rows }) {
         </div>
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, padding: 14, background: "#E9EDF2", borderRadius: 14, marginBottom: 16 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: 8, background: "#E9EDF2", borderRadius: 12, marginBottom: 10, flexShrink: 0 }}>
         <select aria-label="Filtrer par année" value={yearFilter} onChange={e => setYearFilter(e.target.value)} style={selectStyle}>
           <option value="all">Toutes les années</option><option value="2025">2025</option><option value="2026">2026</option>
         </select>
@@ -3040,7 +3067,7 @@ function RegulatorySlide({ rows }) {
         </select>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginBottom: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, marginBottom: 10, flexShrink: 0 }}>
         {[
           { label: "Observations", value: filtered.length, color: "#1D4ED8", note: "dans la sélection" },
           { label: "Traitées", value: treatedCount, color: "#047857", note: `${treatmentRate}% du total` },
@@ -3049,18 +3076,18 @@ function RegulatorySlide({ rows }) {
         ].map(item => (
           <div key={item.label} style={cardStyle}>
             <div style={{ color: "#6B7280", fontSize: 12, fontWeight: 700 }}>{item.label}</div>
-            <div style={{ fontSize: 34, fontWeight: 800, color: item.color, lineHeight: 1.25, marginTop: 5 }}>{item.value}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: item.color, lineHeight: 1.15, marginTop: 3 }}>{item.value}</div>
             <div style={{ color: "#9CA3AF", fontSize: 11, marginTop: 3 }}>{item.note}</div>
           </div>
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(260px, .8fr)", gap: 14, marginBottom: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(260px, .8fr)", gap: 10, marginBottom: 10, maxHeight: 190, overflow: "hidden", flexShrink: 0 }}>
         <div style={cardStyle}>
-          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 16 }}>Observations par domaine</div>
+          <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8 }}>Observations par domaine</div>
           {domainCounts.length === 0 ? <div style={{ color: "#9CA3AF", padding: 18 }}>Aucune donnée pour ces filtres.</div> :
             domainCounts.slice(0, 8).map(item => (
-              <div key={item.domain} style={{ marginBottom: 12 }}>
+              <div key={item.domain} style={{ marginBottom: 7 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12, marginBottom: 5 }}>
                   <span style={{ fontWeight: 700 }}>{item.domain}</span><span style={{ color: "#6B7280", whiteSpace: "nowrap" }}>{item.treated}/{item.count} traitée(s)</span>
                 </div>
@@ -3075,14 +3102,14 @@ function RegulatorySlide({ rows }) {
           <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 8 }}>Barre bleue : volume total · portion verte : observations traitées.</div>
         </div>
         <div style={cardStyle}>
-          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 16 }}>Répartition des traitements</div>
+          <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8 }}>Répartition des traitements</div>
           {[
             { label: "Traitées", value: treatedCount, color: "#10B981" },
             { label: "En cours", value: inProgressCount, color: "#F59E0B" },
             { label: "En attente", value: pendingCount, color: "#8B5CF6" },
             { label: "Autres statuts", value: Math.max(0, filtered.length - treatedCount - inProgressCount - pendingCount), color: "#94A3B8" },
           ].map(item => (
-            <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 9, margin: "15px 0" }}>
+            <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 9, margin: "9px 0" }}>
               <div style={{ width: 10, height: 10, borderRadius: 3, background: item.color, flexShrink: 0 }} />
               <div style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{item.label}</div>
               <div style={{ fontSize: 15, fontWeight: 800 }}>{item.value}</div>
@@ -3094,29 +3121,29 @@ function RegulatorySlide({ rows }) {
         </div>
       </div>
 
-      <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "16px 18px", borderBottom: "1px solid #E5E7EB" }}>
-          <div style={{ fontSize: 15, fontWeight: 800 }}>Détail des observations</div>
+      <div style={{ ...cardStyle, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid #E5E7EB", flexShrink: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 800 }}>Détail des observations</div>
           <div style={{ fontSize: 11, color: "#6B7280" }}>Tri par date décroissante · {filtered.length} ligne(s)</div>
         </div>
-        <div style={{ overflow: "auto", maxHeight: 360 }}>
+        <div ref={tableScrollRef} style={{ overflow: "hidden", flex: 1, minHeight: 0 }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 950 }}>
             <thead style={{ position: "sticky", top: 0, background: "#F8FAFC", zIndex: 1 }}>
               <tr>{["Date", "Domaine", "Équipement / sujet", "Détails", "Traitement", "Criticité", "Échéance", "Commentaire"].map(label =>
-                <th key={label} style={{ textAlign: "left", padding: "11px 12px", color: "#64748B", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", borderBottom: "1px solid #E5E7EB" }}>{label}</th>
+                <th key={label} style={{ textAlign: "left", padding: "8px 10px", color: "#64748B", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", borderBottom: "1px solid #E5E7EB" }}>{label}</th>
               )}</tr>
             </thead>
             <tbody>
               {[...filtered].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0)).map((row, index) => (
                 <tr key={`${row.id}-${index}`} style={{ background: index % 2 ? "#FAFAFA" : "white" }}>
-                  <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>{row.date ? fmtDate(row.date) : row.dateText || "—"}</td>
-                  <td style={{ padding: "10px 12px", fontWeight: 700 }}>{row.domain}</td>
-                  <td style={{ padding: "10px 12px", maxWidth: 180 }}>{row.equipment || row.subject || row.identifier || "—"}</td>
-                  <td style={{ padding: "10px 12px", maxWidth: 280, whiteSpace: "normal" }}>{row.details || row.subject || "—"}</td>
-                  <td style={{ padding: "10px 12px" }}><span style={{ display: "inline-block", padding: "4px 8px", borderRadius: 12, background: row.status === "Traitées" ? "#D1FAE5" : row.status === "En cours" ? "#FEF3C7" : "#EDE9FE", color: row.status === "Traitées" ? "#047857" : row.status === "En cours" ? "#92400E" : "#6D28D9", fontWeight: 800, whiteSpace: "nowrap" }}>{row.treatment}</span></td>
-                  <td style={{ padding: "10px 12px" }}>{row.criticality}</td>
-                  <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>{row.dueDate || "—"}</td>
-                  <td style={{ padding: "10px 12px", maxWidth: 220, whiteSpace: "normal" }}>{row.comment || "—"}</td>
+                  <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>{row.date ? fmtDate(row.date) : row.dateText || "—"}</td>
+                  <td style={{ padding: "7px 10px", fontWeight: 700 }}>{row.domain}</td>
+                  <td style={{ padding: "7px 10px", maxWidth: 180 }}>{row.equipment || row.subject || row.identifier || "—"}</td>
+                  <td style={{ padding: "7px 10px", maxWidth: 280, whiteSpace: "normal" }}>{row.details || row.subject || "—"}</td>
+                  <td style={{ padding: "7px 10px" }}><span style={{ display: "inline-block", padding: "4px 8px", borderRadius: 12, background: row.status === "Traitées" ? "#D1FAE5" : row.status === "En cours" ? "#FEF3C7" : "#EDE9FE", color: row.status === "Traitées" ? "#047857" : row.status === "En cours" ? "#92400E" : "#6D28D9", fontWeight: 800, whiteSpace: "nowrap" }}>{row.treatment}</span></td>
+                  <td style={{ padding: "7px 10px" }}>{row.criticality}</td>
+                  <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>{row.dueDate || "—"}</td>
+                  <td style={{ padding: "7px 10px", maxWidth: 220, whiteSpace: "normal" }}>{row.comment || "—"}</td>
                 </tr>
               ))}
               {filtered.length === 0 && <tr><td colSpan={8} style={{ textAlign: "center", padding: 28, color: "#9CA3AF" }}>Aucune observation trouvée pour les filtres sélectionnés.</td></tr>}
@@ -3503,6 +3530,7 @@ export default function Dashboard() {
     let slideDuration = SLIDE_DURATION;
     if (empty) slideDuration = 3000;
     else if (SLIDES[slideIdx].type === "quotes") slideDuration = QUOTES_SLIDE_DURATION;
+    else if (SLIDES[slideIdx].type === "regulatory") slideDuration = 150000; // 2 min 30 pour lire le tableau en défilement automatique
     else if (
       SLIDES[slideIdx].type === "planning" &&
       (
