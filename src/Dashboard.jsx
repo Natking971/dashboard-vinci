@@ -113,15 +113,17 @@ function tenantShort(name) {
     .toUpperCase();
 }
 
-const TENANTS = (SITE.tenants || []).map((name, index) => {
-  const base = TENANT_PALETTE[index % TENANT_PALETTE.length];
-  return {
-    id: tenantIdFromName(name),
-    name,
-    short: tenantShort(name),
-    ...base,
-  };
-});
+const TENANTS = (SITE.tenants || [])
+  .filter(name => !(SITE.id === "lpdl" && name === "IAD"))
+  .map((name, index) => {
+    const base = TENANT_PALETTE[index % TENANT_PALETTE.length];
+    return {
+      id: tenantIdFromName(name),
+      name,
+      short: tenantShort(name),
+      ...base,
+    };
+  });
 
 const STAGES = {
   diagnostic: { label: "Diagnostic",          short: "DIAG",     color: "#6B7280", bg: "#F3F4F6", order: 1 },
