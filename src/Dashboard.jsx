@@ -379,6 +379,7 @@ const SLIDES = [
   { id: "ehpg2", type: "ehpg", label: "EHPG 2", image: "/vat-regles-art.png", alt: "Faire une VAT dans les règles de l’art" },
   { id: "quote", type: "quote" },
   { id: "planning", type: "planning" },
+  ...(SITE.id === "lpdl" ? [{ id: "regulatory", type: "regulatory", label: "Contrôle réglementaire" }] : []),
   ...TENANTS.map(t => ({ id: t.id, type: "tenant", tenantId: t.id })),
   { id: "subcontractorsCurrent", type: "subcontractors", week: "current" },
   { id: "subcontractorsNext", type: "subcontractors", week: "next" },
@@ -2887,6 +2888,246 @@ function TrajetPersoSlide({ trajetTimes }) {
   );
 }
 
+
+function normalizeRegulatoryKey(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function regulatoryField(row, ...aliases) {
+  const normalizedAliases = aliases.map(normalizeRegulatoryKey);
+  for (const [key, value] of Object.entries(row || {})) {
+    if (normalizedAliases.includes(normalizeRegulatoryKey(key))) return String(value || "").trim();
+  }
+  // Repli sur une correspondance partielle pour les exports BV Link qui ajoutent des précisions aux intitulés.
+  for (const [key, value] of Object.entries(row || {})) {
+    const normalizedKey = normalizeRegulatoryKey(key);
+    if (normalizedAliases.some(alias => alias && normalizedKey.includes(alias))) return String(value || "").trim();
+  }
+  return "";
+}
+
+function parseRegulatoryDate(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const fr = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2}|\d{4})$/);
+  if (fr) {
+    const year = fr[3].length === 2 ? Number(`20${fr[3]}`) : Number(fr[3]);
+    const date = new Date(year, Number(fr[2]) - 1, Number(fr[1]));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) {
+    const date = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  if (/^\d+(?:[.,]\d+)?$/.test(raw)) {
+    const serial = Number(raw.replace(",", "."));
+    if (serial > 20000) {
+      const date = new Date(Date.UTC(1899, 11, 30) + Math.floor(serial) * 86400000);
+      return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+    }
+  }
+  const fallback = new Date(raw);
+  return Number.isNaN(fallback.getTime()) ? null : fallback;
+}
+
+function RegulatorySlide({ rows }) {
+  const [yearFilter, setYearFilter] = useState("all");
+  const [domainFilter, setDomainFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [criticalityFilter, setCriticalityFilter] = useState("all");
+
+  const prepared = (rows || []).map((row, index) => {
+    const dateText = regulatoryField(row, "date", "date observation", "date de constat");
+    const date = parseRegulatoryDate(dateText);
+    const treatment = regulatoryField(row, "traitement", "statut", "état", "etat") || "Non renseigné";
+    const normalizedTreatment = normalizeRegulatoryKey(treatment);
+    const status = normalizedTreatment.includes("trait")
+      ? "Traitées"
+      : normalizedTreatment.includes("cours")
+      ? "En cours"
+      : normalizedTreatment.includes("attente")
+      ? "En attente"
+      : treatment;
+    return {
+      id: regulatoryField(row, "observation id", "id technique", "identifiant") || `reg-${index}`,
+      date,
+      dateText,
+      year: date ? String(date.getFullYear()) : "Date inconnue",
+      domain: regulatoryField(row, "domaine") || "Non renseigné",
+      treatment,
+      status,
+      criticality: regulatoryField(row, "criticité", "criticite", "niveau de criticité") || "Non renseignée",
+      details: regulatoryField(row, "détails", "details", "observation", "constat"),
+      subject: regulatoryField(row, "sujet", "titre"),
+      equipment: regulatoryField(row, "équipement", "equipement"),
+      identifier: regulatoryField(row, "identifiant", "numéro", "numero", "n° intervention"),
+      comment: regulatoryField(row, "commentaire", "commentaires"),
+      dueDate: regulatoryField(row, "date échéance", "date d'échéance", "échéance"),
+      raw: row,
+    };
+  }).filter(row => row.year === "2025" || row.year === "2026");
+
+  const domains = [...new Set(prepared.map(row => row.domain))].sort((a, b) => a.localeCompare(b, "fr"));
+  const statuses = [...new Set(prepared.map(row => row.status))].sort((a, b) => a.localeCompare(b, "fr"));
+  const criticalities = [...new Set(prepared.map(row => row.criticality))].sort((a, b) => a.localeCompare(b, "fr"));
+
+  const filtered = prepared.filter(row =>
+    (yearFilter === "all" || row.year === yearFilter) &&
+    (domainFilter === "all" || row.domain === domainFilter) &&
+    (statusFilter === "all" || row.status === statusFilter) &&
+    (criticalityFilter === "all" || row.criticality === criticalityFilter)
+  );
+
+  const treatedCount = filtered.filter(row => row.status === "Traitées").length;
+  const inProgressCount = filtered.filter(row => row.status === "En cours").length;
+  const pendingCount = filtered.filter(row => row.status === "En attente").length;
+  const treatmentRate = filtered.length ? Math.round((treatedCount / filtered.length) * 100) : 0;
+  const domainCounts = domains
+    .map(domain => ({
+      domain,
+      count: filtered.filter(row => row.domain === domain).length,
+      treated: filtered.filter(row => row.domain === domain && row.status === "Traitées").length,
+    }))
+    .filter(item => item.count > 0)
+    .sort((a, b) => b.count - a.count);
+  const maxDomainCount = Math.max(1, ...domainCounts.map(item => item.count));
+  const fmtDate = date => date ? date.toLocaleDateString("fr-FR") : "—";
+
+  const selectStyle = {
+    border: "1px solid #D1D5DB", borderRadius: 9, padding: "10px 12px",
+    background: "white", color: "#111827", fontSize: 13, fontWeight: 600, minWidth: 140,
+  };
+  const cardStyle = {
+    background: "white", border: "1px solid #E5E7EB", borderRadius: 14,
+    padding: "18px 20px", minWidth: 0, boxShadow: "0 2px 5px rgba(0,0,0,.03)",
+  };
+
+  return (
+    <div style={{ height: "100%", overflow: "auto", padding: "24px 34px 30px", color: "#111827" }}>
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, marginBottom: 20 }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", letterSpacing: ".14em", textTransform: "uppercase", marginBottom: 6 }}>
+            Suivi BV Link · 2025–2026
+          </div>
+          <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-1px" }}>Contrôle réglementaire</div>
+          <div style={{ color: "#6B7280", fontSize: 13, marginTop: 6 }}>
+            {filtered.length} observation{filtered.length !== 1 ? "s" : ""} affichée{filtered.length !== 1 ? "s" : ""} · données actualisées automatiquement
+          </div>
+        </div>
+        <div style={{ background: "#EFF6FF", color: "#1D4ED8", borderRadius: 10, padding: "10px 14px", fontSize: 12, fontWeight: 800 }}>
+          LA POSTE DU LOUVRE
+        </div>
+      </div>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, padding: 14, background: "#E9EDF2", borderRadius: 14, marginBottom: 16 }}>
+        <select aria-label="Filtrer par année" value={yearFilter} onChange={e => setYearFilter(e.target.value)} style={selectStyle}>
+          <option value="all">Toutes les années</option><option value="2025">2025</option><option value="2026">2026</option>
+        </select>
+        <select aria-label="Filtrer par domaine" value={domainFilter} onChange={e => setDomainFilter(e.target.value)} style={selectStyle}>
+          <option value="all">Tous les domaines</option>{domains.map(value => <option key={value} value={value}>{value}</option>)}
+        </select>
+        <select aria-label="Filtrer par traitement" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle}>
+          <option value="all">Tous les traitements</option>{statuses.map(value => <option key={value} value={value}>{value}</option>)}
+        </select>
+        <select aria-label="Filtrer par criticité" value={criticalityFilter} onChange={e => setCriticalityFilter(e.target.value)} style={selectStyle}>
+          <option value="all">Toutes les criticités</option>{criticalities.map(value => <option key={value} value={value}>{value}</option>)}
+        </select>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginBottom: 16 }}>
+        {[
+          { label: "Observations", value: filtered.length, color: "#1D4ED8", note: "dans la sélection" },
+          { label: "Traitées", value: treatedCount, color: "#047857", note: `${treatmentRate}% du total` },
+          { label: "En cours", value: inProgressCount, color: "#B45309", note: "à suivre" },
+          { label: "En attente", value: pendingCount, color: "#7C3AED", note: "intervention / action" },
+        ].map(item => (
+          <div key={item.label} style={cardStyle}>
+            <div style={{ color: "#6B7280", fontSize: 12, fontWeight: 700 }}>{item.label}</div>
+            <div style={{ fontSize: 34, fontWeight: 800, color: item.color, lineHeight: 1.25, marginTop: 5 }}>{item.value}</div>
+            <div style={{ color: "#9CA3AF", fontSize: 11, marginTop: 3 }}>{item.note}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(260px, .8fr)", gap: 14, marginBottom: 16 }}>
+        <div style={cardStyle}>
+          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 16 }}>Observations par domaine</div>
+          {domainCounts.length === 0 ? <div style={{ color: "#9CA3AF", padding: 18 }}>Aucune donnée pour ces filtres.</div> :
+            domainCounts.slice(0, 8).map(item => (
+              <div key={item.domain} style={{ marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12, marginBottom: 5 }}>
+                  <span style={{ fontWeight: 700 }}>{item.domain}</span><span style={{ color: "#6B7280", whiteSpace: "nowrap" }}>{item.treated}/{item.count} traitée(s)</span>
+                </div>
+                <div style={{ height: 10, background: "#E5E7EB", borderRadius: 20, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${(item.count / maxDomainCount) * 100}%`, background: "#3B82F6", borderRadius: 20, position: "relative" }}>
+                    <div style={{ height: "100%", width: `${item.count ? (item.treated / item.count) * 100 : 0}%`, background: "#10B981", borderRadius: 20 }} />
+                  </div>
+                </div>
+              </div>
+            ))
+          }
+          <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 8 }}>Barre bleue : volume total · portion verte : observations traitées.</div>
+        </div>
+        <div style={cardStyle}>
+          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 16 }}>Répartition des traitements</div>
+          {[
+            { label: "Traitées", value: treatedCount, color: "#10B981" },
+            { label: "En cours", value: inProgressCount, color: "#F59E0B" },
+            { label: "En attente", value: pendingCount, color: "#8B5CF6" },
+            { label: "Autres statuts", value: Math.max(0, filtered.length - treatedCount - inProgressCount - pendingCount), color: "#94A3B8" },
+          ].map(item => (
+            <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 9, margin: "15px 0" }}>
+              <div style={{ width: 10, height: 10, borderRadius: 3, background: item.color, flexShrink: 0 }} />
+              <div style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{item.label}</div>
+              <div style={{ fontSize: 15, fontWeight: 800 }}>{item.value}</div>
+              <div style={{ width: 82, height: 7, borderRadius: 10, background: "#F1F5F9", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${filtered.length ? item.value / filtered.length * 100 : 0}%`, background: item.color }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "16px 18px", borderBottom: "1px solid #E5E7EB" }}>
+          <div style={{ fontSize: 15, fontWeight: 800 }}>Détail des observations</div>
+          <div style={{ fontSize: 11, color: "#6B7280" }}>Tri par date décroissante · {filtered.length} ligne(s)</div>
+        </div>
+        <div style={{ overflow: "auto", maxHeight: 360 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 950 }}>
+            <thead style={{ position: "sticky", top: 0, background: "#F8FAFC", zIndex: 1 }}>
+              <tr>{["Date", "Domaine", "Équipement / sujet", "Détails", "Traitement", "Criticité", "Échéance", "Commentaire"].map(label =>
+                <th key={label} style={{ textAlign: "left", padding: "11px 12px", color: "#64748B", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", borderBottom: "1px solid #E5E7EB" }}>{label}</th>
+              )}</tr>
+            </thead>
+            <tbody>
+              {[...filtered].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0)).map((row, index) => (
+                <tr key={`${row.id}-${index}`} style={{ background: index % 2 ? "#FAFAFA" : "white" }}>
+                  <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>{row.date ? fmtDate(row.date) : row.dateText || "—"}</td>
+                  <td style={{ padding: "10px 12px", fontWeight: 700 }}>{row.domain}</td>
+                  <td style={{ padding: "10px 12px", maxWidth: 180 }}>{row.equipment || row.subject || row.identifier || "—"}</td>
+                  <td style={{ padding: "10px 12px", maxWidth: 280, whiteSpace: "normal" }}>{row.details || row.subject || "—"}</td>
+                  <td style={{ padding: "10px 12px" }}><span style={{ display: "inline-block", padding: "4px 8px", borderRadius: 12, background: row.status === "Traitées" ? "#D1FAE5" : row.status === "En cours" ? "#FEF3C7" : "#EDE9FE", color: row.status === "Traitées" ? "#047857" : row.status === "En cours" ? "#92400E" : "#6D28D9", fontWeight: 800, whiteSpace: "nowrap" }}>{row.treatment}</span></td>
+                  <td style={{ padding: "10px 12px" }}>{row.criticality}</td>
+                  <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>{row.dueDate || "—"}</td>
+                  <td style={{ padding: "10px 12px", maxWidth: 220, whiteSpace: "normal" }}>{row.comment || "—"}</td>
+                </tr>
+              ))}
+              {filtered.length === 0 && <tr><td colSpan={8} style={{ textAlign: "center", padding: 28, color: "#9CA3AF" }}>Aucune observation trouvée pour les filtres sélectionnés.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [time, setTime] = useState(new Date());
   const [slideIdx, setSlideIdx] = useState(0);
@@ -2898,6 +3139,7 @@ export default function Dashboard() {
   const [subcontractorsNext, setSubcontractorsNext] = useState(FALLBACK_SUBCONTRACTORS);
   const [quotes, setQuotes] = useState(FALLBACK_QUOTES);
   const [onesite, setOnesite] = useState(FALLBACK_ONESITE);
+  const [regulatoryRows, setRegulatoryRows] = useState([]);
   const [dataStatus, setDataStatus] = useState("loading"); // "loading" | "ok" | "error"
   const [lastUpdate, setLastUpdate] = useState(null);
   const [weather, setWeather] = useState(null);
@@ -2933,15 +3175,22 @@ export default function Dashboard() {
 
     async function fetchAllData() {
       try {
-        const [planningRes, affairsRes, subsRes, onesiteRes, citationsRes] = await Promise.all([
+        const [planningRes, affairsRes, subsRes, onesiteRes, citationsRes, regulatoryRes] = await Promise.all([
           fetch(SHEET_URLS.planning).then(r => r.text()),
           fetch(SHEET_URLS.affaires).then(r => r.text()),
           fetch(SHEET_URLS.evenement || SHEET_URLS.soustraitants).then(r => r.text()),
           fetch(SHEET_URLS.onesite).then(r => r.text()).catch(() => ""),
           fetch(SHEET_URLS.citations).then(r => r.text()).catch(() => ""),
+          SITE.id === "lpdl" && SHEET_URLS.regulatory
+            ? fetch(SHEET_URLS.regulatory).then(r => r.ok ? r.text() : "").catch(() => "")
+            : Promise.resolve(""),
         ]);
 
         if (cancelled) return;
+
+        // Contrôles réglementaires : import brut BV Link, réservé à LPDL pour le moment.
+        const newRegulatoryRows = regulatoryRes ? parseCSV(regulatoryRes) : [];
+        if (SITE.id === "lpdl") setRegulatoryRows(newRegulatoryRows);
 
         // Parser Planning : technicien, jour, tache, client, semaine
         // La colonne "semaine" peut être "actuelle" ou "prochaine" (vide = actuelle par défaut)
@@ -3329,6 +3578,7 @@ export default function Dashboard() {
     : currentSlide.type === "weather" ? "#0EA5E9"
     : currentSlide.type === "quote" ? "#8B5CF6"
     : currentSlide.type === "transport" ? "#10B981"
+    : currentSlide.type === "regulatory" ? "#0F766E"
     : "#1D4ED8";
   const totalUrgent = Object.values(affairs).flat().filter(a => a.urgent).length;
 
@@ -3478,6 +3728,9 @@ export default function Dashboard() {
           } else if (s.type === "transport") {
             label = "TRANSPORT";
             accentColor = "#10B981";
+          } else if (s.type === "regulatory") {
+            label = "CONTRÔLE RÉGLEMENTAIRE";
+            accentColor = "#0F766E";
           } else {
             label = tenant.name.toUpperCase();
             accentColor = tenant.accent;
@@ -3510,6 +3763,7 @@ export default function Dashboard() {
         {currentSlide.type === "trajetPerso" && <TrajetPersoSlide trajetTimes={trajetTimes} />}
         {currentSlide.type === "transport" && <TransportSlide lines={transportLines} lastUpdate={transportLastUpdate} />}
         {currentSlide.type === "onesite" && <OneSiteSlide onesite={onesite} />}
+        {currentSlide.type === "regulatory" && <RegulatorySlide rows={regulatoryRows} />}
         {currentSlide.type === "planning" && (
           <PlanningSlide
             planning={currentSlide.week === "next" ? planningNext : planning}
