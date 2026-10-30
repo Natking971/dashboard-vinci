@@ -2942,27 +2942,52 @@ function RegulatorySlide({ rows }) {
   const [domainFilter, setDomainFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [criticalityFilter, setCriticalityFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+
+  const classifyRegulatoryCategory = (raw) => {
+    const explicit = regulatoryField(raw, "catégorie", "categorie", "type de partie", "partie", "périmètre", "perimetre", "secteur");
+    const explicitKey = normalizeRegulatoryKey(explicit || "");
+    if (explicitKey.includes("commun")) return "Parties communes";
+    if (explicitKey.includes("priv") || explicitKey.includes("locatif")) return "Parties privatives";
+
+    // Certains exports BV Link identifient le local par le nom du locataire.
+    const tenant = regulatoryField(raw, "locataire", "client", "occupant", "entite", "entité");
+    const tenantKey = normalizeRegulatoryKey(tenant || "");
+    const privateTenants = ["voodoo", "poste enseigne", "logistique urbaine", "louvre banque privee", "iad"];
+    if (privateTenants.some(name => tenantKey.includes(normalizeRegulatoryKey(name)))) return "Parties privatives";
+    if (tenantKey.includes("parties communes") || tenantKey === "communes") return "Parties communes";
+
+    // À défaut de champ dédié, on recherche une mention explicite dans les champs descriptifs.
+    const description = normalizeRegulatoryKey([
+      regulatoryField(raw, "sujet", "titre"),
+      regulatoryField(raw, "equipement", "équipement"),
+      regulatoryField(raw, "details", "détails", "observation", "constat"),
+      regulatoryField(raw, "identification", "identifiant"),
+    ].filter(Boolean).join(" "));
+    if (description.includes("parties communes") || description.includes("partie commune")) return "Parties communes";
+    if (description.includes("parties privatives") || description.includes("partie privative")) return "Parties privatives";
+    return "À classer";
+  };
 
   const prepared = (rows || []).map((row, index) => {
     const dateText = regulatoryField(row, "date", "date observation", "date de constat");
     const date = parseRegulatoryDate(dateText);
     const treatment = regulatoryField(row, "traitement", "statut", "état", "etat") || "Non renseigné";
     const normalizedTreatment = normalizeRegulatoryKey(treatment);
-    const status = normalizedTreatment.includes("trait")
+    const status = normalizedTreatment === "traite" || normalizedTreatment.includes("traitee") || normalizedTreatment.includes("levee")
       ? "Traitées"
       : normalizedTreatment.includes("cours")
       ? "En cours"
-      : normalizedTreatment.includes("attente")
+      : normalizedTreatment.includes("attente") || normalizedTreatment.includes("validation") || normalizedTreatment.includes("devis")
       ? "En attente"
-      : treatment;
+      : "Autres statuts";
     return {
       id: regulatoryField(row, "observation id", "id technique", "identifiant") || `reg-${index}`,
-      date,
-      dateText,
+      date, dateText,
       year: date ? String(date.getFullYear()) : "Date inconnue",
       domain: regulatoryField(row, "domaine") || "Non renseigné",
-      treatment,
-      status,
+      treatment, status,
+      category: classifyRegulatoryCategory(row),
       criticality: regulatoryField(row, "criticité", "criticite", "niveau de criticité") || "Non renseignée",
       details: regulatoryField(row, "détails", "details", "observation", "constat"),
       subject: regulatoryField(row, "sujet", "titre"),
@@ -2977,16 +3002,15 @@ function RegulatorySlide({ rows }) {
   const domains = [...new Set(prepared.map(row => row.domain))].sort((a, b) => a.localeCompare(b, "fr"));
   const statuses = [...new Set(prepared.map(row => row.status))].sort((a, b) => a.localeCompare(b, "fr"));
   const criticalities = [...new Set(prepared.map(row => row.criticality))].sort((a, b) => a.localeCompare(b, "fr"));
-
   const filtered = prepared.filter(row =>
     (yearFilter === "all" || row.year === yearFilter) &&
     (domainFilter === "all" || row.domain === domainFilter) &&
     (statusFilter === "all" || row.status === statusFilter) &&
-    (criticalityFilter === "all" || row.criticality === criticalityFilter)
+    (criticalityFilter === "all" || row.criticality === criticalityFilter) &&
+    (categoryFilter === "all" || row.category === categoryFilter)
   );
 
-  // Défilement automatique du tableau pour un affichage sur télévision sans souris/clavier.
-  // La vitesse est volontairement lente et la boucle reprend en haut une fois arrivé en bas.
+  // Défilement automatique du tableau sur l'écran TV.
   useEffect(() => {
     const element = tableScrollRef.current;
     if (!element) return;
@@ -2996,11 +3020,7 @@ function RegulatorySlide({ rows }) {
       const maxScroll = element.scrollHeight - element.clientHeight;
       if (maxScroll <= 2) return;
       if (element.scrollTop >= maxScroll - 2) {
-        // Petite pause en bas avant de repartir au début.
-        if (pauseTicks < 20) {
-          pauseTicks += 1;
-          return;
-        }
+        if (pauseTicks < 20) { pauseTicks += 1; return; }
         element.scrollTop = 0;
         pauseTicks = 0;
       } else {
@@ -3009,159 +3029,87 @@ function RegulatorySlide({ rows }) {
       }
     }, 30);
     return () => clearInterval(timer);
-  }, [filtered.length, yearFilter, domainFilter, statusFilter, criticalityFilter]);
+  }, [filtered.length, yearFilter, domainFilter, statusFilter, criticalityFilter, categoryFilter]);
 
-  const treatedCount = filtered.filter(row => row.status === "Traitées").length;
-  const inProgressCount = filtered.filter(row => row.status === "En cours").length;
-  const pendingCount = filtered.filter(row => row.status === "En attente").length;
-  const treatmentRate = filtered.length ? Math.round((treatedCount / filtered.length) * 100) : 0;
-  const domainCounts = domains
-    .map(domain => ({
-      domain,
-      count: filtered.filter(row => row.domain === domain).length,
-      treated: filtered.filter(row => row.domain === domain && row.status === "Traitées").length,
-    }))
-    .filter(item => item.count > 0)
-    .sort((a, b) => b.count - a.count);
-  const maxDomainCount = Math.max(1, ...domainCounts.map(item => item.count));
+  const stats = (list) => {
+    const total = list.length;
+    const treated = list.filter(row => row.status === "Traitées").length;
+    const inProgress = list.filter(row => row.status === "En cours").length;
+    const pending = list.filter(row => row.status === "En attente").length;
+    return { total, reserves: total, treated, inProgress, pending, rate: total ? Math.round(treated / total * 100) : 0 };
+  };
+  const globalStats = stats(filtered);
+  const commonStats = stats(filtered.filter(row => row.category === "Parties communes"));
+  const privateStats = stats(filtered.filter(row => row.category === "Parties privatives"));
+  const unclassifiedCount = filtered.filter(row => row.category === "À classer").length;
+  const treatmentCounts = [
+    { label: "Traitées", value: globalStats.treated, color: "#10B981" },
+    { label: "En cours", value: globalStats.inProgress, color: "#F59E0B" },
+    { label: "En attente", value: globalStats.pending, color: "#8B5CF6" },
+  ];
+  const domainCounts = [...new Set(filtered.map(row => row.domain))].map(domain => ({
+    domain,
+    common: filtered.filter(row => row.domain === domain && row.category === "Parties communes").length,
+    privates: filtered.filter(row => row.domain === domain && row.category === "Parties privatives").length,
+  })).sort((a, b) => (b.common + b.privates) - (a.common + a.privates)).slice(0, 6);
+  const maxDomainCount = Math.max(1, ...domainCounts.map(item => item.common + item.privates));
   const fmtDate = date => date ? date.toLocaleDateString("fr-FR") : "—";
+  const selectStyle = { border: "1px solid #D1D5DB", borderRadius: 9, padding: "8px 10px", background: "white", color: "#111827", fontSize: 12, fontWeight: 600, minWidth: 130 };
+  const cardStyle = { background: "white", border: "1px solid #E5E7EB", borderRadius: 12, padding: "12px 14px", minWidth: 0, boxShadow: "0 2px 5px rgba(0,0,0,.03)" };
+  const donut = (s, title, color) => {
+    const treated = s.total ? s.treated / s.total * 100 : 0;
+    const inProgress = s.total ? s.inProgress / s.total * 100 : 0;
+    const pending = s.total ? s.pending / s.total * 100 : 0;
+    return <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ width: 76, height: 76, borderRadius: "50%", flexShrink: 0, background: `conic-gradient(#10B981 0 ${treated}%, #F59E0B ${treated}% ${treated + inProgress}%, #8B5CF6 ${treated + inProgress}% ${treated + inProgress + pending}%, #E5E7EB ${treated + inProgress + pending}% 100%)`, display: "grid", placeItems: "center" }}>
+        <div style={{ width: 48, height: 48, borderRadius: "50%", background: "white", display: "grid", placeItems: "center", fontSize: 13, fontWeight: 800 }}>{s.rate}%</div>
+      </div>
+      <div style={{ minWidth: 0 }}><div style={{ fontWeight: 800, color, fontSize: 12, marginBottom: 4 }}>{title}</div><div style={{ fontSize: 11, color: "#475569", lineHeight: 1.7 }}>Traitées : {s.treated}<br/>En cours : {s.inProgress}<br/>En attente : {s.pending}</div></div>
+    </div>;
+  };
+  const statCard = (title, s, color, bg, icon) => <div style={{ ...cardStyle, background: bg, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+    <div style={{ minWidth: 0 }}><div style={{ color, fontWeight: 800, fontSize: 12, marginBottom: 7 }}>{icon} {title}</div><div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+      <div><div style={{ fontSize: 25, fontWeight: 900, color }}>{s.total}</div><div style={{ fontSize: 10, color: "#64748B" }}>Observations</div></div>
+      <div><div style={{ fontSize: 22, fontWeight: 800 }}>{s.reserves}</div><div style={{ fontSize: 10, color: "#64748B" }}>Réserves</div></div>
+      <div><div style={{ fontSize: 22, fontWeight: 800, color: "#059669" }}>{s.treated}</div><div style={{ fontSize: 10, color: "#64748B" }}>Levées</div></div>
+    </div></div>{donut(s, "Taux de levée", color)}</div>;
 
-  const selectStyle = {
-    border: "1px solid #D1D5DB", borderRadius: 9, padding: "8px 10px",
-    background: "white", color: "#111827", fontSize: 12, fontWeight: 600, minWidth: 130,
-  };
-  const cardStyle = {
-    background: "white", border: "1px solid #E5E7EB", borderRadius: 12,
-    padding: "12px 14px", minWidth: 0, boxShadow: "0 2px 5px rgba(0,0,0,.03)",
-  };
+  const sortedRows = [...filtered].sort((a, b) => {
+    const priority = status => status === "En cours" ? 0 : status === "En attente" ? 1 : status === "Traitées" ? 2 : 3;
+    return priority(a.status) - priority(b.status) || (b.date?.getTime() || 0) - (a.date?.getTime() || 0);
+  });
 
   return (
     <div style={{ height: "100%", overflow: "hidden", padding: "12px 24px 14px", color: "#111827", display: "flex", flexDirection: "column", minHeight: 0 }}>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, marginBottom: 10, flexShrink: 0 }}>
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#64748B", letterSpacing: ".14em", textTransform: "uppercase", marginBottom: 6 }}>
-            Suivi BV Link · 2025–2026
-          </div>
-          <div style={{ fontSize: 29, fontWeight: 800, letterSpacing: "-1px" }}>Contrôle réglementaire</div>
-          <div style={{ color: "#6B7280", fontSize: 13, marginTop: 6 }}>
-            {filtered.length} observation{filtered.length !== 1 ? "s" : ""} affichée{filtered.length !== 1 ? "s" : ""} · données actualisées automatiquement
-          </div>
-        </div>
-        <div style={{ background: "#EFF6FF", color: "#1D4ED8", borderRadius: 10, padding: "10px 14px", fontSize: 12, fontWeight: 800 }}>
-          LA POSTE DU LOUVRE
-        </div>
+        <div><div style={{ fontSize: 11, fontWeight: 800, color: "#64748B", letterSpacing: ".14em", textTransform: "uppercase", marginBottom: 4 }}>Suivi BV Link · 2025–2026</div><div style={{ fontSize: 27, fontWeight: 800, letterSpacing: "-1px" }}>Contrôle réglementaire</div><div style={{ color: "#6B7280", fontSize: 12, marginTop: 4 }}>{filtered.length} observations affichées · données actualisées automatiquement</div></div>
+        <div style={{ background: "#EFF6FF", color: "#1D4ED8", borderRadius: 10, padding: "9px 12px", fontSize: 11, fontWeight: 800 }}>LA POSTE DU LOUVRE</div>
       </div>
-
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: 8, background: "#E9EDF2", borderRadius: 12, marginBottom: 10, flexShrink: 0 }}>
-        <select aria-label="Filtrer par année" value={yearFilter} onChange={e => setYearFilter(e.target.value)} style={selectStyle}>
-          <option value="all">Toutes les années</option><option value="2025">2025</option><option value="2026">2026</option>
-        </select>
-        <select aria-label="Filtrer par domaine" value={domainFilter} onChange={e => setDomainFilter(e.target.value)} style={selectStyle}>
-          <option value="all">Tous les domaines</option>{domains.map(value => <option key={value} value={value}>{value}</option>)}
-        </select>
-        <select aria-label="Filtrer par traitement" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle}>
-          <option value="all">Tous les traitements</option>{statuses.map(value => <option key={value} value={value}>{value}</option>)}
-        </select>
-        <select aria-label="Filtrer par criticité" value={criticalityFilter} onChange={e => setCriticalityFilter(e.target.value)} style={selectStyle}>
-          <option value="all">Toutes les criticités</option>{criticalities.map(value => <option key={value} value={value}>{value}</option>)}
-        </select>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: 8, background: "#E9EDF2", borderRadius: 12, marginBottom: 9, flexShrink: 0 }}>
+        <select aria-label="Filtrer par année" value={yearFilter} onChange={e => setYearFilter(e.target.value)} style={selectStyle}><option value="all">Toutes les années</option><option value="2025">2025</option><option value="2026">2026</option></select>
+        <select aria-label="Filtrer par domaine" value={domainFilter} onChange={e => setDomainFilter(e.target.value)} style={selectStyle}><option value="all">Tous les domaines</option>{domains.map(value => <option key={value} value={value}>{value}</option>)}</select>
+        <select aria-label="Filtrer par traitement" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle}><option value="all">Tous les traitements</option>{statuses.map(value => <option key={value} value={value}>{value}</option>)}</select>
+        <select aria-label="Filtrer par criticité" value={criticalityFilter} onChange={e => setCriticalityFilter(e.target.value)} style={selectStyle}><option value="all">Toutes les criticités</option>{criticalities.map(value => <option key={value} value={value}>{value}</option>)}</select>
+        <select aria-label="Filtrer par catégorie" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={selectStyle}><option value="all">Toutes les catégories</option><option value="Parties communes">Parties communes</option><option value="Parties privatives">Parties privatives</option><option value="À classer">À classer</option></select>
       </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, marginBottom: 10, flexShrink: 0 }}>
-        {[
-          { label: "Observations", value: filtered.length, color: "#1D4ED8", note: "dans la sélection" },
-          { label: "Traitées", value: treatedCount, color: "#047857", note: `${treatmentRate}% du total` },
-          { label: "En cours", value: inProgressCount, color: "#B45309", note: "à suivre" },
-          { label: "En attente", value: pendingCount, color: "#7C3AED", note: "intervention / action" },
-        ].map(item => (
-          <div key={item.label} style={cardStyle}>
-            <div style={{ color: "#6B7280", fontSize: 12, fontWeight: 700 }}>{item.label}</div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: item.color, lineHeight: 1.15, marginTop: 3 }}>{item.value}</div>
-            <div style={{ color: "#9CA3AF", fontSize: 11, marginTop: 3 }}>{item.note}</div>
-          </div>
-        ))}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 9, marginBottom: 9, flexShrink: 0 }}>
+        {statCard("TOTAL SITE (GLOBAL)", globalStats, "#1D4ED8", "#EFF6FF", "▦")}
+        {statCard("PARTIES COMMUNES", commonStats, "#047857", "#ECFDF5", "⌂")}
+        {statCard("PARTIES PRIVATIVES", privateStats, "#C2410C", "#FFF7ED", "▤")}
       </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(260px, .8fr)", gap: 10, marginBottom: 10, maxHeight: 190, overflow: "hidden", flexShrink: 0 }}>
-        <div style={cardStyle}>
-          <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8 }}>Observations par domaine</div>
-          {domainCounts.length === 0 ? <div style={{ color: "#9CA3AF", padding: 18 }}>Aucune donnée pour ces filtres.</div> :
-            domainCounts.slice(0, 8).map(item => (
-              <div key={item.domain} style={{ marginBottom: 7 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12, marginBottom: 5 }}>
-                  <span style={{ fontWeight: 700 }}>{item.domain}</span><span style={{ color: "#6B7280", whiteSpace: "nowrap" }}>{item.treated}/{item.count} traitée(s)</span>
-                </div>
-                <div style={{ height: 10, background: "#E5E7EB", borderRadius: 20, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${(item.count / maxDomainCount) * 100}%`, background: "#3B82F6", borderRadius: 20, position: "relative" }}>
-                    <div style={{ height: "100%", width: `${item.count ? (item.treated / item.count) * 100 : 0}%`, background: "#10B981", borderRadius: 20 }} />
-                  </div>
-                </div>
-              </div>
-            ))
-          }
-          <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 8 }}>Barre bleue : volume total · portion verte : observations traitées.</div>
-        </div>
-        <div style={cardStyle}>
-          <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8 }}>Répartition des traitements</div>
-          {[
-            { label: "Traitées", value: treatedCount, color: "#10B981" },
-            { label: "En cours", value: inProgressCount, color: "#F59E0B" },
-            { label: "En attente", value: pendingCount, color: "#8B5CF6" },
-            { label: "Autres statuts", value: Math.max(0, filtered.length - treatedCount - inProgressCount - pendingCount), color: "#94A3B8" },
-          ].map(item => (
-            <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 9, margin: "9px 0" }}>
-              <div style={{ width: 10, height: 10, borderRadius: 3, background: item.color, flexShrink: 0 }} />
-              <div style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{item.label}</div>
-              <div style={{ fontSize: 15, fontWeight: 800 }}>{item.value}</div>
-              <div style={{ width: 82, height: 7, borderRadius: 10, background: "#F1F5F9", overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${filtered.length ? item.value / filtered.length * 100 : 0}%`, background: item.color }} />
-              </div>
-            </div>
-          ))}
-        </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1.1fr .9fr 1fr", gap: 9, marginBottom: 9, flexShrink: 0, minHeight: 138 }}>
+        <div style={cardStyle}><div style={{ fontSize: 13, fontWeight: 800, marginBottom: 9 }}>Réserves par domaine</div><div style={{ display: "flex", gap: 12, fontSize: 10, marginBottom: 8 }}><span style={{ color: "#2563EB" }}>● Parties communes</span><span style={{ color: "#F97316" }}>● Parties privatives</span></div>{domainCounts.map(item => <div key={item.domain} style={{ marginBottom: 6 }}><div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 3 }}><b>{item.domain}</b><span>{item.common} / {item.privates}</span></div><div style={{ height: 8, background: "#E5E7EB", borderRadius: 8, overflow: "hidden", display: "flex" }}><div style={{ width: `${item.common / maxDomainCount * 100}%`, background: "#3B82F6" }}/><div style={{ width: `${item.privates / maxDomainCount * 100}%`, background: "#F97316" }}/></div></div>)}</div>
+        <div style={cardStyle}><div style={{ fontSize: 13, fontWeight: 800, marginBottom: 10 }}>Répartition des traitements</div><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>{donut(commonStats, "Communes", "#047857")}{donut(privateStats, "Privatives", "#C2410C")}</div><div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 10, marginTop: 8 }}><span style={{ color: "#059669" }}>● Traitées</span><span style={{ color: "#D97706" }}>● En cours</span><span style={{ color: "#7C3AED" }}>● En attente</span></div></div>
+        <div style={cardStyle}><div style={{ fontSize: 13, fontWeight: 800, marginBottom: 10 }}>Évolution des réserves par année</div>{["2025", "2026"].map(year => { const c = filtered.filter(row => row.year === year && row.category === "Parties communes").length; const p = filtered.filter(row => row.year === year && row.category === "Parties privatives").length; const max = Math.max(1, ...filtered.map(row => row.year === year ? 1 : 0), c, p); return <div key={year} style={{ marginBottom: 12 }}><div style={{ fontSize: 11, fontWeight: 700, marginBottom: 4 }}>{year}</div><div style={{ display: "flex", alignItems: "center", gap: 7 }}><span style={{ width: 54, fontSize: 10, color: "#2563EB" }}>Communes</span><div style={{ flex: 1, height: 8, background: "#EFF6FF", borderRadius: 6 }}><div style={{ width: `${c / Math.max(1, ...filtered.map(r => r.year === year ? (r.category === "Parties communes" ? filtered.filter(x => x.year === year && x.category === "Parties communes").length : 0) : 0), c, p) * 100}%`, height: "100%", background: "#3B82F6", borderRadius: 6 }}/></div><b style={{ fontSize: 10 }}>{c}</b></div><div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}><span style={{ width: 54, fontSize: 10, color: "#EA580C" }}>Privatives</span><div style={{ flex: 1, height: 8, background: "#FFF7ED", borderRadius: 6 }}><div style={{ width: `${p / Math.max(1, c, p) * 100}%`, height: "100%", background: "#F97316", borderRadius: 6 }}/></div><b style={{ fontSize: 10 }}>{p}</b></div></div>; })}</div>
       </div>
-
+      {unclassifiedCount > 0 && <div style={{ fontSize: 10, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "5px 9px", marginBottom: 7, flexShrink: 0 }}>{unclassifiedCount} observation(s) ne sont pas catégorisées dans la source et restent dans le total global. Renseigner une catégorie dans BV Link pour les répartir correctement.</div>}
       <div style={{ ...cardStyle, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid #E5E7EB", flexShrink: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 800 }}>Détail des observations</div>
-          <div style={{ fontSize: 11, color: "#6B7280" }}>Priorité aux observations en cours · puis date décroissante · {filtered.length} ligne(s)</div>
-        </div>
-        <div ref={tableScrollRef} style={{ overflow: "hidden", flex: 1, minHeight: 0 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 950 }}>
-            <thead style={{ position: "sticky", top: 0, background: "#F8FAFC", zIndex: 1 }}>
-              <tr>{["Date", "Domaine", "Équipement / sujet", "Détails", "Traitement", "Criticité", "Échéance", "Commentaire"].map(label =>
-                <th key={label} style={{ textAlign: "left", padding: "8px 10px", color: "#64748B", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", borderBottom: "1px solid #E5E7EB" }}>{label}</th>
-              )}</tr>
-            </thead>
-            <tbody>
-              {[...filtered].sort((a, b) => {
-                // Priorité d'affichage TV : les observations « En cours » remontent en premier.
-                // À priorité égale, les plus récentes restent en haut.
-                const priority = status => status === "En cours" ? 0 : status === "En attente" ? 1 : status === "Traitées" ? 2 : 3;
-                const priorityDiff = priority(a.status) - priority(b.status);
-                if (priorityDiff !== 0) return priorityDiff;
-                return (b.date?.getTime() || 0) - (a.date?.getTime() || 0);
-              }).map((row, index) => (
-                <tr key={`${row.id}-${index}`} style={{ background: index % 2 ? "#FAFAFA" : "white" }}>
-                  <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>{row.date ? fmtDate(row.date) : row.dateText || "—"}</td>
-                  <td style={{ padding: "7px 10px", fontWeight: 700 }}>{row.domain}</td>
-                  <td style={{ padding: "7px 10px", maxWidth: 180 }}>{row.equipment || row.subject || row.identifier || "—"}</td>
-                  <td style={{ padding: "7px 10px", maxWidth: 280, whiteSpace: "normal" }}>{row.details || row.subject || "—"}</td>
-                  <td style={{ padding: "7px 10px" }}><span style={{ display: "inline-block", padding: "4px 8px", borderRadius: 12, background: row.status === "Traitées" ? "#D1FAE5" : row.status === "En cours" ? "#FEF3C7" : "#EDE9FE", color: row.status === "Traitées" ? "#047857" : row.status === "En cours" ? "#92400E" : "#6D28D9", fontWeight: 800, whiteSpace: "nowrap" }}>{row.treatment}</span></td>
-                  <td style={{ padding: "7px 10px" }}>{row.criticality}</td>
-                  <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}>{row.dueDate || "—"}</td>
-                  <td style={{ padding: "7px 10px", maxWidth: 220, whiteSpace: "normal" }}>{row.comment || "—"}</td>
-                </tr>
-              ))}
-              {filtered.length === 0 && <tr><td colSpan={8} style={{ textAlign: "center", padding: 28, color: "#9CA3AF" }}>Aucune observation trouvée pour les filtres sélectionnés.</td></tr>}
-            </tbody>
-          </table>
-        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "9px 12px", borderBottom: "1px solid #E5E7EB", flexShrink: 0 }}><div style={{ fontSize: 13, fontWeight: 800 }}>Détail des observations</div><div style={{ fontSize: 10, color: "#6B7280" }}>En cours → En attente → Traitées → autres · date décroissante · {filtered.length} ligne(s)</div></div>
+        <div ref={tableScrollRef} style={{ overflow: "hidden", flex: 1, minHeight: 0 }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 1000 }}><thead style={{ position: "sticky", top: 0, background: "#F8FAFC", zIndex: 1 }}><tr>{["Date", "Catégorie", "Domaine", "Équipement / sujet", "Détails", "Traitement", "Criticité", "Échéance", "Commentaire"].map(label => <th key={label} style={{ textAlign: "left", padding: "7px 8px", color: "#64748B", fontSize: 9, letterSpacing: ".05em", textTransform: "uppercase", borderBottom: "1px solid #E5E7EB" }}>{label}</th>)}</tr></thead><tbody>{sortedRows.map((row, index) => <tr key={`${row.id}-${index}`} style={{ background: index % 2 ? "#FAFAFA" : "white" }}><td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{row.date ? fmtDate(row.date) : row.dateText || "—"}</td><td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}><span style={{ padding: "3px 7px", borderRadius: 10, background: row.category === "Parties communes" ? "#DBEAFE" : row.category === "Parties privatives" ? "#FFEDD5" : "#FEF3C7", color: row.category === "Parties communes" ? "#1D4ED8" : row.category === "Parties privatives" ? "#C2410C" : "#92400E", fontWeight: 800 }}>{row.category}</span></td><td style={{ padding: "6px 8px", fontWeight: 700 }}>{row.domain}</td><td style={{ padding: "6px 8px", maxWidth: 150 }}>{row.equipment || row.subject || row.identifier || "—"}</td><td style={{ padding: "6px 8px", maxWidth: 250 }}>{row.details || row.subject || "—"}</td><td style={{ padding: "6px 8px" }}><span style={{ padding: "3px 7px", borderRadius: 10, background: row.status === "Traitées" ? "#D1FAE5" : row.status === "En cours" ? "#FEF3C7" : row.status === "En attente" ? "#EDE9FE" : "#E5E7EB", color: row.status === "Traitées" ? "#047857" : row.status === "En cours" ? "#92400E" : row.status === "En attente" ? "#6D28D9" : "#475569", fontWeight: 800, whiteSpace: "nowrap" }}>{row.treatment}</span></td><td style={{ padding: "6px 8px" }}>{row.criticality}</td><td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{row.dueDate || "—"}</td><td style={{ padding: "6px 8px", maxWidth: 190 }}>{row.comment || "—"}</td></tr>)}{filtered.length === 0 && <tr><td colSpan={9} style={{ textAlign: "center", padding: 24, color: "#9CA3AF" }}>Aucune observation trouvée pour les filtres sélectionnés.</td></tr>}</tbody></table></div>
       </div>
     </div>
   );
 }
-
 export default function Dashboard() {
   const [time, setTime] = useState(new Date());
   const [slideIdx, setSlideIdx] = useState(0);
