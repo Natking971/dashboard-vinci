@@ -2952,13 +2952,16 @@ function RegulatorySlide({ rows }) {
 
   const classifyRegulatoryCategory = (raw) => {
     // Analyse uniquement Équipement/Sujet, Détails et Commentaire.
+    const commentText = normalizeRegulatoryKey(regulatoryField(raw, "commentaire", "commentaires"));
     const description = normalizeRegulatoryKey([
       regulatoryField(raw, "équipement / sujet", "equipement / sujet", "équipement", "equipement"),
       regulatoryField(raw, "sujet", "titre"),
       regulatoryField(raw, "détails", "details", "observation", "constat"),
       regulatoryField(raw, "commentaire", "commentaires"),
     ].filter(Boolean).join(" "));
-    const privateKeywords = ["commerce", "boutique", "locataire", "people baby", "local commercial", "espace de vente", "restaurant", "local privatif"];
+    const privateKeywords = ["commerce", "boutique", "locataire", "people baby", "local commercial", "espace de vente", "restaurant", "local privatif", "privatif", "hotel"];
+    // Une mention explicite dans le commentaire prime sur les indices communs.
+    if (commentText.includes("privatif") || commentText.includes("hotel")) return "Parties privatives";
     const commonKeywords = ["hall", "circulation", "parking", "ascenseur", "cta", "gtb", "tgbt", "local technique", "ssi", "toiture", "facade", "portail", "barriere", "installation generale"];
     // Une mention explicite d'un espace privatif prévaut sur les mots-clés communs.
     if (privateKeywords.some(word => description.includes(normalizeRegulatoryKey(word)))) return "Parties privatives";
@@ -2987,10 +2990,10 @@ function RegulatorySlide({ rows }) {
     const normalizedTreatment = normalizeRegulatoryKey(treatment);
     const status = normalizedTreatment === "traite" || normalizedTreatment.includes("traitee") || normalizedTreatment.includes("levee")
       ? "Traitées"
-      : normalizedTreatment.includes("cours")
-      ? "En cours"
-      : normalizedTreatment.includes("attente") || normalizedTreatment.includes("validation") || normalizedTreatment.includes("devis")
+      : (normalizedTreatment.includes("devis") && normalizedTreatment.includes("travaux")) || normalizedTreatment.includes("attente") || normalizedTreatment.includes("validation")
       ? "En attente"
+      : normalizedTreatment.includes("cours") || normalizedTreatment.includes("a traiter") || normalizedTreatment.includes("a chiffrer")
+      ? "En cours"
       : "Autres statuts";
     const manualKey = `${regulatoryField(row, "observation id", "id technique", "identifiant") || "sans-id"}-${index}`;
     const automaticCategory = classifyRegulatoryCategory(row);
@@ -3050,7 +3053,8 @@ function RegulatorySlide({ rows }) {
     const treated = list.filter(row => row.status === "Traitées").length;
     const inProgress = list.filter(row => row.status === "En cours").length;
     const pending = list.filter(row => row.status === "En attente").length;
-    return { total, reserves: total, treated, inProgress, pending, rate: total ? Math.round(treated / total * 100) : 0 };
+    const notTreated = total - treated;
+    return { total, reserves: total, treated, notTreated, inProgress, pending, rate: total ? Math.round(treated / total * 100) : 0 };
   };
   const globalStats = stats(filtered);
   const commonStats = stats(filtered.filter(row => row.category === "Parties communes"));
@@ -3078,7 +3082,7 @@ function RegulatorySlide({ rows }) {
       <div style={{ width: 76, height: 76, borderRadius: "50%", flexShrink: 0, background: `conic-gradient(#10B981 0 ${treated}%, #F59E0B ${treated}% ${treated + inProgress}%, #8B5CF6 ${treated + inProgress}% ${treated + inProgress + pending}%, #E5E7EB ${treated + inProgress + pending}% 100%)`, display: "grid", placeItems: "center" }}>
         <div style={{ width: 48, height: 48, borderRadius: "50%", background: "white", display: "grid", placeItems: "center", fontSize: 13, fontWeight: 800 }}>{s.rate}%</div>
       </div>
-      <div style={{ minWidth: 0 }}><div style={{ fontWeight: 800, color, fontSize: 12, marginBottom: 4 }}>{title}</div><div style={{ fontSize: 11, color: "#475569", lineHeight: 1.7 }}>Traitées : {s.treated}<br/>En cours : {s.inProgress}<br/>En attente : {s.pending}</div></div>
+      <div style={{ minWidth: 0 }}><div style={{ fontWeight: 800, color, fontSize: 12, marginBottom: 4 }}>{title}</div><div style={{ fontSize: 11, color: "#475569", lineHeight: 1.7 }}>Réserves levées : {s.treated}<br/>Réserves non levées : {s.notTreated}<br/>En cours : {s.inProgress}<br/>En attente : {s.pending}</div></div>
     </div>;
   };
   const statCard = (title, s, color, bg, icon) => <div style={{ ...cardStyle, background: bg, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
@@ -3086,6 +3090,7 @@ function RegulatorySlide({ rows }) {
       <div><div style={{ fontSize: 25, fontWeight: 900, color }}>{s.total}</div><div style={{ fontSize: 10, color: "#64748B" }}>Observations</div></div>
       <div><div style={{ fontSize: 22, fontWeight: 800 }}>{s.reserves}</div><div style={{ fontSize: 10, color: "#64748B" }}>Réserves</div></div>
       <div><div style={{ fontSize: 22, fontWeight: 800, color: "#059669" }}>{s.treated}</div><div style={{ fontSize: 10, color: "#64748B" }}>Levées</div></div>
+      <div><div style={{ fontSize: 22, fontWeight: 800, color: "#B45309" }}>{s.notTreated}</div><div style={{ fontSize: 10, color: "#64748B" }}>Non levées</div></div>
     </div></div>{donut(s, "Taux de levée", color)}</div>;
 
   const sortedRows = [...filtered].sort((a, b) => {
@@ -3104,7 +3109,7 @@ function RegulatorySlide({ rows }) {
         <select aria-label="Filtrer par domaine" value={domainFilter} onChange={e => setDomainFilter(e.target.value)} style={selectStyle}><option value="all">Tous les domaines</option>{domains.map(value => <option key={value} value={value}>{value}</option>)}</select>
         <select aria-label="Filtrer par traitement" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle}><option value="all">Tous les traitements</option>{statuses.map(value => <option key={value} value={value}>{value}</option>)}</select>
         <select aria-label="Filtrer par criticité" value={criticalityFilter} onChange={e => setCriticalityFilter(e.target.value)} style={selectStyle}><option value="all">Toutes les criticités</option>{criticalities.map(value => <option key={value} value={value}>{value}</option>)}</select>
-        <select aria-label="Filtrer par catégorie" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={selectStyle}><option value="all">Toutes les catégories</option><option value="Parties communes">Parties communes</option><option value="Parties privatives">Parties privatives</option><option value="À classer">À classer</option></select>
+        <select aria-label="Filtrer par catégorie" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={selectStyle}><option value="all">Toutes les catégories</option><option value="Parties communes">Parties communes</option><option value="Parties privatives">Parties privatives</option><option value="À classifier">À classifier</option></select>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 9, marginBottom: 9, flexShrink: 0 }}>
         {statCard("TOTAL SITE (GLOBAL)", globalStats, "#1D4ED8", "#EFF6FF", "▦")}
