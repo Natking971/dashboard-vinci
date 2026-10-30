@@ -2951,30 +2951,31 @@ function RegulatorySlide({ rows }) {
   });
 
   const classifyRegulatoryCategory = (raw) => {
-    // Règles de classement validées pour le site La Poste du Louvre.
-    // Les mentions explicites du champ Commentaire sont prioritaires.
+    // Classement adapté aux 66 observations 2025–2026 de BV Link.
+    // Les indices de rattachement à un occupant sont prioritaires sur les mots-clés techniques.
     const commentText = normalizeRegulatoryKey(
       regulatoryField(raw, "commentaire", "commentaires")
     );
-
     const description = normalizeRegulatoryKey([
-      regulatoryField(raw, "équipement / sujet", "equipement / sujet", "équipement", "equipement"),
+      regulatoryField(raw, "équipement", "equipement"),
       regulatoryField(raw, "sujet", "titre"),
       regulatoryField(raw, "détails", "details", "observation", "constat"),
       regulatoryField(raw, "commentaire", "commentaires"),
+      regulatoryField(raw, "identifiant"),
     ].filter(Boolean).join(" "));
 
-    // Règle privative : uniquement si le commentaire le précise explicitement,
-    // ou s'il mentionne la zone ELU (consigne utilisateur).
-    if (
-      commentText.includes("privatif") ||
-      commentText.includes("commerce") ||
-      commentText.includes("voir avec zone elu")
-    ) {
+    // 1) Privatif : mention explicite ou rattachement clair à un occupant / à son espace.
+    const privateKeywords = [
+      "privatif", "partie privative", "parties privatives", "commerce", "commerces",
+      "hotel", "hotel", "creche", "halte garderie", "people baby", "locataire",
+      "locataires", "doki doki", "airness", "riise", "voodoo", "zone elu",
+      "voir avec zone elu", "acces hotel", "quai hotel", "porte acces quai de livraison hotel",
+    ];
+    if (privateKeywords.some(keyword => description.includes(normalizeRegulatoryKey(keyword)))) {
       return "Parties privatives";
     }
 
-    // Règles communes explicites.
+    // 2) Commun : mention explicite dans le commentaire.
     if (
       commentText.includes("parties communes") ||
       commentText.includes("intervention chubb")
@@ -2982,37 +2983,23 @@ function RegulatorySlide({ rows }) {
       return "Parties communes";
     }
 
-    // Équipements toujours classés en parties communes.
-    const alwaysCommonKeywords = [
-      "nacelle",
-      "uniaccess",
-      "efaflex",
-      "atol",
-      "protection contre la foudre",
-      "protection foudre",
+    // 3) Équipements et systèmes collectifs du site.
+    const commonKeywords = [
+      "nacelle", "uniaccess", "efaflex", "evaflex", "atol", "angelmir", "tuv nord",
+      "protection contre la foudre", "protection foudre", "dispositif de protection contre la foudre",
+      "desenfumage", "point de rassemblement", "points de rassemblement", "compartimentage",
+      "registre de securite", "systeme de securite incendie", "ssi", "sprinkleur",
+      "extinction automatique a eau", "colonne seche", "porte resistante au feu",
+      "portes resistantes au feu", "bureau veritas", "installation electrique - poste du louvre",
+      "logistique urbaine", "parking", "tgbt", "noyau", "terrasse",
     ];
-    if (alwaysCommonKeywords.some(keyword =>
-      description.includes(normalizeRegulatoryKey(keyword))
-    )) {
+    if (commonKeywords.some(keyword => description.includes(normalizeRegulatoryKey(keyword)))) {
       return "Parties communes";
     }
 
-    // Éléments de sécurité classés en parties communes,
-    // sauf si le champ Commentaire a déjà indiqué "privatif" ou "commerce".
-    const commonSafetyKeywords = [
-      "desenfumage",
-      "point de rassemblement",
-      "points de rassemblement",
-      "compartimentage",
-      "registre de securite",
-    ];
-    if (commonSafetyKeywords.some(keyword =>
-      description.includes(normalizeRegulatoryKey(keyword))
-    )) {
-      return "Parties communes";
-    }
-
-    return "À classifier";
+    // Les observations du périmètre général du site sont communes par défaut.
+    // Les locaux / équipements d'un occupant sont interceptés par les règles privatives ci-dessus.
+    return "Parties communes";
   };
 
   const updateManualCategory = (key, value) => {
