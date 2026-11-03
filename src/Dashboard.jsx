@@ -2947,29 +2947,72 @@ function RegulatorySlide({ rows }) {
   const [criticalityFilter, setCriticalityFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
 
+  // Les corrections manuelles sont conservées sur l'écran qui affiche le dashboard.
+  const [manualCategories, setManualCategories] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("lpdl-regulatory-manual-categories") || "{}"); }
+    catch { return {}; }
+  });
+
   const classifyRegulatoryCategory = (raw) => {
-    const explicit = regulatoryField(raw, "catégorie", "categorie", "type de partie", "partie", "périmètre", "perimetre", "secteur");
-    const explicitKey = normalizeRegulatoryKey(explicit || "");
-    if (explicitKey.includes("commun")) return "Parties communes";
-    if (explicitKey.includes("priv") || explicitKey.includes("locatif")) return "Parties privatives";
-
-    // Certains exports BV Link identifient le local par le nom du locataire.
-    const tenant = regulatoryField(raw, "locataire", "client", "occupant", "entite", "entité");
-    const tenantKey = normalizeRegulatoryKey(tenant || "");
-    const privateTenants = ["voodoo", "poste enseigne", "logistique urbaine", "louvre banque privee", "iad"];
-    if (privateTenants.some(name => tenantKey.includes(normalizeRegulatoryKey(name)))) return "Parties privatives";
-    if (tenantKey.includes("parties communes") || tenantKey === "communes") return "Parties communes";
-
-    // À défaut de champ dédié, on recherche une mention explicite dans les champs descriptifs.
+    // Classement adapté aux 66 observations 2025–2026 de BV Link.
+    // Les indices de rattachement à un occupant sont prioritaires sur les mots-clés techniques.
+    const commentText = normalizeRegulatoryKey(
+      regulatoryField(raw, "commentaire", "commentaires")
+    );
     const description = normalizeRegulatoryKey([
+      regulatoryField(raw, "équipement", "equipement"),
       regulatoryField(raw, "sujet", "titre"),
-      regulatoryField(raw, "equipement", "équipement"),
-      regulatoryField(raw, "details", "détails", "observation", "constat"),
-      regulatoryField(raw, "identification", "identifiant"),
+      regulatoryField(raw, "détails", "details", "observation", "constat"),
+      regulatoryField(raw, "commentaire", "commentaires"),
+      regulatoryField(raw, "identifiant"),
     ].filter(Boolean).join(" "));
-    if (description.includes("parties communes") || description.includes("partie commune")) return "Parties communes";
-    if (description.includes("parties privatives") || description.includes("partie privative")) return "Parties privatives";
-    return "À classer";
+
+    // 1) Privatif : mention explicite ou rattachement clair à un occupant / à son espace.
+    const privateKeywords = [
+      "privatif", "partie privative", "parties privatives", "commerce", "commerces",
+      "hotel", "hotel", "creche", "halte garderie", "people baby", "locataire",
+      "locataires", "doki doki", "airness", "riise", "voodoo", "zone elu",
+      "voir avec zone elu", "acces hotel", "quai hotel", "porte acces quai de livraison hotel",
+    ];
+    if (privateKeywords.some(keyword => description.includes(normalizeRegulatoryKey(keyword)))) {
+      return "Parties privatives";
+    }
+
+    // 2) Commun : mention explicite dans le commentaire.
+    if (
+      commentText.includes("parties communes") ||
+      commentText.includes("intervention chubb")
+    ) {
+      return "Parties communes";
+    }
+
+    // 3) Équipements et systèmes collectifs du site.
+    const commonKeywords = [
+      "nacelle", "uniaccess", "efaflex", "evaflex", "atol", "angelmir", "tuv nord",
+      "protection contre la foudre", "protection foudre", "dispositif de protection contre la foudre",
+      "desenfumage", "point de rassemblement", "points de rassemblement", "compartimentage",
+      "registre de securite", "systeme de securite incendie", "ssi", "sprinkleur",
+      "extinction automatique a eau", "colonne seche", "porte resistante au feu",
+      "portes resistantes au feu", "bureau veritas", "installation electrique - poste du louvre",
+      "logistique urbaine", "parking", "tgbt", "noyau", "terrasse",
+    ];
+    if (commonKeywords.some(keyword => description.includes(normalizeRegulatoryKey(keyword)))) {
+      return "Parties communes";
+    }
+
+    // Les observations du périmètre général du site sont communes par défaut.
+    // Les locaux / équipements d'un occupant sont interceptés par les règles privatives ci-dessus.
+    return "Parties communes";
+  };
+
+  const updateManualCategory = (key, value) => {
+    setManualCategories(previous => {
+      const next = { ...previous };
+      if (value === "auto") delete next[key];
+      else next[key] = value;
+      try { localStorage.setItem("lpdl-regulatory-manual-categories", JSON.stringify(next)); } catch {}
+      return next;
+    });
   };
 
   const prepared = (rows || []).map((row, index) => {
@@ -2979,18 +3022,22 @@ function RegulatorySlide({ rows }) {
     const normalizedTreatment = normalizeRegulatoryKey(treatment);
     const status = normalizedTreatment === "traite" || normalizedTreatment.includes("traitee") || normalizedTreatment.includes("levee")
       ? "Traitées"
-      : normalizedTreatment.includes("cours")
-      ? "En cours"
-      : normalizedTreatment.includes("attente") || normalizedTreatment.includes("validation") || normalizedTreatment.includes("devis")
+      : (normalizedTreatment.includes("devis") && normalizedTreatment.includes("travaux")) || normalizedTreatment.includes("attente") || normalizedTreatment.includes("validation")
       ? "En attente"
+      : normalizedTreatment.includes("cours") || normalizedTreatment.includes("a traiter") || normalizedTreatment.includes("a chiffrer")
+      ? "En cours"
       : "Autres statuts";
+    const observationId = regulatoryField(row, "observation id", "id technique", "identifiant");
+    const manualKey = observationId || `sans-id-${index}`;
+    const automaticCategory = classifyRegulatoryCategory(row);
     return {
-      id: regulatoryField(row, "observation id", "id technique", "identifiant") || `reg-${index}`,
+      id: observationId || `reg-${index}`,
+      manualKey, automaticCategory,
       date, dateText,
       year: date ? String(date.getFullYear()) : "Date inconnue",
       domain: regulatoryField(row, "domaine") || "Non renseigné",
       treatment, status,
-      category: classifyRegulatoryCategory(row),
+      category: manualCategories[manualKey] || automaticCategory,
       criticality: regulatoryField(row, "criticité", "criticite", "niveau de criticité") || "Non renseignée",
       details: regulatoryField(row, "détails", "details", "observation", "constat"),
       subject: regulatoryField(row, "sujet", "titre"),
@@ -3039,22 +3086,38 @@ function RegulatorySlide({ rows }) {
     const treated = list.filter(row => row.status === "Traitées").length;
     const inProgress = list.filter(row => row.status === "En cours").length;
     const pending = list.filter(row => row.status === "En attente").length;
-    return { total, reserves: total, treated, inProgress, pending, rate: total ? Math.round(treated / total * 100) : 0 };
+    const notTreated = total - treated;
+    return { total, reserves: total, treated, notTreated, inProgress, pending, rate: total ? Math.round(treated / total * 100) : 0 };
   };
   const globalStats = stats(filtered);
   const commonStats = stats(filtered.filter(row => row.category === "Parties communes"));
   const privateStats = stats(filtered.filter(row => row.category === "Parties privatives"));
-  const unclassifiedCount = filtered.filter(row => row.category === "À classer").length;
+  const unclassifiedCount = filtered.filter(row => row.category === "À classifier").length;
+  // Contrôle global sur toutes les observations 2025–2026, sans tenir compte des filtres.
+  // Le total des deux catégories doit être égal aux 66 observations importées.
+  const EXPECTED_REGULATORY_TOTAL = 66;
+  const overallCommonCount = prepared.filter(row => row.category === "Parties communes").length;
+  const overallPrivateCount = prepared.filter(row => row.category === "Parties privatives").length;
+  const overallUnclassifiedCount = prepared.filter(row => row.category === "À classifier").length;
+  const overallTotalCount = prepared.length;
+  const overallClassifiedTotal = overallCommonCount + overallPrivateCount;
+  const overallTotalIsValid =
+    overallTotalCount === EXPECTED_REGULATORY_TOTAL &&
+    overallClassifiedTotal === EXPECTED_REGULATORY_TOTAL &&
+    overallUnclassifiedCount === 0;
   const treatmentCounts = [
     { label: "Traitées", value: globalStats.treated, color: "#10B981" },
     { label: "En cours", value: globalStats.inProgress, color: "#F59E0B" },
     { label: "En attente", value: globalStats.pending, color: "#8B5CF6" },
   ];
-  const domainCounts = [...new Set(filtered.map(row => row.domain))].map(domain => ({
+  // Réserves par domaine : afficher uniquement les observations qui ne sont pas encore levées.
+  const remainingRows = filtered.filter(row => row.status !== "Traitées");
+  const domainCounts = [...new Set(remainingRows.map(row => row.domain))].map(domain => ({
     domain,
-    common: filtered.filter(row => row.domain === domain && row.category === "Parties communes").length,
-    privates: filtered.filter(row => row.domain === domain && row.category === "Parties privatives").length,
-  })).sort((a, b) => (b.common + b.privates) - (a.common + a.privates)).slice(0, 6);
+    common: remainingRows.filter(row => row.domain === domain && row.category === "Parties communes").length,
+    privates: remainingRows.filter(row => row.domain === domain && row.category === "Parties privatives").length,
+  })).filter(item => item.common + item.privates > 0)
+    .sort((a, b) => (b.common + b.privates) - (a.common + a.privates)).slice(0, 6);
   const maxDomainCount = Math.max(1, ...domainCounts.map(item => item.common + item.privates));
   const fmtDate = date => date ? date.toLocaleDateString("fr-FR") : "—";
   const selectStyle = { border: "1px solid #D1D5DB", borderRadius: 9, padding: "8px 10px", background: "white", color: "#111827", fontSize: 12, fontWeight: 600, minWidth: 130 };
@@ -3067,7 +3130,7 @@ function RegulatorySlide({ rows }) {
       <div style={{ width: 76, height: 76, borderRadius: "50%", flexShrink: 0, background: `conic-gradient(#10B981 0 ${treated}%, #F59E0B ${treated}% ${treated + inProgress}%, #8B5CF6 ${treated + inProgress}% ${treated + inProgress + pending}%, #E5E7EB ${treated + inProgress + pending}% 100%)`, display: "grid", placeItems: "center" }}>
         <div style={{ width: 48, height: 48, borderRadius: "50%", background: "white", display: "grid", placeItems: "center", fontSize: 13, fontWeight: 800 }}>{s.rate}%</div>
       </div>
-      <div style={{ minWidth: 0 }}><div style={{ fontWeight: 800, color, fontSize: 12, marginBottom: 4 }}>{title}</div><div style={{ fontSize: 11, color: "#475569", lineHeight: 1.7 }}>Traitées : {s.treated}<br/>En cours : {s.inProgress}<br/>En attente : {s.pending}</div></div>
+      <div style={{ minWidth: 0 }}><div style={{ fontWeight: 800, color, fontSize: 12, marginBottom: 4 }}>{title}</div><div style={{ fontSize: 11, color: "#475569", lineHeight: 1.7 }}>Réserves levées : {s.treated}<br/>Réserves non levées : {s.notTreated}<br/>En cours : {s.inProgress}<br/>En attente : {s.pending}</div></div>
     </div>;
   };
   const statCard = (title, s, color, bg, icon) => <div style={{ ...cardStyle, background: bg, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
@@ -3075,6 +3138,7 @@ function RegulatorySlide({ rows }) {
       <div><div style={{ fontSize: 25, fontWeight: 900, color }}>{s.total}</div><div style={{ fontSize: 10, color: "#64748B" }}>Observations</div></div>
       <div><div style={{ fontSize: 22, fontWeight: 800 }}>{s.reserves}</div><div style={{ fontSize: 10, color: "#64748B" }}>Réserves</div></div>
       <div><div style={{ fontSize: 22, fontWeight: 800, color: "#059669" }}>{s.treated}</div><div style={{ fontSize: 10, color: "#64748B" }}>Levées</div></div>
+      <div><div style={{ fontSize: 22, fontWeight: 800, color: "#B45309" }}>{s.notTreated}</div><div style={{ fontSize: 10, color: "#64748B" }}>Non levées</div></div>
     </div></div>{donut(s, "Taux de levée", color)}</div>;
 
   const sortedRows = [...filtered].sort((a, b) => {
@@ -3093,7 +3157,24 @@ function RegulatorySlide({ rows }) {
         <select aria-label="Filtrer par domaine" value={domainFilter} onChange={e => setDomainFilter(e.target.value)} style={selectStyle}><option value="all">Tous les domaines</option>{domains.map(value => <option key={value} value={value}>{value}</option>)}</select>
         <select aria-label="Filtrer par traitement" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle}><option value="all">Tous les traitements</option>{statuses.map(value => <option key={value} value={value}>{value}</option>)}</select>
         <select aria-label="Filtrer par criticité" value={criticalityFilter} onChange={e => setCriticalityFilter(e.target.value)} style={selectStyle}><option value="all">Toutes les criticités</option>{criticalities.map(value => <option key={value} value={value}>{value}</option>)}</select>
-        <select aria-label="Filtrer par catégorie" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={selectStyle}><option value="all">Toutes les catégories</option><option value="Parties communes">Parties communes</option><option value="Parties privatives">Parties privatives</option><option value="À classer">À classer</option></select>
+        <select aria-label="Filtrer par catégorie" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={selectStyle}><option value="all">Toutes les catégories</option><option value="Parties communes">Parties communes</option><option value="Parties privatives">Parties privatives</option><option value="À classifier">À classifier</option></select>
+      </div>
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12,
+        padding: "8px 12px", marginBottom: 9, borderRadius: 9, flexShrink: 0,
+        background: overallTotalIsValid ? "#ECFDF5" : "#FFFBEB",
+        border: `1px solid ${overallTotalIsValid ? "#A7F3D0" : "#FDE68A"}`,
+        color: overallTotalIsValid ? "#047857" : "#92400E",
+        fontSize: 11, fontWeight: 800
+      }}>
+        <span>
+          {overallTotalIsValid
+            ? "Répartition validée : parties communes + parties privatives = 66"
+            : `Contrôle à vérifier : ${overallCommonCount} communes + ${overallPrivateCount} privatives = ${overallClassifiedTotal} classées / ${overallTotalCount} observations importées (objectif : 66). ${overallUnclassifiedCount} à classifier.`}
+        </span>
+        <span style={{ whiteSpace: "nowrap" }}>
+          {overallClassifiedTotal}/{EXPECTED_REGULATORY_TOTAL}
+        </span>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 9, marginBottom: 9, flexShrink: 0 }}>
         {statCard("TOTAL SITE (GLOBAL)", globalStats, "#1D4ED8", "#EFF6FF", "▦")}
@@ -3101,14 +3182,14 @@ function RegulatorySlide({ rows }) {
         {statCard("PARTIES PRIVATIVES", privateStats, "#C2410C", "#FFF7ED", "▤")}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1.1fr .9fr 1fr", gap: 9, marginBottom: 9, flexShrink: 0, minHeight: 138 }}>
-        <div style={cardStyle}><div style={{ fontSize: 13, fontWeight: 800, marginBottom: 9 }}>Réserves par domaine</div><div style={{ display: "flex", gap: 12, fontSize: 10, marginBottom: 8 }}><span style={{ color: "#2563EB" }}>● Parties communes</span><span style={{ color: "#F97316" }}>● Parties privatives</span></div>{domainCounts.map(item => <div key={item.domain} style={{ marginBottom: 6 }}><div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 3 }}><b>{item.domain}</b><span>{item.common} / {item.privates}</span></div><div style={{ height: 8, background: "#E5E7EB", borderRadius: 8, overflow: "hidden", display: "flex" }}><div style={{ width: `${item.common / maxDomainCount * 100}%`, background: "#3B82F6" }}/><div style={{ width: `${item.privates / maxDomainCount * 100}%`, background: "#F97316" }}/></div></div>)}</div>
+        <div style={cardStyle}><div style={{ fontSize: 13, fontWeight: 800, marginBottom: 3 }}>Réserves restantes par domaine</div><div style={{ fontSize: 10, color: "#64748B", marginBottom: 9 }}>Uniquement les observations non levées</div><div style={{ display: "flex", gap: 12, fontSize: 10, marginBottom: 8 }}><span style={{ color: "#2563EB" }}>● Parties communes</span><span style={{ color: "#F97316" }}>● Parties privatives</span></div>{domainCounts.length ? domainCounts.map(item => <div key={item.domain} style={{ marginBottom: 6 }}><div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 3 }}><b>{item.domain}</b><span>{item.common} / {item.privates}</span></div><div style={{ height: 8, background: "#E5E7EB", borderRadius: 8, overflow: "hidden", display: "flex" }}><div style={{ width: `${item.common / maxDomainCount * 100}%`, background: "#3B82F6" }}/><div style={{ width: `${item.privates / maxDomainCount * 100}%`, background: "#F97316" }}/></div></div>) : <div style={{ fontSize: 11, color: "#64748B", padding: "10px 0" }}>Aucune réserve restante pour les filtres sélectionnés.</div>}</div>
         <div style={cardStyle}><div style={{ fontSize: 13, fontWeight: 800, marginBottom: 10 }}>Répartition des traitements</div><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>{donut(commonStats, "Communes", "#047857")}{donut(privateStats, "Privatives", "#C2410C")}</div><div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 10, marginTop: 8 }}><span style={{ color: "#059669" }}>● Traitées</span><span style={{ color: "#D97706" }}>● En cours</span><span style={{ color: "#7C3AED" }}>● En attente</span></div></div>
         <div style={cardStyle}><div style={{ fontSize: 13, fontWeight: 800, marginBottom: 10 }}>Évolution des réserves par année</div>{["2025", "2026"].map(year => { const c = filtered.filter(row => row.year === year && row.category === "Parties communes").length; const p = filtered.filter(row => row.year === year && row.category === "Parties privatives").length; const max = Math.max(1, ...filtered.map(row => row.year === year ? 1 : 0), c, p); return <div key={year} style={{ marginBottom: 12 }}><div style={{ fontSize: 11, fontWeight: 700, marginBottom: 4 }}>{year}</div><div style={{ display: "flex", alignItems: "center", gap: 7 }}><span style={{ width: 54, fontSize: 10, color: "#2563EB" }}>Communes</span><div style={{ flex: 1, height: 8, background: "#EFF6FF", borderRadius: 6 }}><div style={{ width: `${c / Math.max(1, ...filtered.map(r => r.year === year ? (r.category === "Parties communes" ? filtered.filter(x => x.year === year && x.category === "Parties communes").length : 0) : 0), c, p) * 100}%`, height: "100%", background: "#3B82F6", borderRadius: 6 }}/></div><b style={{ fontSize: 10 }}>{c}</b></div><div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}><span style={{ width: 54, fontSize: 10, color: "#EA580C" }}>Privatives</span><div style={{ flex: 1, height: 8, background: "#FFF7ED", borderRadius: 6 }}><div style={{ width: `${p / Math.max(1, c, p) * 100}%`, height: "100%", background: "#F97316", borderRadius: 6 }}/></div><b style={{ fontSize: 10 }}>{p}</b></div></div>; })}</div>
       </div>
-      {unclassifiedCount > 0 && <div style={{ fontSize: 10, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "5px 9px", marginBottom: 7, flexShrink: 0 }}>{unclassifiedCount} observation(s) ne sont pas catégorisées dans la source et restent dans le total global. Renseigner une catégorie dans BV Link pour les répartir correctement.</div>}
+      {unclassifiedCount > 0 && <div style={{ fontSize: 10, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "5px 9px", marginBottom: 7, flexShrink: 0 }}>{unclassifiedCount} observation(s) restent « À classifier » : aucune règle automatique ne permet de trancher. Tu peux modifier leur catégorie directement dans le tableau.</div>}
       <div style={{ ...cardStyle, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "9px 12px", borderBottom: "1px solid #E5E7EB", flexShrink: 0 }}><div style={{ fontSize: 13, fontWeight: 800 }}>Détail des observations</div><div style={{ fontSize: 10, color: "#6B7280" }}>En cours → En attente → Traitées → autres · date décroissante · {filtered.length} ligne(s)</div></div>
-        <div ref={tableScrollRef} style={{ overflow: "hidden", flex: 1, minHeight: 0 }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 1000 }}><thead style={{ position: "sticky", top: 0, background: "#F8FAFC", zIndex: 1 }}><tr>{["Date", "Catégorie", "Domaine", "Équipement / sujet", "Détails", "Traitement", "Criticité", "Échéance", "Commentaire"].map(label => <th key={label} style={{ textAlign: "left", padding: "7px 8px", color: "#64748B", fontSize: 9, letterSpacing: ".05em", textTransform: "uppercase", borderBottom: "1px solid #E5E7EB" }}>{label}</th>)}</tr></thead><tbody>{sortedRows.map((row, index) => <tr key={`${row.id}-${index}`} style={{ background: index % 2 ? "#FAFAFA" : "white" }}><td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{row.date ? fmtDate(row.date) : row.dateText || "—"}</td><td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}><span style={{ padding: "3px 7px", borderRadius: 10, background: row.category === "Parties communes" ? "#DBEAFE" : row.category === "Parties privatives" ? "#FFEDD5" : "#FEF3C7", color: row.category === "Parties communes" ? "#1D4ED8" : row.category === "Parties privatives" ? "#C2410C" : "#92400E", fontWeight: 800 }}>{row.category}</span></td><td style={{ padding: "6px 8px", fontWeight: 700 }}>{row.domain}</td><td style={{ padding: "6px 8px", maxWidth: 150 }}>{row.equipment || row.subject || row.identifier || "—"}</td><td style={{ padding: "6px 8px", maxWidth: 250 }}>{row.details || row.subject || "—"}</td><td style={{ padding: "6px 8px" }}><span style={{ padding: "3px 7px", borderRadius: 10, background: row.status === "Traitées" ? "#D1FAE5" : row.status === "En cours" ? "#FEF3C7" : row.status === "En attente" ? "#EDE9FE" : "#E5E7EB", color: row.status === "Traitées" ? "#047857" : row.status === "En cours" ? "#92400E" : row.status === "En attente" ? "#6D28D9" : "#475569", fontWeight: 800, whiteSpace: "nowrap" }}>{row.treatment}</span></td><td style={{ padding: "6px 8px" }}>{row.criticality}</td><td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{row.dueDate || "—"}</td><td style={{ padding: "6px 8px", maxWidth: 190 }}>{row.comment || "—"}</td></tr>)}{filtered.length === 0 && <tr><td colSpan={9} style={{ textAlign: "center", padding: 24, color: "#9CA3AF" }}>Aucune observation trouvée pour les filtres sélectionnés.</td></tr>}</tbody></table></div>
+        <div ref={tableScrollRef} style={{ overflow: "hidden", flex: 1, minHeight: 0 }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 1000 }}><thead style={{ position: "sticky", top: 0, background: "#F8FAFC", zIndex: 1 }}><tr>{["Date", "Catégorie (modifiable)", "Domaine", "Équipement / sujet", "Détails", "Traitement", "Criticité", "Échéance", "Commentaire"].map(label => <th key={label} style={{ textAlign: "left", padding: "7px 8px", color: "#64748B", fontSize: 9, letterSpacing: ".05em", textTransform: "uppercase", borderBottom: "1px solid #E5E7EB" }}>{label}</th>)}</tr></thead><tbody>{sortedRows.map((row, index) => <tr key={`${row.id}-${index}`} style={{ background: index % 2 ? "#FAFAFA" : "white" }}><td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{row.date ? fmtDate(row.date) : row.dateText || "—"}</td><td style={{ padding: "4px 6px", whiteSpace: "nowrap" }}><select aria-label={`Catégorie de ${row.id}`} value={manualCategories[row.manualKey] || "auto"} onChange={e => updateManualCategory(row.manualKey, e.target.value)} title={`Classement automatique : ${row.automaticCategory}`} style={{ maxWidth: 145, border: "1px solid #E2E8F0", borderRadius: 8, padding: "4px 6px", fontSize: 10, fontWeight: 800, background: row.category === "Parties communes" ? "#DBEAFE" : row.category === "Parties privatives" ? "#FFEDD5" : "#FEF3C7", color: row.category === "Parties communes" ? "#1D4ED8" : row.category === "Parties privatives" ? "#C2410C" : "#92400E" }}><option value="auto">Auto : {row.automaticCategory}</option><option value="Parties communes">Parties communes</option><option value="Parties privatives">Parties privatives</option><option value="À classifier">À classifier</option></select></td><td style={{ padding: "6px 8px", fontWeight: 700 }}>{row.domain}</td><td style={{ padding: "6px 8px", maxWidth: 150 }}>{row.equipment || row.subject || row.identifier || "—"}</td><td style={{ padding: "6px 8px", maxWidth: 250 }}>{row.details || row.subject || "—"}</td><td style={{ padding: "6px 8px" }}><span style={{ padding: "3px 7px", borderRadius: 10, background: row.status === "Traitées" ? "#D1FAE5" : row.status === "En cours" ? "#FEF3C7" : row.status === "En attente" ? "#EDE9FE" : "#E5E7EB", color: row.status === "Traitées" ? "#047857" : row.status === "En cours" ? "#92400E" : row.status === "En attente" ? "#6D28D9" : "#475569", fontWeight: 800, whiteSpace: "nowrap" }}>{row.treatment}</span></td><td style={{ padding: "6px 8px" }}>{row.criticality}</td><td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{row.dueDate || "—"}</td><td style={{ padding: "6px 8px", maxWidth: 190 }}>{row.comment || "—"}</td></tr>)}{filtered.length === 0 && <tr><td colSpan={9} style={{ textAlign: "center", padding: 24, color: "#9CA3AF" }}>Aucune observation trouvée pour les filtres sélectionnés.</td></tr>}</tbody></table></div>
       </div>
     </div>
   );
