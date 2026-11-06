@@ -40,6 +40,7 @@ function techColors(name, index) {
   if (n === "jason" || n === "jayson") return { color: "#B45309", light: "#FEF3C7", dot: "#F59E0B" };
   if (n === "cédric" || n === "cedric") return { color: "#047857", light: "#D1FAE5", dot: "#10B981" };
   if (n === "ghulam") return { color: "#1D4ED8", light: "#DBEAFE", dot: "#3B82F6" };
+  if (n === "ayoub") return { color: "#B91C1C", light: "#FEE2E2", dot: "#EF4444" };
   // 44 Châteaudun : Michael rouge, Kamal bleu.
   if (n === "michael") return { color: "#B91C1C", light: "#FEE2E2", dot: "#EF4444" };
   if (n === "kamal") return { color: "#1D4ED8", light: "#DBEAFE", dot: "#3B82F6" };
