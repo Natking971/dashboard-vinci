@@ -8,7 +8,7 @@ export const SITE_CONFIGS = {
       { id: 3, name: "Jason" },
       { id: 2, name: "Cédric" },
       { id: 1, name: "Ghulam" },
-      { id: 4, name: "Ayoub" },
+      { id: 5, name: "Ayoub" },
     ],
 
     tenants: [
@@ -35,9 +35,6 @@ export const SITE_CONFIGS = {
 
       citations:
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=314910372&single=true&output=csv",
-
-      regulatory:
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vRpE027LVSx_f7HmnWQ3KbGXSYpp4dwuOqAcQMK-OLMn2zBxLH02mg7ckJFco6pr2rhYBbELNhCi9X8/pub?gid=1776890531&single=true&output=csv",
     },
   },
 
