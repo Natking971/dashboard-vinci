@@ -2835,16 +2835,26 @@ function TrajetPersoSlide({ trajetTimes }) {
           }
 
           const tempsBrut = trajetTimes?.[personne.key];
-          const temps =
+          const tempsApiDisponible =
             tempsBrut !== null &&
             tempsBrut !== undefined &&
             tempsBrut !== "" &&
-            Number.isFinite(Number(tempsBrut))
-              ? Number(tempsBrut)
-              : null;
+            Number.isFinite(Number(tempsBrut));
 
           const habituel = TRAJET_HABITUEL[personne.key];
-          const status = getTrajetStatus(temps, habituel);
+          // Compiègne est hors du périmètre couvert de façon fiable par l'API
+          // IDFM. En l'absence de résultat API, on affiche la référence connue
+          // (36 min) en la distinguant clairement d'un temps calculé en direct.
+          const isReferenceTime = personne.key === "jason" && !tempsApiDisponible;
+          const temps = tempsApiDisponible
+            ? Number(tempsBrut)
+            : isReferenceTime
+              ? habituel
+              : null;
+
+          const status = isReferenceTime
+            ? { color: "#94A3B8", delta: null, label: "Référence" }
+            : getTrajetStatus(temps, habituel);
           const progress =
             temps === null
               ? 0
@@ -3244,7 +3254,7 @@ export default function Dashboard() {
           ghulam: 44,
           nathan: 27,
           michael: 12,
-          jason: 77,
+          jason: 36,
           cedric: 81,
           liazide: 35,
           rachid: 30,
