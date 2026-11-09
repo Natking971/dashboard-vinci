@@ -20,6 +20,8 @@ const DESTINATIONS = [
   { key: "ghulam", name: "Gare de Lagny - Thorigny", lon: 2.70404228, lat: 48.88218325 },
   { key: "nathan", name: "Jean Moulin, Paris 14e", lon: 2.3186, lat: 48.8263 },
   { key: "michael", name: "Nanterre-Préfecture", lon: 2.223138, lat: 48.895631 },
+  // Compiègne est hors du périmètre IDFM : la requête peut ne rien retourner.
+  // Le tableau affichera alors la référence habituelle côté Dashboard.jsx.
   { key: "jason", name: "Gare de Compiègne", lon: 2.8218, lat: 49.4203 },
   { key: "cedric", name: "Gare de Longueville", lon: 3.249822, lat: 48.513703 },
   { key: "liazide", name: "Gare de Pierrelaye", lon: 2.1537, lat: 49.0194 },
