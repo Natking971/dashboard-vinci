@@ -2588,9 +2588,9 @@ const TRAJETS_CONFIG = SITE.id === "rhapsody"
       { key: "nathan", nom: "Nathan", dest: "Jean Moulin" },
       { key: "michael", nom: "Michael", dest: "Nanterre" },
       { key: "jason", nom: "Jason", dest: "Gare de Compiègne" },
-      { key: "cedric", nom: "Cedric", dest: "Gare de Longueville" },
+      { key: "cedric", nom: "Cédric", dest: "Gare de Longueville" },
       { key: "liazide", nom: "Liazide", dest: "Pierrelaye" },
-      { key: "ayoub", nom: "Ayoub", dest: "Nanterre-Ville" },
+      { key: "ayoub", nom: "Ayoub", dest: "Gare de Nanterre-Ville" },
       {
         key: "poissy",
         group: [
@@ -2747,10 +2747,10 @@ function TrajetPersoSlide({ trajetTimes }) {
                   : null;
               })
               .filter(value => value !== null);
-            // Les deux trajets étant vers Poissy, on affiche un temps unique
-            // calculé à partir des temps disponibles de Rachid et Toufik.
+            // Rachid et Toufik partagent le même trajet API vers la gare de Poissy.
+            // Les deux valeurs sont donc identiques et le cercle reste unique.
             const groupTime = memberTimes.length
-              ? Math.round(memberTimes.reduce((sum, value) => sum + value, 0) / memberTimes.length)
+              ? memberTimes[0]
               : null;
             const groupBaseline = personne.group.reduce(
               (sum, member) => sum + (TRAJET_HABITUEL[member.key] || 0),
