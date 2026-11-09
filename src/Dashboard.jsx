@@ -10,7 +10,7 @@ import { getSiteConfig } from "./siteConfig";
 const SLIDE_DURATION = 30000;
 const QUOTES_SLIDE_DURATION = 60000; // Plus long pour laisser défiler tous les devis
 const PLANNING_SLIDE_DURATION = 45000; // Plus long quand le planning défile
-const REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutes : actualisation plus fréquente de BV Link
+const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 // Configuration du site sélectionné via Vercel : VITE_SITE=lpdl ou chateaudun
 const SITE = getSiteConfig();
@@ -40,7 +40,6 @@ function techColors(name, index) {
   if (n === "jason" || n === "jayson") return { color: "#B45309", light: "#FEF3C7", dot: "#F59E0B" };
   if (n === "cédric" || n === "cedric") return { color: "#047857", light: "#D1FAE5", dot: "#10B981" };
   if (n === "ghulam") return { color: "#1D4ED8", light: "#DBEAFE", dot: "#3B82F6" };
-  if (n === "ayoub") return { color: "#B91C1C", light: "#FEE2E2", dot: "#EF4444" };
   // 44 Châteaudun : Michael rouge, Kamal bleu.
   if (n === "michael") return { color: "#B91C1C", light: "#FEE2E2", dot: "#EF4444" };
   if (n === "kamal") return { color: "#1D4ED8", light: "#DBEAFE", dot: "#3B82F6" };
@@ -301,69 +300,12 @@ function parseCSV(text, forceSep = null) {
   }
 
   if (lines.length === 0) return [];
-  const headers = lines[0].map(h => h.replace(/^\uFEFF/, "").trim().toLowerCase());
+  const headers = lines[0].map(h => h.trim().toLowerCase());
   return lines.slice(1).map(row => {
     const obj = {};
     headers.forEach((h, idx) => { obj[h] = (row[idx] || "").trim(); });
     return obj;
   });
-}
-
-
-// Import BV Link robuste : contourne le cache Google Sheets, vérifie le CSV,
-// retente automatiquement en cas de réponse vide/erreur et conserve les anciennes
-// données si la source renvoie temporairement une page d'erreur ou un CSV vide.
-async function fetchRegulatoryRows(url, retries = 3) {
-  if (!url) throw new Error("URL BV Link absente (sheets.regulatory)");
-  let lastError = null;
-
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const separator = url.includes("?") ? "&" : "?";
-      const freshUrl = `${url}${separator}_dashboard_refresh=${Date.now()}_${attempt}`;
-      const response = await fetch(freshUrl, {
-        method: "GET",
-        cache: "no-store",
-        headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Google Sheets répond HTTP ${response.status}`);
-      }
-
-      const csvText = await response.text();
-      const trimmed = csvText.trim();
-
-      if (!trimmed || trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html")) {
-        throw new Error("Google Sheets n'a pas renvoyé un CSV exploitable (publication/accès à vérifier)");
-      }
-
-      const parsedRows = parseCSV(csvText);
-      if (!parsedRows.length) {
-        throw new Error("Le CSV BV Link ne contient aucune ligne de données");
-      }
-
-      const headers = Object.keys(parsedRows[0]).map(key =>
-        key.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase()
-      );
-      const hasDate = headers.some(key => key === "date" || key.includes("date "));
-      const hasDomain = headers.some(key => key.includes("domaine"));
-      const hasTreatment = headers.some(key => key.includes("traitement") || key === "statut");
-
-      if (!hasDate || !hasDomain || !hasTreatment) {
-        throw new Error(`En-têtes BV Link inattendus : ${headers.slice(0, 8).join(", ")}`);
-      }
-
-      return parsedRows;
-    } catch (error) {
-      lastError = error;
-      if (attempt < retries) {
-        await new Promise(resolve => setTimeout(resolve, 700 * attempt));
-      }
-    }
-  }
-
-  throw lastError || new Error("Échec de l'import BV Link");
 }
 
 // ─── FALLBACK (données de secours si Sheets indisponible) ───────────────────
@@ -2622,10 +2564,11 @@ const TRAJET_HABITUEL = SITE.id === "rhapsody"
   : {
       ghulam: 40,
       nathan: 24,
-      michael: 25,
-      jason: 90,
+      michael: 12,
+      jason: 36,
       cedric: 81, // Gare de Longueville : référence 1 h 21 min selon l’itinéraire fourni
       liazide: 41,
+      ayoub: 30, // Référence demandée : Nanterre-Ville, RER A
       rachid: 41,
       toufik: 41,
     };
@@ -2647,8 +2590,14 @@ const TRAJETS_CONFIG = SITE.id === "rhapsody"
       { key: "jason", nom: "Jason", dest: "Gare de Compiègne" },
       { key: "cedric", nom: "Cedric", dest: "Gare de Longueville" },
       { key: "liazide", nom: "Liazide", dest: "Pierrelaye" },
-      { key: "rachid", nom: "Rachid", dest: "Poissy" },
-      { key: "toufik", nom: "Toufik", dest: "Poissy" },
+      { key: "ayoub", nom: "Ayoub", dest: "Nanterre-Ville · RER A" },
+      {
+        key: "poissy",
+        group: [
+          { key: "rachid", nom: "Rachid", dest: "Poissy" },
+          { key: "toufik", nom: "Toufik", dest: "Poissy" },
+        ],
+      },
     ];
 
 function clamp(value, min, max) {
@@ -2789,6 +2738,106 @@ function TrajetPersoSlide({ trajetTimes }) {
         }}
       >
         {TRAJETS_CONFIG.map((personne, index) => {
+          if (personne.group) {
+            return (
+              <div
+                key={personne.key}
+                style={{
+                  textAlign: "center",
+                  padding: 12,
+                  background: "rgba(0, 0, 0, 0.2)",
+                  borderRadius: 8,
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  alignItems: "center",
+                  justifyItems: "center",
+                  gap: 8,
+                  minHeight: 0,
+                  boxSizing: "border-box",
+                }}
+              >
+                {personne.group.map(member => {
+                  const raw = trajetTimes?.[member.key];
+                  const memberTime =
+                    raw !== null && raw !== undefined && raw !== "" && Number.isFinite(Number(raw))
+                      ? Number(raw)
+                      : null;
+                  const memberStatus = getTrajetStatus(memberTime, TRAJET_HABITUEL[member.key]);
+                  const memberProgress = memberTime === null
+                    ? 0
+                    : clamp(memberTime / maxDisplayedMinutes, 0, 1);
+                  const memberDash = memberProgress * circumference;
+
+                  return (
+                    <div
+                      key={member.key}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        minWidth: 0,
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: "relative",
+                          width: 104,
+                          height: 104,
+                          marginBottom: 7,
+                          flexShrink: 0,
+                        }}
+                      >
+                        <svg
+                          viewBox="0 0 120 120"
+                          style={{ width: "100%", height: "100%", transform: "rotate(-90deg)" }}
+                          aria-hidden="true"
+                        >
+                          <circle cx="60" cy="60" r={radius} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="8" />
+                          {memberTime !== null && (
+                            <circle
+                              cx="60"
+                              cy="60"
+                              r={radius}
+                              fill="none"
+                              stroke={memberStatus.color}
+                              strokeWidth="8"
+                              strokeDasharray={`${memberDash} ${circumference}`}
+                              strokeLinecap="round"
+                            />
+                          )}
+                        </svg>
+                        <div
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <div style={{ fontSize: 9, lineHeight: 1.1, fontWeight: 800, color: memberStatus.color }}>
+                            {memberTime === null ? "Indisponible" : memberStatus.label}
+                          </div>
+                          <div style={{ fontSize: 19, lineHeight: 1.05, fontWeight: 800, color: memberStatus.color }}>
+                            {formatTrajetDuration(memberTime)}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2 }}>
+                        {member.nom}
+                      </div>
+                      <div style={{ fontSize: 10, opacity: 0.7, marginTop: 3, lineHeight: 1.2 }}>
+                        {member.dest}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          }
+
           const tempsBrut = trajetTimes?.[personne.key];
           const temps =
             tempsBrut !== null &&
@@ -2822,7 +2871,7 @@ function TrajetPersoSlide({ trajetTimes }) {
                 minHeight: 0,
                 boxSizing: "border-box",
 
-                // Rhapsody : 7 cartes = 4 en haut + 3 centrées en bas.
+                // La grille LPDL conserve 8 cartes : Ayoub en bas au centre et Rachid/Toufik regroupés à droite.
                 gridColumn:
                   SITE.id === "rhapsody" &&
                   TRAJETS_CONFIG.length === 7 &&
@@ -2894,7 +2943,7 @@ function TrajetPersoSlide({ trajetTimes }) {
                     style={{
                       minHeight: 17,
                       marginBottom: 1,
-                      fontSize: 10,
+                      fontSize: 11,
                       lineHeight: 1.1,
                       fontWeight: 800,
                       color: status.color,
@@ -2905,12 +2954,9 @@ function TrajetPersoSlide({ trajetTimes }) {
 
                   <div
                     style={{
-                      fontSize: temps !== null && temps >= 60 ? 23 : 28,
+                      fontSize: 28,
                       lineHeight: 1,
                       fontWeight: "bold",
-                      letterSpacing: temps !== null && temps >= 60 ? "-0.6px" : "normal",
-                      whiteSpace: "nowrap",
-                      maxWidth: "100%",
                       color: status.color,
                     }}
                   >
@@ -2960,21 +3006,14 @@ function normalizeRegulatoryKey(value) {
 }
 
 function regulatoryField(row, ...aliases) {
-  const entries = Object.entries(row || {});
   const normalizedAliases = aliases.map(normalizeRegulatoryKey);
-
-  // Priorité aux intitulés exacts, dans l'ordre demandé.
-  // Cela évite de confondre « Date » avec « Date première émission ».
-  for (const alias of normalizedAliases) {
-    const match = entries.find(([key]) => normalizeRegulatoryKey(key) === alias);
-    if (match) return String(match[1] || "").trim();
+  for (const [key, value] of Object.entries(row || {})) {
+    if (normalizedAliases.includes(normalizeRegulatoryKey(key))) return String(value || "").trim();
   }
-
-  // Repli partiel uniquement après les correspondances exactes.
-  for (const alias of normalizedAliases) {
-    if (!alias) continue;
-    const match = entries.find(([key]) => normalizeRegulatoryKey(key).includes(alias));
-    if (match) return String(match[1] || "").trim();
+  // Repli sur une correspondance partielle pour les exports BV Link qui ajoutent des précisions aux intitulés.
+  for (const [key, value] of Object.entries(row || {})) {
+    const normalizedKey = normalizeRegulatoryKey(key);
+    if (normalizedAliases.some(alias => alias && normalizedKey.includes(alias))) return String(value || "").trim();
   }
   return "";
 }
@@ -3012,106 +3051,50 @@ function RegulatorySlide({ rows }) {
   const [criticalityFilter, setCriticalityFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
 
-  // Les corrections manuelles sont conservées sur l'écran qui affiche le dashboard.
-  const [manualCategories, setManualCategories] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("lpdl-regulatory-manual-categories") || "{}"); }
-    catch { return {}; }
-  });
-
   const classifyRegulatoryCategory = (raw) => {
-    // Classement adapté aux 66 observations 2025–2026 de BV Link.
-    // Les indices de rattachement à un occupant sont prioritaires sur les mots-clés techniques.
-    const commentText = normalizeRegulatoryKey(
-      regulatoryField(raw, "commentaire", "commentaires")
-    );
+    const explicit = regulatoryField(raw, "catégorie", "categorie", "type de partie", "partie", "périmètre", "perimetre", "secteur");
+    const explicitKey = normalizeRegulatoryKey(explicit || "");
+    if (explicitKey.includes("commun")) return "Parties communes";
+    if (explicitKey.includes("priv") || explicitKey.includes("locatif")) return "Parties privatives";
+
+    // Certains exports BV Link identifient le local par le nom du locataire.
+    const tenant = regulatoryField(raw, "locataire", "client", "occupant", "entite", "entité");
+    const tenantKey = normalizeRegulatoryKey(tenant || "");
+    const privateTenants = ["voodoo", "poste enseigne", "logistique urbaine", "louvre banque privee", "iad"];
+    if (privateTenants.some(name => tenantKey.includes(normalizeRegulatoryKey(name)))) return "Parties privatives";
+    if (tenantKey.includes("parties communes") || tenantKey === "communes") return "Parties communes";
+
+    // À défaut de champ dédié, on recherche une mention explicite dans les champs descriptifs.
     const description = normalizeRegulatoryKey([
-      regulatoryField(raw, "équipement", "equipement"),
       regulatoryField(raw, "sujet", "titre"),
-      regulatoryField(raw, "détails", "details", "observation", "constat"),
-      regulatoryField(raw, "commentaire", "commentaires"),
-      regulatoryField(raw, "identifiant"),
+      regulatoryField(raw, "equipement", "équipement"),
+      regulatoryField(raw, "details", "détails", "observation", "constat"),
+      regulatoryField(raw, "identification", "identifiant"),
     ].filter(Boolean).join(" "));
-
-    // 1) Privatif : mention explicite ou rattachement clair à un occupant / à son espace.
-    const privateKeywords = [
-      "privatif", "partie privative", "parties privatives", "commerce", "commerces",
-      "hotel", "hotel", "creche", "halte garderie", "people baby", "locataire",
-      "locataires", "doki doki", "airness", "riise", "voodoo", "zone elu",
-      "voir avec zone elu", "acces hotel", "quai hotel", "porte acces quai de livraison hotel",
-    ];
-    if (privateKeywords.some(keyword => description.includes(normalizeRegulatoryKey(keyword)))) {
-      return "Parties privatives";
-    }
-
-    // 2) Commun : mention explicite dans le commentaire.
-    if (
-      commentText.includes("parties communes") ||
-      commentText.includes("intervention chubb")
-    ) {
-      return "Parties communes";
-    }
-
-    // 3) Équipements et systèmes collectifs du site.
-    const commonKeywords = [
-      "nacelle", "uniaccess", "efaflex", "evaflex", "atol", "angelmir", "tuv nord",
-      "protection contre la foudre", "protection foudre", "dispositif de protection contre la foudre",
-      "desenfumage", "point de rassemblement", "points de rassemblement", "compartimentage",
-      "registre de securite", "systeme de securite incendie", "ssi", "sprinkleur",
-      "extinction automatique a eau", "colonne seche", "porte resistante au feu",
-      "portes resistantes au feu", "bureau veritas", "installation electrique - poste du louvre",
-      "logistique urbaine", "parking", "tgbt", "noyau", "terrasse",
-    ];
-    if (commonKeywords.some(keyword => description.includes(normalizeRegulatoryKey(keyword)))) {
-      return "Parties communes";
-    }
-
-    // Les observations du périmètre général du site sont communes par défaut.
-    // Les locaux / équipements d'un occupant sont interceptés par les règles privatives ci-dessus.
-    return "Parties communes";
-  };
-
-  const updateManualCategory = (key, value) => {
-    setManualCategories(previous => {
-      const next = { ...previous };
-      if (value === "auto") delete next[key];
-      else next[key] = value;
-      try { localStorage.setItem("lpdl-regulatory-manual-categories", JSON.stringify(next)); } catch {}
-      return next;
-    });
+    if (description.includes("parties communes") || description.includes("partie commune")) return "Parties communes";
+    if (description.includes("parties privatives") || description.includes("partie privative")) return "Parties privatives";
+    return "À classer";
   };
 
   const prepared = (rows || []).map((row, index) => {
-    // La colonne « Date » correspond à la date de suivi de l'observation.
-    // « Date première émission » n'est utilisée qu'en dernier recours.
-    const dateText = regulatoryField(
-      row,
-      "date",
-      "date observation",
-      "date de constat",
-      "date du constat",
-      "date première émission"
-    );
+    const dateText = regulatoryField(row, "date", "date observation", "date de constat");
     const date = parseRegulatoryDate(dateText);
     const treatment = regulatoryField(row, "traitement", "statut", "état", "etat") || "Non renseigné";
     const normalizedTreatment = normalizeRegulatoryKey(treatment);
     const status = normalizedTreatment === "traite" || normalizedTreatment.includes("traitee") || normalizedTreatment.includes("levee")
       ? "Traitées"
-      : (normalizedTreatment.includes("devis") && normalizedTreatment.includes("travaux")) || normalizedTreatment.includes("attente") || normalizedTreatment.includes("validation")
-      ? "En attente"
-      : normalizedTreatment.includes("cours") || normalizedTreatment.includes("a traiter") || normalizedTreatment.includes("a chiffrer")
+      : normalizedTreatment.includes("cours")
       ? "En cours"
+      : normalizedTreatment.includes("attente") || normalizedTreatment.includes("validation") || normalizedTreatment.includes("devis")
+      ? "En attente"
       : "Autres statuts";
-    const observationId = regulatoryField(row, "observation id", "id technique", "identifiant");
-    const manualKey = observationId || `sans-id-${index}`;
-    const automaticCategory = classifyRegulatoryCategory(row);
     return {
-      id: observationId || `reg-${index}`,
-      manualKey, automaticCategory,
+      id: regulatoryField(row, "observation id", "id technique", "identifiant") || `reg-${index}`,
       date, dateText,
       year: date ? String(date.getFullYear()) : "Date inconnue",
       domain: regulatoryField(row, "domaine") || "Non renseigné",
       treatment, status,
-      category: manualCategories[manualKey] || automaticCategory,
+      category: classifyRegulatoryCategory(row),
       criticality: regulatoryField(row, "criticité", "criticite", "niveau de criticité") || "Non renseignée",
       details: regulatoryField(row, "détails", "details", "observation", "constat"),
       subject: regulatoryField(row, "sujet", "titre"),
@@ -3160,26 +3143,22 @@ function RegulatorySlide({ rows }) {
     const treated = list.filter(row => row.status === "Traitées").length;
     const inProgress = list.filter(row => row.status === "En cours").length;
     const pending = list.filter(row => row.status === "En attente").length;
-    const notTreated = total - treated;
-    return { total, reserves: total, treated, notTreated, inProgress, pending, rate: total ? Math.round(treated / total * 100) : 0 };
+    return { total, reserves: total, treated, inProgress, pending, rate: total ? Math.round(treated / total * 100) : 0 };
   };
   const globalStats = stats(filtered);
   const commonStats = stats(filtered.filter(row => row.category === "Parties communes"));
   const privateStats = stats(filtered.filter(row => row.category === "Parties privatives"));
-  const unclassifiedCount = filtered.filter(row => row.category === "À classifier").length;
+  const unclassifiedCount = filtered.filter(row => row.category === "À classer").length;
   const treatmentCounts = [
     { label: "Traitées", value: globalStats.treated, color: "#10B981" },
     { label: "En cours", value: globalStats.inProgress, color: "#F59E0B" },
     { label: "En attente", value: globalStats.pending, color: "#8B5CF6" },
   ];
-  // Réserves par domaine : afficher uniquement les observations qui ne sont pas encore levées.
-  const remainingRows = filtered.filter(row => row.status !== "Traitées");
-  const domainCounts = [...new Set(remainingRows.map(row => row.domain))].map(domain => ({
+  const domainCounts = [...new Set(filtered.map(row => row.domain))].map(domain => ({
     domain,
-    common: remainingRows.filter(row => row.domain === domain && row.category === "Parties communes").length,
-    privates: remainingRows.filter(row => row.domain === domain && row.category === "Parties privatives").length,
-  })).filter(item => item.common + item.privates > 0)
-    .sort((a, b) => (b.common + b.privates) - (a.common + a.privates)).slice(0, 6);
+    common: filtered.filter(row => row.domain === domain && row.category === "Parties communes").length,
+    privates: filtered.filter(row => row.domain === domain && row.category === "Parties privatives").length,
+  })).sort((a, b) => (b.common + b.privates) - (a.common + a.privates)).slice(0, 6);
   const maxDomainCount = Math.max(1, ...domainCounts.map(item => item.common + item.privates));
   const fmtDate = date => date ? date.toLocaleDateString("fr-FR") : "—";
   const selectStyle = { border: "1px solid #D1D5DB", borderRadius: 9, padding: "8px 10px", background: "white", color: "#111827", fontSize: 12, fontWeight: 600, minWidth: 130 };
@@ -3192,7 +3171,7 @@ function RegulatorySlide({ rows }) {
       <div style={{ width: 76, height: 76, borderRadius: "50%", flexShrink: 0, background: `conic-gradient(#10B981 0 ${treated}%, #F59E0B ${treated}% ${treated + inProgress}%, #8B5CF6 ${treated + inProgress}% ${treated + inProgress + pending}%, #E5E7EB ${treated + inProgress + pending}% 100%)`, display: "grid", placeItems: "center" }}>
         <div style={{ width: 48, height: 48, borderRadius: "50%", background: "white", display: "grid", placeItems: "center", fontSize: 13, fontWeight: 800 }}>{s.rate}%</div>
       </div>
-      <div style={{ minWidth: 0 }}><div style={{ fontWeight: 800, color, fontSize: 12, marginBottom: 4 }}>{title}</div><div style={{ fontSize: 11, color: "#475569", lineHeight: 1.7 }}>Réserves levées : {s.treated}<br/>Réserves non levées : {s.notTreated}<br/>En cours : {s.inProgress}<br/>En attente : {s.pending}</div></div>
+      <div style={{ minWidth: 0 }}><div style={{ fontWeight: 800, color, fontSize: 12, marginBottom: 4 }}>{title}</div><div style={{ fontSize: 11, color: "#475569", lineHeight: 1.7 }}>Traitées : {s.treated}<br/>En cours : {s.inProgress}<br/>En attente : {s.pending}</div></div>
     </div>;
   };
   const statCard = (title, s, color, bg, icon) => <div style={{ ...cardStyle, background: bg, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
@@ -3200,7 +3179,6 @@ function RegulatorySlide({ rows }) {
       <div><div style={{ fontSize: 25, fontWeight: 900, color }}>{s.total}</div><div style={{ fontSize: 10, color: "#64748B" }}>Observations</div></div>
       <div><div style={{ fontSize: 22, fontWeight: 800 }}>{s.reserves}</div><div style={{ fontSize: 10, color: "#64748B" }}>Réserves</div></div>
       <div><div style={{ fontSize: 22, fontWeight: 800, color: "#059669" }}>{s.treated}</div><div style={{ fontSize: 10, color: "#64748B" }}>Levées</div></div>
-      <div><div style={{ fontSize: 22, fontWeight: 800, color: "#B45309" }}>{s.notTreated}</div><div style={{ fontSize: 10, color: "#64748B" }}>Non levées</div></div>
     </div></div>{donut(s, "Taux de levée", color)}</div>;
 
   const sortedRows = [...filtered].sort((a, b) => {
@@ -3211,9 +3189,7 @@ function RegulatorySlide({ rows }) {
   return (
     <div style={{ height: "100%", overflow: "hidden", padding: "12px 24px 14px", color: "#111827", display: "flex", flexDirection: "column", minHeight: 0 }}>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, marginBottom: 10, flexShrink: 0 }}>
-        <div><div style={{ fontSize: 11, fontWeight: 800, color: "#64748B", letterSpacing: ".14em", textTransform: "uppercase", marginBottom: 4 }}>Suivi BV Link · 2025–2026</div><div style={{ fontSize: 27, fontWeight: 800, letterSpacing: "-1px" }}>Contrôle réglementaire</div><div style={{ color: "#6B7280", fontSize: 12, marginTop: 4 }}>
-          {filtered.length} observations affichées · {rows?.length || 0} lignes reçues depuis Google Sheets · données actualisées automatiquement
-        </div></div>
+        <div><div style={{ fontSize: 11, fontWeight: 800, color: "#64748B", letterSpacing: ".14em", textTransform: "uppercase", marginBottom: 4 }}>Suivi BV Link · 2025–2026</div><div style={{ fontSize: 27, fontWeight: 800, letterSpacing: "-1px" }}>Contrôle réglementaire</div><div style={{ color: "#6B7280", fontSize: 12, marginTop: 4 }}>{filtered.length} observations affichées · données actualisées automatiquement</div></div>
         <div style={{ background: "#EFF6FF", color: "#1D4ED8", borderRadius: 10, padding: "9px 12px", fontSize: 11, fontWeight: 800 }}>LA POSTE DU LOUVRE</div>
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: 8, background: "#E9EDF2", borderRadius: 12, marginBottom: 9, flexShrink: 0 }}>
@@ -3221,7 +3197,7 @@ function RegulatorySlide({ rows }) {
         <select aria-label="Filtrer par domaine" value={domainFilter} onChange={e => setDomainFilter(e.target.value)} style={selectStyle}><option value="all">Tous les domaines</option>{domains.map(value => <option key={value} value={value}>{value}</option>)}</select>
         <select aria-label="Filtrer par traitement" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle}><option value="all">Tous les traitements</option>{statuses.map(value => <option key={value} value={value}>{value}</option>)}</select>
         <select aria-label="Filtrer par criticité" value={criticalityFilter} onChange={e => setCriticalityFilter(e.target.value)} style={selectStyle}><option value="all">Toutes les criticités</option>{criticalities.map(value => <option key={value} value={value}>{value}</option>)}</select>
-        <select aria-label="Filtrer par catégorie" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={selectStyle}><option value="all">Toutes les catégories</option><option value="Parties communes">Parties communes</option><option value="Parties privatives">Parties privatives</option><option value="À classifier">À classifier</option></select>
+        <select aria-label="Filtrer par catégorie" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={selectStyle}><option value="all">Toutes les catégories</option><option value="Parties communes">Parties communes</option><option value="Parties privatives">Parties privatives</option><option value="À classer">À classer</option></select>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 9, marginBottom: 9, flexShrink: 0 }}>
         {statCard("TOTAL SITE (GLOBAL)", globalStats, "#1D4ED8", "#EFF6FF", "▦")}
@@ -3229,18 +3205,14 @@ function RegulatorySlide({ rows }) {
         {statCard("PARTIES PRIVATIVES", privateStats, "#C2410C", "#FFF7ED", "▤")}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1.1fr .9fr 1fr", gap: 9, marginBottom: 9, flexShrink: 0, minHeight: 138 }}>
-        <div style={cardStyle}><div style={{ fontSize: 13, fontWeight: 800, marginBottom: 3 }}>Réserves restantes par domaine</div><div style={{ fontSize: 10, color: "#64748B", marginBottom: 9 }}>Uniquement les observations non levées</div><div style={{ display: "flex", gap: 12, fontSize: 10, marginBottom: 8 }}><span style={{ color: "#2563EB" }}>● Parties communes</span><span style={{ color: "#F97316" }}>● Parties privatives</span></div>{domainCounts.length ? domainCounts.map(item => <div key={item.domain} style={{ marginBottom: 6 }}><div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 3 }}><b>{item.domain}</b><span>{item.common} / {item.privates}</span></div><div style={{ height: 8, background: "#E5E7EB", borderRadius: 8, overflow: "hidden", display: "flex" }}><div style={{ width: `${item.common / maxDomainCount * 100}%`, background: "#3B82F6" }}/><div style={{ width: `${item.privates / maxDomainCount * 100}%`, background: "#F97316" }}/></div></div>) : <div style={{ fontSize: 11, color: "#64748B", padding: "10px 0" }}>Aucune réserve restante pour les filtres sélectionnés.</div>}</div>
+        <div style={cardStyle}><div style={{ fontSize: 13, fontWeight: 800, marginBottom: 9 }}>Réserves par domaine</div><div style={{ display: "flex", gap: 12, fontSize: 10, marginBottom: 8 }}><span style={{ color: "#2563EB" }}>● Parties communes</span><span style={{ color: "#F97316" }}>● Parties privatives</span></div>{domainCounts.map(item => <div key={item.domain} style={{ marginBottom: 6 }}><div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 3 }}><b>{item.domain}</b><span>{item.common} / {item.privates}</span></div><div style={{ height: 8, background: "#E5E7EB", borderRadius: 8, overflow: "hidden", display: "flex" }}><div style={{ width: `${item.common / maxDomainCount * 100}%`, background: "#3B82F6" }}/><div style={{ width: `${item.privates / maxDomainCount * 100}%`, background: "#F97316" }}/></div></div>)}</div>
         <div style={cardStyle}><div style={{ fontSize: 13, fontWeight: 800, marginBottom: 10 }}>Répartition des traitements</div><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>{donut(commonStats, "Communes", "#047857")}{donut(privateStats, "Privatives", "#C2410C")}</div><div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 10, marginTop: 8 }}><span style={{ color: "#059669" }}>● Traitées</span><span style={{ color: "#D97706" }}>● En cours</span><span style={{ color: "#7C3AED" }}>● En attente</span></div></div>
         <div style={cardStyle}><div style={{ fontSize: 13, fontWeight: 800, marginBottom: 10 }}>Évolution des réserves par année</div>{["2025", "2026"].map(year => { const c = filtered.filter(row => row.year === year && row.category === "Parties communes").length; const p = filtered.filter(row => row.year === year && row.category === "Parties privatives").length; const max = Math.max(1, ...filtered.map(row => row.year === year ? 1 : 0), c, p); return <div key={year} style={{ marginBottom: 12 }}><div style={{ fontSize: 11, fontWeight: 700, marginBottom: 4 }}>{year}</div><div style={{ display: "flex", alignItems: "center", gap: 7 }}><span style={{ width: 54, fontSize: 10, color: "#2563EB" }}>Communes</span><div style={{ flex: 1, height: 8, background: "#EFF6FF", borderRadius: 6 }}><div style={{ width: `${c / Math.max(1, ...filtered.map(r => r.year === year ? (r.category === "Parties communes" ? filtered.filter(x => x.year === year && x.category === "Parties communes").length : 0) : 0), c, p) * 100}%`, height: "100%", background: "#3B82F6", borderRadius: 6 }}/></div><b style={{ fontSize: 10 }}>{c}</b></div><div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}><span style={{ width: 54, fontSize: 10, color: "#EA580C" }}>Privatives</span><div style={{ flex: 1, height: 8, background: "#FFF7ED", borderRadius: 6 }}><div style={{ width: `${p / Math.max(1, c, p) * 100}%`, height: "100%", background: "#F97316", borderRadius: 6 }}/></div><b style={{ fontSize: 10 }}>{p}</b></div></div>; })}</div>
       </div>
-      {unclassifiedCount > 0 && <div style={{ fontSize: 10, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "5px 9px", marginBottom: 7, flexShrink: 0 }}>{unclassifiedCount} observation(s) restent « À classifier » : aucune règle automatique ne permet de trancher. Tu peux modifier leur catégorie directement dans le tableau.</div>}
+      {unclassifiedCount > 0 && <div style={{ fontSize: 10, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "5px 9px", marginBottom: 7, flexShrink: 0 }}>{unclassifiedCount} observation(s) ne sont pas catégorisées dans la source et restent dans le total global. Renseigner une catégorie dans BV Link pour les répartir correctement.</div>}
       <div style={{ ...cardStyle, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "9px 12px", borderBottom: "1px solid #E5E7EB", flexShrink: 0 }}><div style={{ fontSize: 13, fontWeight: 800 }}>Détail des observations</div><div style={{ fontSize: 10, color: "#6B7280" }}>En cours → En attente → Traitées → autres · date décroissante · {filtered.length} ligne(s)</div></div>
-        <div ref={tableScrollRef} style={{ overflow: "hidden", flex: 1, minHeight: 0 }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 1000 }}><thead style={{ position: "sticky", top: 0, background: "#F8FAFC", zIndex: 1 }}><tr>{["Date", "Catégorie (modifiable)", "Domaine", "Équipement / sujet", "Détails", "Traitement", "Criticité", "Échéance", "Commentaire"].map(label => <th key={label} style={{ textAlign: "left", padding: "7px 8px", color: "#64748B", fontSize: 9, letterSpacing: ".05em", textTransform: "uppercase", borderBottom: "1px solid #E5E7EB" }}>{label}</th>)}</tr></thead><tbody>{sortedRows.map((row, index) => <tr key={`${row.id}-${index}`} style={{ background: index % 2 ? "#FAFAFA" : "white" }}><td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{row.date ? fmtDate(row.date) : row.dateText || "—"}</td><td style={{ padding: "4px 6px", whiteSpace: "nowrap" }}><select aria-label={`Catégorie de ${row.id}`} value={manualCategories[row.manualKey] || "auto"} onChange={e => updateManualCategory(row.manualKey, e.target.value)} title={`Classement automatique : ${row.automaticCategory}`} style={{ maxWidth: 145, border: "1px solid #E2E8F0", borderRadius: 8, padding: "4px 6px", fontSize: 10, fontWeight: 800, background: row.category === "Parties communes" ? "#DBEAFE" : row.category === "Parties privatives" ? "#FFEDD5" : "#FEF3C7", color: row.category === "Parties communes" ? "#1D4ED8" : row.category === "Parties privatives" ? "#C2410C" : "#92400E" }}><option value="auto">Auto : {row.automaticCategory}</option><option value="Parties communes">Parties communes</option><option value="Parties privatives">Parties privatives</option><option value="À classifier">À classifier</option></select></td><td style={{ padding: "6px 8px", fontWeight: 700 }}>{row.domain}</td><td style={{ padding: "6px 8px", maxWidth: 150 }}>{row.equipment || row.subject || row.identifier || "—"}</td><td style={{ padding: "6px 8px", maxWidth: 250 }}>{row.details || row.subject || "—"}</td><td style={{ padding: "6px 8px" }}><span style={{ padding: "3px 7px", borderRadius: 10, background: row.status === "Traitées" ? "#D1FAE5" : row.status === "En cours" ? "#FEF3C7" : row.status === "En attente" ? "#EDE9FE" : "#E5E7EB", color: row.status === "Traitées" ? "#047857" : row.status === "En cours" ? "#92400E" : row.status === "En attente" ? "#6D28D9" : "#475569", fontWeight: 800, whiteSpace: "nowrap" }}>{row.treatment}</span></td><td style={{ padding: "6px 8px" }}>{row.criticality}</td><td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{row.dueDate || "—"}</td><td style={{ padding: "6px 8px", maxWidth: 190 }}>{row.comment || "—"}</td></tr>)}{filtered.length === 0 && <tr><td colSpan={9} style={{ textAlign: "center", padding: 24, color: "#9CA3AF" }}>
-          {(!rows || rows.length === 0)
-            ? "Aucune ligne reçue depuis Google Sheets : vérifier l'URL publiée et le gid de l'onglet BV Link."
-            : "Aucune observation datée de 2025 ou 2026 trouvée. Vérifier la colonne Date et les filtres sélectionnés."}
-        </td></tr>}</tbody></table></div>
+        <div ref={tableScrollRef} style={{ overflow: "hidden", flex: 1, minHeight: 0 }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 1000 }}><thead style={{ position: "sticky", top: 0, background: "#F8FAFC", zIndex: 1 }}><tr>{["Date", "Catégorie", "Domaine", "Équipement / sujet", "Détails", "Traitement", "Criticité", "Échéance", "Commentaire"].map(label => <th key={label} style={{ textAlign: "left", padding: "7px 8px", color: "#64748B", fontSize: 9, letterSpacing: ".05em", textTransform: "uppercase", borderBottom: "1px solid #E5E7EB" }}>{label}</th>)}</tr></thead><tbody>{sortedRows.map((row, index) => <tr key={`${row.id}-${index}`} style={{ background: index % 2 ? "#FAFAFA" : "white" }}><td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{row.date ? fmtDate(row.date) : row.dateText || "—"}</td><td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}><span style={{ padding: "3px 7px", borderRadius: 10, background: row.category === "Parties communes" ? "#DBEAFE" : row.category === "Parties privatives" ? "#FFEDD5" : "#FEF3C7", color: row.category === "Parties communes" ? "#1D4ED8" : row.category === "Parties privatives" ? "#C2410C" : "#92400E", fontWeight: 800 }}>{row.category}</span></td><td style={{ padding: "6px 8px", fontWeight: 700 }}>{row.domain}</td><td style={{ padding: "6px 8px", maxWidth: 150 }}>{row.equipment || row.subject || row.identifier || "—"}</td><td style={{ padding: "6px 8px", maxWidth: 250 }}>{row.details || row.subject || "—"}</td><td style={{ padding: "6px 8px" }}><span style={{ padding: "3px 7px", borderRadius: 10, background: row.status === "Traitées" ? "#D1FAE5" : row.status === "En cours" ? "#FEF3C7" : row.status === "En attente" ? "#EDE9FE" : "#E5E7EB", color: row.status === "Traitées" ? "#047857" : row.status === "En cours" ? "#92400E" : row.status === "En attente" ? "#6D28D9" : "#475569", fontWeight: 800, whiteSpace: "nowrap" }}>{row.treatment}</span></td><td style={{ padding: "6px 8px" }}>{row.criticality}</td><td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{row.dueDate || "—"}</td><td style={{ padding: "6px 8px", maxWidth: 190 }}>{row.comment || "—"}</td></tr>)}{filtered.length === 0 && <tr><td colSpan={9} style={{ textAlign: "center", padding: 24, color: "#9CA3AF" }}>Aucune observation trouvée pour les filtres sélectionnés.</td></tr>}</tbody></table></div>
       </div>
     </div>
   );
@@ -3292,29 +3264,22 @@ export default function Dashboard() {
 
     async function fetchAllData() {
       try {
-        const [planningRes, affairsRes, subsRes, onesiteRes, citationsRes] = await Promise.all([
+        const [planningRes, affairsRes, subsRes, onesiteRes, citationsRes, regulatoryRes] = await Promise.all([
           fetch(SHEET_URLS.planning).then(r => r.text()),
           fetch(SHEET_URLS.affaires).then(r => r.text()),
           fetch(SHEET_URLS.evenement || SHEET_URLS.soustraitants).then(r => r.text()),
           fetch(SHEET_URLS.onesite).then(r => r.text()).catch(() => ""),
           fetch(SHEET_URLS.citations).then(r => r.text()).catch(() => ""),
+          SITE.id === "lpdl" && SHEET_URLS.regulatory
+            ? fetch(SHEET_URLS.regulatory).then(r => r.ok ? r.text() : "").catch(() => "")
+            : Promise.resolve(""),
         ]);
 
         if (cancelled) return;
 
-        // BV Link est chargé séparément avec anti-cache + nouvelles tentatives.
-        // Une erreur temporaire ne vide jamais les observations déjà affichées.
-        if (SITE.id === "lpdl" && SHEET_URLS.regulatory) {
-          try {
-            const newRegulatoryRows = await fetchRegulatoryRows(SHEET_URLS.regulatory, 3);
-            if (!cancelled && newRegulatoryRows.length > 0) {
-              setRegulatoryRows(newRegulatoryRows);
-              console.info(`BV Link actualisé : ${newRegulatoryRows.length} lignes reçues`);
-            }
-          } catch (regulatoryError) {
-            console.warn("Actualisation BV Link impossible ; conservation des données précédentes :", regulatoryError);
-          }
-        }
+        // Contrôles réglementaires : import brut BV Link, réservé à LPDL pour le moment.
+        const newRegulatoryRows = regulatoryRes ? parseCSV(regulatoryRes) : [];
+        if (SITE.id === "lpdl") setRegulatoryRows(newRegulatoryRows);
 
         // Parser Planning : technicien, jour, tache, client, semaine
         // La colonne "semaine" peut être "actuelle" ou "prochaine" (vide = actuelle par défaut)
@@ -3546,7 +3511,7 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, []);
 
-  // Le chargement Sheets (dont BV Link) est relancé toutes les 2 minutes.
+  // Le chargement Sheets est relancé toutes les 5 minutes.
   // La citation reste donc stable pendant la journée et change automatiquement le lendemain.
 
 
