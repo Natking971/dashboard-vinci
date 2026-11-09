@@ -10,7 +10,7 @@ import { getSiteConfig } from "./siteConfig";
 const SLIDE_DURATION = 30000;
 const QUOTES_SLIDE_DURATION = 60000; // Plus long pour laisser défiler tous les devis
 const PLANNING_SLIDE_DURATION = 45000; // Plus long quand le planning défile
-const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutes : actualisation plus fréquente de BV Link
 
 // Configuration du site sélectionné via Vercel : VITE_SITE=lpdl ou chateaudun
 const SITE = getSiteConfig();
@@ -301,12 +301,69 @@ function parseCSV(text, forceSep = null) {
   }
 
   if (lines.length === 0) return [];
-  const headers = lines[0].map(h => h.trim().toLowerCase());
+  const headers = lines[0].map(h => h.replace(/^\uFEFF/, "").trim().toLowerCase());
   return lines.slice(1).map(row => {
     const obj = {};
     headers.forEach((h, idx) => { obj[h] = (row[idx] || "").trim(); });
     return obj;
   });
+}
+
+
+// Import BV Link robuste : contourne le cache Google Sheets, vérifie le CSV,
+// retente automatiquement en cas de réponse vide/erreur et conserve les anciennes
+// données si la source renvoie temporairement une page d'erreur ou un CSV vide.
+async function fetchRegulatoryRows(url, retries = 3) {
+  if (!url) throw new Error("URL BV Link absente (sheets.regulatory)");
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const separator = url.includes("?") ? "&" : "?";
+      const freshUrl = `${url}${separator}_dashboard_refresh=${Date.now()}_${attempt}`;
+      const response = await fetch(freshUrl, {
+        method: "GET",
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Google Sheets répond HTTP ${response.status}`);
+      }
+
+      const csvText = await response.text();
+      const trimmed = csvText.trim();
+
+      if (!trimmed || trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html")) {
+        throw new Error("Google Sheets n'a pas renvoyé un CSV exploitable (publication/accès à vérifier)");
+      }
+
+      const parsedRows = parseCSV(csvText);
+      if (!parsedRows.length) {
+        throw new Error("Le CSV BV Link ne contient aucune ligne de données");
+      }
+
+      const headers = Object.keys(parsedRows[0]).map(key =>
+        key.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase()
+      );
+      const hasDate = headers.some(key => key === "date" || key.includes("date "));
+      const hasDomain = headers.some(key => key.includes("domaine"));
+      const hasTreatment = headers.some(key => key.includes("traitement") || key === "statut");
+
+      if (!hasDate || !hasDomain || !hasTreatment) {
+        throw new Error(`En-têtes BV Link inattendus : ${headers.slice(0, 8).join(", ")}`);
+      }
+
+      return parsedRows;
+    } catch (error) {
+      lastError = error;
+      if (attempt < retries) {
+        await new Promise(resolve => setTimeout(resolve, 700 * attempt));
+      }
+    }
+  }
+
+  throw lastError || new Error("Échec de l'import BV Link");
 }
 
 // ─── FALLBACK (données de secours si Sheets indisponible) ───────────────────
@@ -3110,18 +3167,6 @@ function RegulatorySlide({ rows }) {
   const commonStats = stats(filtered.filter(row => row.category === "Parties communes"));
   const privateStats = stats(filtered.filter(row => row.category === "Parties privatives"));
   const unclassifiedCount = filtered.filter(row => row.category === "À classifier").length;
-  // Contrôle global sur toutes les observations 2025–2026, sans tenir compte des filtres.
-  // Le total des deux catégories doit être égal aux 66 observations importées.
-  const EXPECTED_REGULATORY_TOTAL = 66;
-  const overallCommonCount = prepared.filter(row => row.category === "Parties communes").length;
-  const overallPrivateCount = prepared.filter(row => row.category === "Parties privatives").length;
-  const overallUnclassifiedCount = prepared.filter(row => row.category === "À classifier").length;
-  const overallTotalCount = prepared.length;
-  const overallClassifiedTotal = overallCommonCount + overallPrivateCount;
-  const overallTotalIsValid =
-    overallTotalCount === EXPECTED_REGULATORY_TOTAL &&
-    overallClassifiedTotal === EXPECTED_REGULATORY_TOTAL &&
-    overallUnclassifiedCount === 0;
   const treatmentCounts = [
     { label: "Traitées", value: globalStats.treated, color: "#10B981" },
     { label: "En cours", value: globalStats.inProgress, color: "#F59E0B" },
@@ -3177,23 +3222,6 @@ function RegulatorySlide({ rows }) {
         <select aria-label="Filtrer par traitement" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle}><option value="all">Tous les traitements</option>{statuses.map(value => <option key={value} value={value}>{value}</option>)}</select>
         <select aria-label="Filtrer par criticité" value={criticalityFilter} onChange={e => setCriticalityFilter(e.target.value)} style={selectStyle}><option value="all">Toutes les criticités</option>{criticalities.map(value => <option key={value} value={value}>{value}</option>)}</select>
         <select aria-label="Filtrer par catégorie" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={selectStyle}><option value="all">Toutes les catégories</option><option value="Parties communes">Parties communes</option><option value="Parties privatives">Parties privatives</option><option value="À classifier">À classifier</option></select>
-      </div>
-      <div style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12,
-        padding: "8px 12px", marginBottom: 9, borderRadius: 9, flexShrink: 0,
-        background: overallTotalIsValid ? "#ECFDF5" : "#FFFBEB",
-        border: `1px solid ${overallTotalIsValid ? "#A7F3D0" : "#FDE68A"}`,
-        color: overallTotalIsValid ? "#047857" : "#92400E",
-        fontSize: 11, fontWeight: 800
-      }}>
-        <span>
-          {overallTotalIsValid
-            ? "Répartition validée : parties communes + parties privatives = 66"
-            : `Contrôle à vérifier : ${overallCommonCount} communes + ${overallPrivateCount} privatives = ${overallClassifiedTotal} classées / ${overallTotalCount} observations importées (objectif : 66). ${overallUnclassifiedCount} à classifier.`}
-        </span>
-        <span style={{ whiteSpace: "nowrap" }}>
-          {overallClassifiedTotal}/{EXPECTED_REGULATORY_TOTAL}
-        </span>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 9, marginBottom: 9, flexShrink: 0 }}>
         {statCard("TOTAL SITE (GLOBAL)", globalStats, "#1D4ED8", "#EFF6FF", "▦")}
@@ -3264,22 +3292,29 @@ export default function Dashboard() {
 
     async function fetchAllData() {
       try {
-        const [planningRes, affairsRes, subsRes, onesiteRes, citationsRes, regulatoryRes] = await Promise.all([
+        const [planningRes, affairsRes, subsRes, onesiteRes, citationsRes] = await Promise.all([
           fetch(SHEET_URLS.planning).then(r => r.text()),
           fetch(SHEET_URLS.affaires).then(r => r.text()),
           fetch(SHEET_URLS.evenement || SHEET_URLS.soustraitants).then(r => r.text()),
           fetch(SHEET_URLS.onesite).then(r => r.text()).catch(() => ""),
           fetch(SHEET_URLS.citations).then(r => r.text()).catch(() => ""),
-          SITE.id === "lpdl" && SHEET_URLS.regulatory
-            ? fetch(SHEET_URLS.regulatory).then(r => r.ok ? r.text() : "").catch(() => "")
-            : Promise.resolve(""),
         ]);
 
         if (cancelled) return;
 
-        // Contrôles réglementaires : import brut BV Link, réservé à LPDL pour le moment.
-        const newRegulatoryRows = regulatoryRes ? parseCSV(regulatoryRes) : [];
-        if (SITE.id === "lpdl") setRegulatoryRows(newRegulatoryRows);
+        // BV Link est chargé séparément avec anti-cache + nouvelles tentatives.
+        // Une erreur temporaire ne vide jamais les observations déjà affichées.
+        if (SITE.id === "lpdl" && SHEET_URLS.regulatory) {
+          try {
+            const newRegulatoryRows = await fetchRegulatoryRows(SHEET_URLS.regulatory, 3);
+            if (!cancelled && newRegulatoryRows.length > 0) {
+              setRegulatoryRows(newRegulatoryRows);
+              console.info(`BV Link actualisé : ${newRegulatoryRows.length} lignes reçues`);
+            }
+          } catch (regulatoryError) {
+            console.warn("Actualisation BV Link impossible ; conservation des données précédentes :", regulatoryError);
+          }
+        }
 
         // Parser Planning : technicien, jour, tache, client, semaine
         // La colonne "semaine" peut être "actuelle" ou "prochaine" (vide = actuelle par défaut)
@@ -3511,7 +3546,7 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, []);
 
-  // Le chargement Sheets est relancé toutes les 5 minutes.
+  // Le chargement Sheets (dont BV Link) est relancé toutes les 2 minutes.
   // La citation reste donc stable pendant la journée et change automatiquement le lendemain.
 
 
