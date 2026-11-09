@@ -2590,7 +2590,7 @@ const TRAJETS_CONFIG = SITE.id === "rhapsody"
       { key: "jason", nom: "Jason", dest: "Gare de Compiègne" },
       { key: "cedric", nom: "Cedric", dest: "Gare de Longueville" },
       { key: "liazide", nom: "Liazide", dest: "Pierrelaye" },
-      { key: "ayoub", nom: "Ayoub", dest: "Nanterre-Ville · RER A" },
+      { key: "ayoub", nom: "Ayoub", dest: "Nanterre-Ville" },
       {
         key: "poissy",
         group: [
@@ -2739,6 +2739,29 @@ function TrajetPersoSlide({ trajetTimes }) {
       >
         {TRAJETS_CONFIG.map((personne, index) => {
           if (personne.group) {
+            const memberTimes = personne.group
+              .map(member => {
+                const raw = trajetTimes?.[member.key];
+                return raw !== null && raw !== undefined && raw !== "" && Number.isFinite(Number(raw))
+                  ? Number(raw)
+                  : null;
+              })
+              .filter(value => value !== null);
+            // Les deux trajets étant vers Poissy, on affiche un temps unique
+            // calculé à partir des temps disponibles de Rachid et Toufik.
+            const groupTime = memberTimes.length
+              ? Math.round(memberTimes.reduce((sum, value) => sum + value, 0) / memberTimes.length)
+              : null;
+            const groupBaseline = personne.group.reduce(
+              (sum, member) => sum + (TRAJET_HABITUEL[member.key] || 0),
+              0
+            ) / personne.group.length;
+            const groupStatus = getTrajetStatus(groupTime, groupBaseline);
+            const groupProgress = groupTime === null
+              ? 0
+              : clamp(groupTime / maxDisplayedMinutes, 0, 1);
+            const groupDash = groupProgress * circumference;
+
             return (
               <div
                 key={personne.key}
@@ -2747,93 +2770,66 @@ function TrajetPersoSlide({ trajetTimes }) {
                   padding: 12,
                   background: "rgba(0, 0, 0, 0.2)",
                   borderRadius: 8,
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
+                  display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
-                  justifyItems: "center",
-                  gap: 8,
+                  justifyContent: "center",
                   minHeight: 0,
                   boxSizing: "border-box",
                 }}
               >
-                {personne.group.map(member => {
-                  const raw = trajetTimes?.[member.key];
-                  const memberTime =
-                    raw !== null && raw !== undefined && raw !== "" && Number.isFinite(Number(raw))
-                      ? Number(raw)
-                      : null;
-                  const memberStatus = getTrajetStatus(memberTime, TRAJET_HABITUEL[member.key]);
-                  const memberProgress = memberTime === null
-                    ? 0
-                    : clamp(memberTime / maxDisplayedMinutes, 0, 1);
-                  const memberDash = memberProgress * circumference;
-
-                  return (
-                    <div
-                      key={member.key}
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        minWidth: 0,
-                      }}
-                    >
-                      <div
-                        style={{
-                          position: "relative",
-                          width: 104,
-                          height: 104,
-                          marginBottom: 7,
-                          flexShrink: 0,
-                        }}
-                      >
-                        <svg
-                          viewBox="0 0 120 120"
-                          style={{ width: "100%", height: "100%", transform: "rotate(-90deg)" }}
-                          aria-hidden="true"
-                        >
-                          <circle cx="60" cy="60" r={radius} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="8" />
-                          {memberTime !== null && (
-                            <circle
-                              cx="60"
-                              cy="60"
-                              r={radius}
-                              fill="none"
-                              stroke={memberStatus.color}
-                              strokeWidth="8"
-                              strokeDasharray={`${memberDash} ${circumference}`}
-                              strokeLinecap="round"
-                            />
-                          )}
-                        </svg>
-                        <div
-                          style={{
-                            position: "absolute",
-                            inset: 0,
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <div style={{ fontSize: 9, lineHeight: 1.1, fontWeight: 800, color: memberStatus.color }}>
-                            {memberTime === null ? "Indisponible" : memberStatus.label}
-                          </div>
-                          <div style={{ fontSize: 19, lineHeight: 1.05, fontWeight: 800, color: memberStatus.color }}>
-                            {formatTrajetDuration(memberTime)}
-                          </div>
-                        </div>
-                      </div>
-                      <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2 }}>
-                        {member.nom}
-                      </div>
-                      <div style={{ fontSize: 10, opacity: 0.7, marginTop: 3, lineHeight: 1.2 }}>
-                        {member.dest}
-                      </div>
+                <div
+                  style={{
+                    position: "relative",
+                    width: 150,
+                    height: 150,
+                    margin: "0 auto 8px",
+                    flexShrink: 0,
+                  }}
+                >
+                  <svg
+                    viewBox="0 0 120 120"
+                    style={{ width: "100%", height: "100%", transform: "rotate(-90deg)" }}
+                    aria-hidden="true"
+                  >
+                    <circle cx="60" cy="60" r={radius} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="8" />
+                    {groupTime !== null && (
+                      <circle
+                        cx="60"
+                        cy="60"
+                        r={radius}
+                        fill="none"
+                        stroke={groupStatus.color}
+                        strokeWidth="8"
+                        strokeDasharray={`${groupDash} ${circumference}`}
+                        strokeLinecap="round"
+                      />
+                    )}
+                  </svg>
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <div style={{ fontSize: 10, lineHeight: 1.1, fontWeight: 800, color: groupStatus.color }}>
+                      {groupTime === null ? "Indisponible" : groupStatus.label}
                     </div>
-                  );
-                })}
+                    <div style={{ fontSize: 21, lineHeight: 1.05, fontWeight: 800, color: groupStatus.color }}>
+                      {formatTrajetDuration(groupTime)}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.2 }}>
+                  {personne.group.map(member => member.nom).join(" & ")}
+                </div>
+                <div style={{ fontSize: 11, opacity: 0.7, marginTop: 3, lineHeight: 1.2 }}>
+                  Poissy
+                </div>
               </div>
             );
           }
