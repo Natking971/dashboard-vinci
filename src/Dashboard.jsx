@@ -2903,14 +2903,21 @@ function normalizeRegulatoryKey(value) {
 }
 
 function regulatoryField(row, ...aliases) {
+  const entries = Object.entries(row || {});
   const normalizedAliases = aliases.map(normalizeRegulatoryKey);
-  for (const [key, value] of Object.entries(row || {})) {
-    if (normalizedAliases.includes(normalizeRegulatoryKey(key))) return String(value || "").trim();
+
+  // Priorité aux intitulés exacts, dans l'ordre demandé.
+  // Cela évite de confondre « Date » avec « Date première émission ».
+  for (const alias of normalizedAliases) {
+    const match = entries.find(([key]) => normalizeRegulatoryKey(key) === alias);
+    if (match) return String(match[1] || "").trim();
   }
-  // Repli sur une correspondance partielle pour les exports BV Link qui ajoutent des précisions aux intitulés.
-  for (const [key, value] of Object.entries(row || {})) {
-    const normalizedKey = normalizeRegulatoryKey(key);
-    if (normalizedAliases.some(alias => alias && normalizedKey.includes(alias))) return String(value || "").trim();
+
+  // Repli partiel uniquement après les correspondances exactes.
+  for (const alias of normalizedAliases) {
+    if (!alias) continue;
+    const match = entries.find(([key]) => normalizeRegulatoryKey(key).includes(alias));
+    if (match) return String(match[1] || "").trim();
   }
   return "";
 }
@@ -3017,7 +3024,16 @@ function RegulatorySlide({ rows }) {
   };
 
   const prepared = (rows || []).map((row, index) => {
-    const dateText = regulatoryField(row, "date", "date observation", "date de constat");
+    // La colonne « Date » correspond à la date de suivi de l'observation.
+    // « Date première émission » n'est utilisée qu'en dernier recours.
+    const dateText = regulatoryField(
+      row,
+      "date",
+      "date observation",
+      "date de constat",
+      "date du constat",
+      "date première émission"
+    );
     const date = parseRegulatoryDate(dateText);
     const treatment = regulatoryField(row, "traitement", "statut", "état", "etat") || "Non renseigné";
     const normalizedTreatment = normalizeRegulatoryKey(treatment);
@@ -3150,7 +3166,9 @@ function RegulatorySlide({ rows }) {
   return (
     <div style={{ height: "100%", overflow: "hidden", padding: "12px 24px 14px", color: "#111827", display: "flex", flexDirection: "column", minHeight: 0 }}>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, marginBottom: 10, flexShrink: 0 }}>
-        <div><div style={{ fontSize: 11, fontWeight: 800, color: "#64748B", letterSpacing: ".14em", textTransform: "uppercase", marginBottom: 4 }}>Suivi BV Link · 2025–2026</div><div style={{ fontSize: 27, fontWeight: 800, letterSpacing: "-1px" }}>Contrôle réglementaire</div><div style={{ color: "#6B7280", fontSize: 12, marginTop: 4 }}>{filtered.length} observations affichées · données actualisées automatiquement</div></div>
+        <div><div style={{ fontSize: 11, fontWeight: 800, color: "#64748B", letterSpacing: ".14em", textTransform: "uppercase", marginBottom: 4 }}>Suivi BV Link · 2025–2026</div><div style={{ fontSize: 27, fontWeight: 800, letterSpacing: "-1px" }}>Contrôle réglementaire</div><div style={{ color: "#6B7280", fontSize: 12, marginTop: 4 }}>
+          {filtered.length} observations affichées · {rows?.length || 0} lignes reçues depuis Google Sheets · données actualisées automatiquement
+        </div></div>
         <div style={{ background: "#EFF6FF", color: "#1D4ED8", borderRadius: 10, padding: "9px 12px", fontSize: 11, fontWeight: 800 }}>LA POSTE DU LOUVRE</div>
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: 8, background: "#E9EDF2", borderRadius: 12, marginBottom: 9, flexShrink: 0 }}>
@@ -3190,7 +3208,11 @@ function RegulatorySlide({ rows }) {
       {unclassifiedCount > 0 && <div style={{ fontSize: 10, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "5px 9px", marginBottom: 7, flexShrink: 0 }}>{unclassifiedCount} observation(s) restent « À classifier » : aucune règle automatique ne permet de trancher. Tu peux modifier leur catégorie directement dans le tableau.</div>}
       <div style={{ ...cardStyle, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "9px 12px", borderBottom: "1px solid #E5E7EB", flexShrink: 0 }}><div style={{ fontSize: 13, fontWeight: 800 }}>Détail des observations</div><div style={{ fontSize: 10, color: "#6B7280" }}>En cours → En attente → Traitées → autres · date décroissante · {filtered.length} ligne(s)</div></div>
-        <div ref={tableScrollRef} style={{ overflow: "hidden", flex: 1, minHeight: 0 }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 1000 }}><thead style={{ position: "sticky", top: 0, background: "#F8FAFC", zIndex: 1 }}><tr>{["Date", "Catégorie (modifiable)", "Domaine", "Équipement / sujet", "Détails", "Traitement", "Criticité", "Échéance", "Commentaire"].map(label => <th key={label} style={{ textAlign: "left", padding: "7px 8px", color: "#64748B", fontSize: 9, letterSpacing: ".05em", textTransform: "uppercase", borderBottom: "1px solid #E5E7EB" }}>{label}</th>)}</tr></thead><tbody>{sortedRows.map((row, index) => <tr key={`${row.id}-${index}`} style={{ background: index % 2 ? "#FAFAFA" : "white" }}><td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{row.date ? fmtDate(row.date) : row.dateText || "—"}</td><td style={{ padding: "4px 6px", whiteSpace: "nowrap" }}><select aria-label={`Catégorie de ${row.id}`} value={manualCategories[row.manualKey] || "auto"} onChange={e => updateManualCategory(row.manualKey, e.target.value)} title={`Classement automatique : ${row.automaticCategory}`} style={{ maxWidth: 145, border: "1px solid #E2E8F0", borderRadius: 8, padding: "4px 6px", fontSize: 10, fontWeight: 800, background: row.category === "Parties communes" ? "#DBEAFE" : row.category === "Parties privatives" ? "#FFEDD5" : "#FEF3C7", color: row.category === "Parties communes" ? "#1D4ED8" : row.category === "Parties privatives" ? "#C2410C" : "#92400E" }}><option value="auto">Auto : {row.automaticCategory}</option><option value="Parties communes">Parties communes</option><option value="Parties privatives">Parties privatives</option><option value="À classifier">À classifier</option></select></td><td style={{ padding: "6px 8px", fontWeight: 700 }}>{row.domain}</td><td style={{ padding: "6px 8px", maxWidth: 150 }}>{row.equipment || row.subject || row.identifier || "—"}</td><td style={{ padding: "6px 8px", maxWidth: 250 }}>{row.details || row.subject || "—"}</td><td style={{ padding: "6px 8px" }}><span style={{ padding: "3px 7px", borderRadius: 10, background: row.status === "Traitées" ? "#D1FAE5" : row.status === "En cours" ? "#FEF3C7" : row.status === "En attente" ? "#EDE9FE" : "#E5E7EB", color: row.status === "Traitées" ? "#047857" : row.status === "En cours" ? "#92400E" : row.status === "En attente" ? "#6D28D9" : "#475569", fontWeight: 800, whiteSpace: "nowrap" }}>{row.treatment}</span></td><td style={{ padding: "6px 8px" }}>{row.criticality}</td><td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{row.dueDate || "—"}</td><td style={{ padding: "6px 8px", maxWidth: 190 }}>{row.comment || "—"}</td></tr>)}{filtered.length === 0 && <tr><td colSpan={9} style={{ textAlign: "center", padding: 24, color: "#9CA3AF" }}>Aucune observation trouvée pour les filtres sélectionnés.</td></tr>}</tbody></table></div>
+        <div ref={tableScrollRef} style={{ overflow: "hidden", flex: 1, minHeight: 0 }}><table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, minWidth: 1000 }}><thead style={{ position: "sticky", top: 0, background: "#F8FAFC", zIndex: 1 }}><tr>{["Date", "Catégorie (modifiable)", "Domaine", "Équipement / sujet", "Détails", "Traitement", "Criticité", "Échéance", "Commentaire"].map(label => <th key={label} style={{ textAlign: "left", padding: "7px 8px", color: "#64748B", fontSize: 9, letterSpacing: ".05em", textTransform: "uppercase", borderBottom: "1px solid #E5E7EB" }}>{label}</th>)}</tr></thead><tbody>{sortedRows.map((row, index) => <tr key={`${row.id}-${index}`} style={{ background: index % 2 ? "#FAFAFA" : "white" }}><td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{row.date ? fmtDate(row.date) : row.dateText || "—"}</td><td style={{ padding: "4px 6px", whiteSpace: "nowrap" }}><select aria-label={`Catégorie de ${row.id}`} value={manualCategories[row.manualKey] || "auto"} onChange={e => updateManualCategory(row.manualKey, e.target.value)} title={`Classement automatique : ${row.automaticCategory}`} style={{ maxWidth: 145, border: "1px solid #E2E8F0", borderRadius: 8, padding: "4px 6px", fontSize: 10, fontWeight: 800, background: row.category === "Parties communes" ? "#DBEAFE" : row.category === "Parties privatives" ? "#FFEDD5" : "#FEF3C7", color: row.category === "Parties communes" ? "#1D4ED8" : row.category === "Parties privatives" ? "#C2410C" : "#92400E" }}><option value="auto">Auto : {row.automaticCategory}</option><option value="Parties communes">Parties communes</option><option value="Parties privatives">Parties privatives</option><option value="À classifier">À classifier</option></select></td><td style={{ padding: "6px 8px", fontWeight: 700 }}>{row.domain}</td><td style={{ padding: "6px 8px", maxWidth: 150 }}>{row.equipment || row.subject || row.identifier || "—"}</td><td style={{ padding: "6px 8px", maxWidth: 250 }}>{row.details || row.subject || "—"}</td><td style={{ padding: "6px 8px" }}><span style={{ padding: "3px 7px", borderRadius: 10, background: row.status === "Traitées" ? "#D1FAE5" : row.status === "En cours" ? "#FEF3C7" : row.status === "En attente" ? "#EDE9FE" : "#E5E7EB", color: row.status === "Traitées" ? "#047857" : row.status === "En cours" ? "#92400E" : row.status === "En attente" ? "#6D28D9" : "#475569", fontWeight: 800, whiteSpace: "nowrap" }}>{row.treatment}</span></td><td style={{ padding: "6px 8px" }}>{row.criticality}</td><td style={{ padding: "6px 8px", whiteSpace: "nowrap" }}>{row.dueDate || "—"}</td><td style={{ padding: "6px 8px", maxWidth: 190 }}>{row.comment || "—"}</td></tr>)}{filtered.length === 0 && <tr><td colSpan={9} style={{ textAlign: "center", padding: 24, color: "#9CA3AF" }}>
+          {(!rows || rows.length === 0)
+            ? "Aucune ligne reçue depuis Google Sheets : vérifier l'URL publiée et le gid de l'onglet BV Link."
+            : "Aucune observation datée de 2025 ou 2026 trouvée. Vérifier la colonne Date et les filtres sélectionnés."}
+        </td></tr>}</tbody></table></div>
       </div>
     </div>
   );
