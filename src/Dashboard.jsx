@@ -3213,6 +3213,7 @@ function RegulatorySlide({ rows }) {
       <div><div style={{ fontSize: 25, fontWeight: 900, color }}>{s.total}</div><div style={{ fontSize: 10, color: "#64748B" }}>Observations</div></div>
       <div><div style={{ fontSize: 22, fontWeight: 800 }}>{s.reserves}</div><div style={{ fontSize: 10, color: "#64748B" }}>Réserves</div></div>
       <div><div style={{ fontSize: 22, fontWeight: 800, color: "#059669" }}>{s.treated}</div><div style={{ fontSize: 10, color: "#64748B" }}>Levées</div></div>
+      <div><div style={{ fontSize: 22, fontWeight: 900, color: "#DC2626" }}>{Math.max(0, s.reserves - s.treated)}</div><div style={{ fontSize: 10, color: "#64748B" }}>Restant à lever</div></div>
     </div></div>{donut(s, "Taux de levée", color)}</div>;
 
   const sortedRows = [...filtered].sort((a, b) => {
