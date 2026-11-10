@@ -22,6 +22,8 @@ const DESTINATIONS = [
   { key: "michael", name: "Nanterre-Préfecture", lon: 2.223138, lat: 48.895631 },
   // Compiègne est hors du périmètre IDFM : la requête peut ne rien retourner.
   // Le tableau affichera alors la référence habituelle côté Dashboard.jsx.
+  // Compiègne est hors du périmètre IDFM : l’API peut ne pas fournir de trajet.
+  // Le Dashboard affiche alors la référence habituelle de 36 min, explicitement étiquetée.
   { key: "jason", name: "Gare de Compiègne", lon: 2.8218, lat: 49.4203 },
   { key: "cedric", name: "Gare de Longueville", lon: 3.249822, lat: 48.513703 },
   { key: "liazide", name: "Gare de Pierrelaye", lon: 2.1537, lat: 49.0194 },
