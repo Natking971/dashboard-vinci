@@ -2564,7 +2564,7 @@ const TRAJET_HABITUEL = SITE.id === "rhapsody"
   : {
       ghulam: 40,
       nathan: 24,
-      michael: 12,
+      michael: 25,
       jason: 36,
       cedric: 81, // Gare de Longueville : référence 1 h 21 min selon l’itinéraire fourni
       liazide: 41,
@@ -3253,7 +3253,7 @@ export default function Dashboard() {
       : {
           ghulam: 44,
           nathan: 27,
-          michael: 12,
+          michael: 25,
           jason: 36,
           cedric: 81,
           liazide: 35,
