@@ -2565,9 +2565,9 @@ const TRAJET_HABITUEL = SITE.id === "rhapsody"
     }
   : {
       ghulam: 40,
-      nathan: 24,
+      nathan: 35,
       michael: 25,
-      jason: 36,
+      jason: 90,
       cedric: 81, // Gare de Longueville : référence 1 h 21 min selon l’itinéraire fourni
       liazide: 41,
       ayoub: 30, // Référence demandée : Nanterre-Ville, RER A
@@ -3279,9 +3279,9 @@ export default function Dashboard() {
         }
       : {
           ghulam: 44,
-          nathan: 27,
+          nathan: 30,
           michael: 25,
-          jason: 36,
+          jason: 90,
           cedric: 81,
           liazide: 35,
           rachid: 30,
