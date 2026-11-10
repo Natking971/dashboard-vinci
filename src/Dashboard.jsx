@@ -40,6 +40,8 @@ function techColors(name, index) {
   if (n === "jason" || n === "jayson") return { color: "#B45309", light: "#FEF3C7", dot: "#F59E0B" };
   if (n === "cédric" || n === "cedric") return { color: "#047857", light: "#D1FAE5", dot: "#10B981" };
   if (n === "ghulam") return { color: "#1D4ED8", light: "#DBEAFE", dot: "#3B82F6" };
+  // Ayoub : rouge, comme demandé pour son nom et ses interventions.
+  if (n === "ayoub") return { color: "#B91C1C", light: "#FEE2E2", dot: "#EF4444" };
   // 44 Châteaudun : Michael rouge, Kamal bleu.
   if (n === "michael") return { color: "#B91C1C", light: "#FEE2E2", dot: "#EF4444" };
   if (n === "kamal") return { color: "#1D4ED8", light: "#DBEAFE", dot: "#3B82F6" };
@@ -3058,49 +3060,28 @@ function RegulatorySlide({ rows }) {
   const [categoryFilter, setCategoryFilter] = useState("all");
 
   const classifyRegulatoryCategory = (raw) => {
-    // Classement LPDL basé en priorité sur le commentaire BV Link.
-    // Les mots « hôtel », « commerce » ou « logistique urbaine » seuls ne
-    // suffisent pas : ils peuvent désigner une zone commune du bâtiment.
-    const comment = normalizeRegulatoryKey(regulatoryField(raw, "commentaire", "commentaires"));
-    const details = normalizeRegulatoryKey(regulatoryField(raw, "détails", "details", "observation", "constat"));
-    const equipment = normalizeRegulatoryKey(regulatoryField(raw, "équipement", "equipement"));
-    const subject = normalizeRegulatoryKey(regulatoryField(raw, "sujet", "titre"));
-    const domain = normalizeRegulatoryKey(regulatoryField(raw, "domaine"));
-    const treatment = normalizeRegulatoryKey(regulatoryField(raw, "traitement", "statut", "état", "etat"));
-    const fullText = [details, equipment, subject].filter(Boolean).join(" ");
+    const explicit = regulatoryField(raw, "catégorie", "categorie", "type de partie", "partie", "périmètre", "perimetre", "secteur");
+    const explicitKey = normalizeRegulatoryKey(explicit || "");
+    if (explicitKey.includes("commun")) return "Parties communes";
+    if (explicitKey.includes("priv") || explicitKey.includes("locatif")) return "Parties privatives";
 
-    // 1. Mention explicite dans le commentaire BV Link : priorité absolue.
-    if (comment.includes("parties communes") || comment.includes("partie commune")) {
-      return "Parties communes";
-    }
-    if (/(^| )(privatif|privative|partie privative|parties privatives|locatif|partie locative)( |$)/.test(comment)) {
-      return "Parties privatives";
-    }
+    // Certains exports BV Link identifient le local par le nom du locataire.
+    const tenant = regulatoryField(raw, "locataire", "client", "occupant", "entite", "entité");
+    const tenantKey = normalizeRegulatoryKey(tenant || "");
+    const privateTenants = ["voodoo", "poste enseigne", "logistique urbaine", "louvre banque privee", "iad"];
+    if (privateTenants.some(name => tenantKey.includes(normalizeRegulatoryKey(name)))) return "Parties privatives";
+    if (tenantKey.includes("parties communes") || tenantKey === "communes") return "Parties communes";
 
-    // 2. Locaux/équipements privatifs identifiés sans ambiguïté dans l'export.
-    if (["doki doki", "people baby", "halte garderie"].some(term => fullText.includes(term))) {
-      return "Parties privatives";
-    }
-
-    // Les rideaux coupe-feu du comptoir d'accueil Colissimo sont rattachés
-    // à l'espace privatif ; les accès/rampe de circulation restent communs.
-    if (domain.includes("securite incendie") &&
-        details.includes("comptoir d accueil logistique urbaine colissimo") &&
-        details.includes("rideau coupe feu")) {
-      return "Parties privatives";
-    }
-
-    // 3. Commentaires indiquant clairement une prise en charge par l'occupant.
-    if ((comment.includes("gere par l hotel") || comment.includes("transferer a l hotel")) && treatment) {
-      return "Parties privatives";
-    }
-    if (treatment !== "traitee" &&
-        ["zone elu", "pcf locataires", "locataires"].some(term => comment.includes(term))) {
-      return "Parties privatives";
-    }
-
-    // 4. À défaut d'indication privative fiable, rattachement aux parties communes.
-    return "Parties communes";
+    // À défaut de champ dédié, on recherche une mention explicite dans les champs descriptifs.
+    const description = normalizeRegulatoryKey([
+      regulatoryField(raw, "sujet", "titre"),
+      regulatoryField(raw, "equipement", "équipement"),
+      regulatoryField(raw, "details", "détails", "observation", "constat"),
+      regulatoryField(raw, "identification", "identifiant"),
+    ].filter(Boolean).join(" "));
+    if (description.includes("parties communes") || description.includes("partie commune")) return "Parties communes";
+    if (description.includes("parties privatives") || description.includes("partie privative")) return "Parties privatives";
+    return "À classer";
   };
 
   const prepared = (rows || []).map((row, index) => {
@@ -3126,7 +3107,7 @@ function RegulatorySlide({ rows }) {
       details: regulatoryField(row, "détails", "details", "observation", "constat"),
       subject: regulatoryField(row, "sujet", "titre"),
       equipment: regulatoryField(row, "équipement", "equipement"),
-      identifier: regulatoryField(row, "identifiant", "idenfication", "numéro", "numero", "n° intervention"),
+      identifier: regulatoryField(row, "identifiant", "numéro", "numero", "n° intervention"),
       comment: regulatoryField(row, "commentaire", "commentaires"),
       dueDate: regulatoryField(row, "date échéance", "date d'échéance", "échéance"),
       raw: row,
@@ -3181,14 +3162,11 @@ function RegulatorySlide({ rows }) {
     { label: "En cours", value: globalStats.inProgress, color: "#F59E0B" },
     { label: "En attente", value: globalStats.pending, color: "#8B5CF6" },
   ];
-  // Le graphique affiche uniquement les réserves restant à lever :
-  // toutes les observations dont le traitement n'est pas « Traitées ».
   const domainCounts = [...new Set(filtered.map(row => row.domain))].map(domain => ({
     domain,
-    common: filtered.filter(row => row.domain === domain && row.category === "Parties communes" && row.status !== "Traitées").length,
-    privates: filtered.filter(row => row.domain === domain && row.category === "Parties privatives" && row.status !== "Traitées").length,
-  })).filter(item => item.common + item.privates > 0)
-    .sort((a, b) => (b.common + b.privates) - (a.common + a.privates));
+    common: filtered.filter(row => row.domain === domain && row.category === "Parties communes").length,
+    privates: filtered.filter(row => row.domain === domain && row.category === "Parties privatives").length,
+  })).sort((a, b) => (b.common + b.privates) - (a.common + a.privates)).slice(0, 6);
   const maxDomainCount = Math.max(1, ...domainCounts.map(item => item.common + item.privates));
   const fmtDate = date => date ? date.toLocaleDateString("fr-FR") : "—";
   const selectStyle = { border: "1px solid #D1D5DB", borderRadius: 9, padding: "8px 10px", background: "white", color: "#111827", fontSize: 12, fontWeight: 600, minWidth: 130 };
@@ -3209,7 +3187,6 @@ function RegulatorySlide({ rows }) {
       <div><div style={{ fontSize: 25, fontWeight: 900, color }}>{s.total}</div><div style={{ fontSize: 10, color: "#64748B" }}>Observations</div></div>
       <div><div style={{ fontSize: 22, fontWeight: 800 }}>{s.reserves}</div><div style={{ fontSize: 10, color: "#64748B" }}>Réserves</div></div>
       <div><div style={{ fontSize: 22, fontWeight: 800, color: "#059669" }}>{s.treated}</div><div style={{ fontSize: 10, color: "#64748B" }}>Levées</div></div>
-      <div><div style={{ fontSize: 22, fontWeight: 900, color: "#DC2626" }}>{Math.max(0, s.reserves - s.treated)}</div><div style={{ fontSize: 10, color: "#64748B" }}>Restant à lever</div></div>
     </div></div>{donut(s, "Taux de levée", color)}</div>;
 
   const sortedRows = [...filtered].sort((a, b) => {
@@ -3236,7 +3213,7 @@ function RegulatorySlide({ rows }) {
         {statCard("PARTIES PRIVATIVES", privateStats, "#C2410C", "#FFF7ED", "▤")}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1.1fr .9fr 1fr", gap: 9, marginBottom: 9, flexShrink: 0, minHeight: 138 }}>
-        <div style={cardStyle}><div style={{ fontSize: 13, fontWeight: 800, marginBottom: 9 }}>Réserves restantes à lever par domaine</div><div style={{ display: "flex", gap: 12, fontSize: 10, marginBottom: 8 }}><span style={{ color: "#2563EB" }}>● Parties communes</span><span style={{ color: "#F97316" }}>● Parties privatives</span></div>{domainCounts.map(item => <div key={item.domain} style={{ marginBottom: 6 }}><div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 3 }}><b>{item.domain}</b><span>{item.common} / {item.privates}</span></div><div style={{ height: 8, background: "#E5E7EB", borderRadius: 8, overflow: "hidden", display: "flex" }}><div style={{ width: `${item.common / maxDomainCount * 100}%`, background: "#3B82F6" }}/><div style={{ width: `${item.privates / maxDomainCount * 100}%`, background: "#F97316" }}/></div></div>)}</div>
+        <div style={cardStyle}><div style={{ fontSize: 13, fontWeight: 800, marginBottom: 9 }}>Réserves par domaine</div><div style={{ display: "flex", gap: 12, fontSize: 10, marginBottom: 8 }}><span style={{ color: "#2563EB" }}>● Parties communes</span><span style={{ color: "#F97316" }}>● Parties privatives</span></div>{domainCounts.map(item => <div key={item.domain} style={{ marginBottom: 6 }}><div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 3 }}><b>{item.domain}</b><span>{item.common} / {item.privates}</span></div><div style={{ height: 8, background: "#E5E7EB", borderRadius: 8, overflow: "hidden", display: "flex" }}><div style={{ width: `${item.common / maxDomainCount * 100}%`, background: "#3B82F6" }}/><div style={{ width: `${item.privates / maxDomainCount * 100}%`, background: "#F97316" }}/></div></div>)}</div>
         <div style={cardStyle}><div style={{ fontSize: 13, fontWeight: 800, marginBottom: 10 }}>Répartition des traitements</div><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>{donut(commonStats, "Communes", "#047857")}{donut(privateStats, "Privatives", "#C2410C")}</div><div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 10, marginTop: 8 }}><span style={{ color: "#059669" }}>● Traitées</span><span style={{ color: "#D97706" }}>● En cours</span><span style={{ color: "#7C3AED" }}>● En attente</span></div></div>
         <div style={cardStyle}><div style={{ fontSize: 13, fontWeight: 800, marginBottom: 10 }}>Évolution des réserves par année</div>{["2025", "2026"].map(year => { const c = filtered.filter(row => row.year === year && row.category === "Parties communes").length; const p = filtered.filter(row => row.year === year && row.category === "Parties privatives").length; const max = Math.max(1, ...filtered.map(row => row.year === year ? 1 : 0), c, p); return <div key={year} style={{ marginBottom: 12 }}><div style={{ fontSize: 11, fontWeight: 700, marginBottom: 4 }}>{year}</div><div style={{ display: "flex", alignItems: "center", gap: 7 }}><span style={{ width: 54, fontSize: 10, color: "#2563EB" }}>Communes</span><div style={{ flex: 1, height: 8, background: "#EFF6FF", borderRadius: 6 }}><div style={{ width: `${c / Math.max(1, ...filtered.map(r => r.year === year ? (r.category === "Parties communes" ? filtered.filter(x => x.year === year && x.category === "Parties communes").length : 0) : 0), c, p) * 100}%`, height: "100%", background: "#3B82F6", borderRadius: 6 }}/></div><b style={{ fontSize: 10 }}>{c}</b></div><div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}><span style={{ width: 54, fontSize: 10, color: "#EA580C" }}>Privatives</span><div style={{ flex: 1, height: 8, background: "#FFF7ED", borderRadius: 6 }}><div style={{ width: `${p / Math.max(1, c, p) * 100}%`, height: "100%", background: "#F97316", borderRadius: 6 }}/></div><b style={{ fontSize: 10 }}>{p}</b></div></div>; })}</div>
       </div>
