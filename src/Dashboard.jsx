@@ -3058,56 +3058,49 @@ function RegulatorySlide({ rows }) {
   const [categoryFilter, setCategoryFilter] = useState("all");
 
   const classifyRegulatoryCategory = (raw) => {
-    // L'export BV Link utilisé à LPDL ne possède pas de colonne « catégorie »
-    // ni « locataire ». On exploite donc les vrais champs de l'export :
-    // Equipement, Sujet, Détails, Commentaire, Acteur, Identification et Identifiant.
-    const explicit = regulatoryField(raw, "catégorie", "categorie", "type de partie", "partie", "périmètre", "perimetre", "secteur");
-    const explicitKey = normalizeRegulatoryKey(explicit || "");
-    if (explicitKey.includes("commun")) return "Parties communes";
-    if (explicitKey.includes("priv") || explicitKey.includes("locatif")) return "Parties privatives";
+    // Classement LPDL basé en priorité sur le commentaire BV Link.
+    // Les mots « hôtel », « commerce » ou « logistique urbaine » seuls ne
+    // suffisent pas : ils peuvent désigner une zone commune du bâtiment.
+    const comment = normalizeRegulatoryKey(regulatoryField(raw, "commentaire", "commentaires"));
+    const details = normalizeRegulatoryKey(regulatoryField(raw, "détails", "details", "observation", "constat"));
+    const equipment = normalizeRegulatoryKey(regulatoryField(raw, "équipement", "equipement"));
+    const subject = normalizeRegulatoryKey(regulatoryField(raw, "sujet", "titre"));
+    const domain = normalizeRegulatoryKey(regulatoryField(raw, "domaine"));
+    const treatment = normalizeRegulatoryKey(regulatoryField(raw, "traitement", "statut", "état", "etat"));
+    const fullText = [details, equipment, subject].filter(Boolean).join(" ");
 
-    const description = normalizeRegulatoryKey([
-      regulatoryField(raw, "équipement", "equipement"),
-      regulatoryField(raw, "sujet", "titre"),
-      regulatoryField(raw, "détails", "details", "observation", "constat"),
-      regulatoryField(raw, "commentaire", "commentaires"),
-      regulatoryField(raw, "acteur"),
-      regulatoryField(raw, "identification", "idenfication", "identifiant"),
-      regulatoryField(raw, "identifiant"),
-      regulatoryField(raw, "type"),
-    ].filter(Boolean).join(" "));
-
-    if (description.includes("parties communes") || description.includes("partie commune")) return "Parties communes";
-    if (description.includes("parties privatives") || description.includes("partie privative")) return "Parties privatives";
-
-    // Espaces et équipements rattachés à un occupant : privatif.
-    const privateKeywords = [
-      "voodoo", "poste enseigne", "logistique urbaine", "bornes de recharge logistique",
-      "louvre banque privee", "lbp", "iad", "hotel", "hotel", "creche",
-      "halte garderie", "people baby", "doki doki", "airness", "riise",
-      "zone elu", "locataire", "locataires", "commerce", "commerces",
-      "partie locative", "local locataire", "espace locataire",
-    ];
-    if (privateKeywords.some(keyword => description.includes(normalizeRegulatoryKey(keyword)))) {
+    // 1. Mention explicite dans le commentaire BV Link : priorité absolue.
+    if (comment.includes("parties communes") || comment.includes("partie commune")) {
+      return "Parties communes";
+    }
+    if (/(^| )(privatif|privative|partie privative|parties privatives|locatif|partie locative)( |$)/.test(comment)) {
       return "Parties privatives";
     }
 
-    // Équipements et zones relevant de l'exploitation générale du site.
-    const commonKeywords = [
-      "noyau", "parking", "terrasse",
-      "tgbt", "armoire electrique", "desenfumage",
-      "sprinkleur", "extinction automatique", "eclairage de securite",
-      "protection contre la foudre", "dispositif de protection contre la foudre",
-      "compartimentage", "registre de securite", "systeme de securite incendie",
-      "ssi", "colonne seche", "porte resistante au feu", "bureau veritas",
-      "nacelle", "uniaccess", "efaflex", "evaflex", "atol", "angelmir", "tuv nord",
-    ];
-    if (commonKeywords.some(keyword => description.includes(normalizeRegulatoryKey(keyword)))) {
-      return "Parties communes";
+    // 2. Locaux/équipements privatifs identifiés sans ambiguïté dans l'export.
+    if (["doki doki", "people baby", "halte garderie"].some(term => fullText.includes(term))) {
+      return "Parties privatives";
     }
 
-    // Ne pas inventer de rattachement : les cas sans indice restent à vérifier.
-    return "À classer";
+    // Les rideaux coupe-feu du comptoir d'accueil Colissimo sont rattachés
+    // à l'espace privatif ; les accès/rampe de circulation restent communs.
+    if (domain.includes("securite incendie") &&
+        details.includes("comptoir d accueil logistique urbaine colissimo") &&
+        details.includes("rideau coupe feu")) {
+      return "Parties privatives";
+    }
+
+    // 3. Commentaires indiquant clairement une prise en charge par l'occupant.
+    if ((comment.includes("gere par l hotel") || comment.includes("transferer a l hotel")) && treatment) {
+      return "Parties privatives";
+    }
+    if (treatment !== "traitee" &&
+        ["zone elu", "pcf locataires", "locataires"].some(term => comment.includes(term))) {
+      return "Parties privatives";
+    }
+
+    // 4. À défaut d'indication privative fiable, rattachement aux parties communes.
+    return "Parties communes";
   };
 
   const prepared = (rows || []).map((row, index) => {
