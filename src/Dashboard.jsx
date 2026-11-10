@@ -3058,27 +3058,55 @@ function RegulatorySlide({ rows }) {
   const [categoryFilter, setCategoryFilter] = useState("all");
 
   const classifyRegulatoryCategory = (raw) => {
+    // L'export BV Link utilisé à LPDL ne possède pas de colonne « catégorie »
+    // ni « locataire ». On exploite donc les vrais champs de l'export :
+    // Equipement, Sujet, Détails, Commentaire, Acteur, Identification et Identifiant.
     const explicit = regulatoryField(raw, "catégorie", "categorie", "type de partie", "partie", "périmètre", "perimetre", "secteur");
     const explicitKey = normalizeRegulatoryKey(explicit || "");
     if (explicitKey.includes("commun")) return "Parties communes";
     if (explicitKey.includes("priv") || explicitKey.includes("locatif")) return "Parties privatives";
 
-    // Certains exports BV Link identifient le local par le nom du locataire.
-    const tenant = regulatoryField(raw, "locataire", "client", "occupant", "entite", "entité");
-    const tenantKey = normalizeRegulatoryKey(tenant || "");
-    const privateTenants = ["voodoo", "poste enseigne", "logistique urbaine", "louvre banque privee", "iad"];
-    if (privateTenants.some(name => tenantKey.includes(normalizeRegulatoryKey(name)))) return "Parties privatives";
-    if (tenantKey.includes("parties communes") || tenantKey === "communes") return "Parties communes";
-
-    // À défaut de champ dédié, on recherche une mention explicite dans les champs descriptifs.
     const description = normalizeRegulatoryKey([
+      regulatoryField(raw, "équipement", "equipement"),
       regulatoryField(raw, "sujet", "titre"),
-      regulatoryField(raw, "equipement", "équipement"),
-      regulatoryField(raw, "details", "détails", "observation", "constat"),
-      regulatoryField(raw, "identification", "identifiant"),
+      regulatoryField(raw, "détails", "details", "observation", "constat"),
+      regulatoryField(raw, "commentaire", "commentaires"),
+      regulatoryField(raw, "acteur"),
+      regulatoryField(raw, "identification", "idenfication", "identifiant"),
+      regulatoryField(raw, "identifiant"),
+      regulatoryField(raw, "type"),
     ].filter(Boolean).join(" "));
+
     if (description.includes("parties communes") || description.includes("partie commune")) return "Parties communes";
     if (description.includes("parties privatives") || description.includes("partie privative")) return "Parties privatives";
+
+    // Espaces et équipements rattachés à un occupant : privatif.
+    const privateKeywords = [
+      "voodoo", "poste enseigne", "logistique urbaine", "bornes de recharge logistique",
+      "louvre banque privee", "lbp", "iad", "hotel", "hotel", "creche",
+      "halte garderie", "people baby", "doki doki", "airness", "riise",
+      "zone elu", "locataire", "locataires", "commerce", "commerces",
+      "partie locative", "local locataire", "espace locataire",
+    ];
+    if (privateKeywords.some(keyword => description.includes(normalizeRegulatoryKey(keyword)))) {
+      return "Parties privatives";
+    }
+
+    // Équipements et zones relevant de l'exploitation générale du site.
+    const commonKeywords = [
+      "noyau", "parking", "terrasse",
+      "tgbt", "armoire electrique", "desenfumage",
+      "sprinkleur", "extinction automatique", "eclairage de securite",
+      "protection contre la foudre", "dispositif de protection contre la foudre",
+      "compartimentage", "registre de securite", "systeme de securite incendie",
+      "ssi", "colonne seche", "porte resistante au feu", "bureau veritas",
+      "nacelle", "uniaccess", "efaflex", "evaflex", "atol", "angelmir", "tuv nord",
+    ];
+    if (commonKeywords.some(keyword => description.includes(normalizeRegulatoryKey(keyword)))) {
+      return "Parties communes";
+    }
+
+    // Ne pas inventer de rattachement : les cas sans indice restent à vérifier.
     return "À classer";
   };
 
@@ -3105,7 +3133,7 @@ function RegulatorySlide({ rows }) {
       details: regulatoryField(row, "détails", "details", "observation", "constat"),
       subject: regulatoryField(row, "sujet", "titre"),
       equipment: regulatoryField(row, "équipement", "equipement"),
-      identifier: regulatoryField(row, "identifiant", "numéro", "numero", "n° intervention"),
+      identifier: regulatoryField(row, "identifiant", "idenfication", "numéro", "numero", "n° intervention"),
       comment: regulatoryField(row, "commentaire", "commentaires"),
       dueDate: regulatoryField(row, "date échéance", "date d'échéance", "échéance"),
       raw: row,
