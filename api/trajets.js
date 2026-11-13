@@ -141,11 +141,12 @@ function parisDateTime(date = new Date()) {
 function buildJourneyUrl(
   destination,
   freshness = "realtime",
-  departureDateTime = parisDateTime()
+  departureDateTime = parisDateTime(),
+  start = START
 ) {
   const params = new URLSearchParams();
 
-  params.set("from", `${START.lon};${START.lat}`);
+  params.set("from", `${start.lon};${start.lat}`);
   params.set("to", `${destination.lon};${destination.lat}`);
   params.set("datetime", departureDateTime);
   params.set("datetime_represents", "departure");
@@ -272,12 +273,13 @@ function journeyDetails(journey) {
 async function calculateDestination(
   destination,
   apiKey,
-  departureDateTime = parisDateTime()
+  departureDateTime = parisDateTime(),
+  start = START
 ) {
   let freshness = "realtime";
 
   let response = await requestPrim(
-    buildJourneyUrl(destination, freshness, departureDateTime),
+    buildJourneyUrl(destination, freshness, departureDateTime, start),
     apiKey
   );
 
@@ -312,7 +314,7 @@ async function calculateDestination(
     freshness = "base_schedule";
 
     response = await requestPrim(
-      buildJourneyUrl(destination, freshness, departureDateTime),
+      buildJourneyUrl(destination, freshness, departureDateTime, start),
       apiKey
     );
 
@@ -380,7 +382,13 @@ function addMinutesToDateTime(value, minutes) {
 // JASON : RECHERCHE DU TRAIN SNCF
 // ============================================================
 
-async function calculateSncfTrain(apiKey, departureDateTime) {
+async function calculateSncfTrain(
+  apiKey,
+  departureDateTime,
+  fromStation = JASON_TRAIN_FROM,
+  toStation = JASON_TRAIN_TO,
+  destinationLabel = "Gare de Compiègne"
+) {
   if (!apiKey) {
     throw new Error(
       "SNCF_API_KEY absente du projet Vercel"
@@ -388,8 +396,8 @@ async function calculateSncfTrain(apiKey, departureDateTime) {
   }
 
   const params = new URLSearchParams({
-    from: JASON_TRAIN_FROM,
-    to: JASON_TRAIN_TO,
+    from: fromStation,
+    to: toStation,
     datetime: departureDateTime,
     datetime_represents: "departure",
     count: "6",
@@ -455,7 +463,7 @@ async function calculateSncfTrain(apiKey, departureDateTime) {
 
   if (!trains.length) {
     throw new Error(
-      "Aucun train trouvé entre Gare du Nord et Gare de Compiègne"
+      `Aucun train trouvé depuis Gare du Nord vers ${destinationLabel}`
     );
   }
 
@@ -574,6 +582,153 @@ async function mapInBatches(items, batchSize, mapper) {
 }
 
 // ============================================================
+// CONFIGURATION RHAPSODY
+// ============================================================
+
+const RHAPSODY_START = {
+  name: "Rhapsody",
+  lat: 48.911619,
+  lon: 2.333753,
+};
+
+const RHAPSODY_GARE_DU_NORD = {
+  key: "gareDuNordRhapsody",
+  name: "Gare du Nord",
+  lat: 48.8809,
+  lon: 2.3553,
+};
+
+const RHAPSODY_DESTINATIONS = [
+  {
+    key: "alvaro",
+    name: "Ermont",
+    lon: 2.2667,
+    lat: 48.9833,
+  },
+  {
+    key: "camara",
+    name: "Clichy",
+    lon: 2.306389,
+    lat: 48.904444,
+  },
+  {
+    key: "bazil",
+    name: "Longperrier",
+    lon: 2.6635,
+    lat: 49.05227,
+  },
+  {
+    key: "bongo",
+    name: "Montmorency",
+    lon: 2.3333,
+    lat: 49.0,
+  },
+  {
+    key: "picart",
+    name: "Viroflay",
+    lon: 2.173056,
+    lat: 48.800833,
+  },
+  {
+    key: "royer",
+    name: "Fublaines",
+    lon: 2.93556,
+    lat: 48.93778,
+  },
+];
+
+async function calculateRhapsody(apiKey, sncfApiKey) {
+  const times = {};
+  const details = {};
+  const errors = [];
+
+  // Les six trajets directs au départ de Rhapsody.
+  const results = await mapInBatches(
+    RHAPSODY_DESTINATIONS,
+    4,
+    destination =>
+      calculateDestination(
+        destination,
+        apiKey,
+        parisDateTime(),
+        RHAPSODY_START
+      )
+  );
+
+  results.forEach((result, index) => {
+    const destination = RHAPSODY_DESTINATIONS[index];
+
+    if (result.status === "fulfilled") {
+      times[destination.key] = result.value.duration;
+      details[destination.key] = {
+        ...result.value,
+        destination: destination.name,
+      };
+    } else {
+      times[destination.key] = null;
+      errors.push({
+        key: destination.key,
+        destination: destination.name,
+        message: result.reason?.message || "Erreur inconnue",
+      });
+    }
+  });
+
+  // Avril Nicodeme : Rhapsody -> Gare du Nord -> Bornel-Belle-Église.
+  try {
+    const firstLeg = await calculateDestination(
+      RHAPSODY_GARE_DU_NORD,
+      apiKey,
+      parisDateTime(),
+      RHAPSODY_START
+    );
+
+    if (!firstLeg.arrivalDateTime) {
+      throw new Error("Arrivée à Gare du Nord introuvable");
+    }
+
+    const transferMinutes = 10;
+    const trainDeparture = addMinutesToDateTime(
+      firstLeg.arrivalDateTime,
+      transferMinutes
+    );
+
+    const train = await calculateSncfTrain(
+      sncfApiKey,
+      trainDeparture,
+      "stop_area:SNCF:87271007",
+      "stop_area:SNCF:87276717",
+      "Bornel-Belle-Église"
+    );
+
+    times.nicodeme =
+      firstLeg.duration + transferMinutes + train.duration;
+
+    details.nicodeme = {
+      key: "nicodeme",
+      name: "Avril Nicodeme",
+      destination: "Bornel-Belle-Église",
+      rhapsodyToGareDuNord: firstLeg.duration,
+      correspondence: transferMinutes,
+      gareDuNordToBornel: train.duration,
+      gareDuNordArrival: firstLeg.arrivalDateTime,
+      trainDeparture: train.departureDateTime,
+      bornelArrival: train.arrivalDateTime,
+      totalMinutes: times.nicodeme,
+    };
+  } catch (error) {
+    times.nicodeme = null;
+    errors.push({
+      key: "nicodeme",
+      destination: "Bornel-Belle-Église",
+      message: error?.message || "Erreur lors du calcul du trajet",
+    });
+  }
+
+  return { times, details, errors };
+}
+
+// ============================================================
 // API PRINCIPALE
 // ============================================================
 
@@ -588,6 +743,9 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.IDFM_API_KEY;
   const sncfApiKey = process.env.SNCF_API_KEY;
+  const site = String(
+    req.query?.site || process.env.VITE_SITE || "lpdl"
+  ).toLowerCase();
 
   if (!apiKey) {
     return res.status(500).json({
@@ -597,7 +755,34 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Calcul des trajets habituels.
+    // ========================================================
+    // RHAPSODY — CETTE BRANCHE NE MODIFIE PAS LES TRAJETS LPDL
+    // ========================================================
+    if (site === "rhapsody") {
+      const result = await calculateRhapsody(apiKey, sncfApiKey);
+
+      res.setHeader(
+        "Cache-Control",
+        "public, s-maxage=300, stale-while-revalidate=60"
+      );
+
+      const successfulCount = Object.values(result.times)
+        .filter(Number.isFinite).length;
+
+      return res.status(successfulCount > 0 ? 200 : 502).json({
+        site: "rhapsody",
+        times: result.times,
+        details: result.details,
+        errors: result.errors,
+        updatedAt: new Date().toISOString(),
+        successfulCount,
+        totalCount: Object.keys(result.times).length,
+      });
+    }
+
+    // ========================================================
+    // LA POSTE DU LOUVRE — CODE EXISTANT CONSERVÉ
+    // ========================================================
     const settled = await mapInBatches(
       DESTINATIONS,
       4,
